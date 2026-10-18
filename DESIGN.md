@@ -1894,7 +1894,7 @@ closures need one anyway, and can bring it.
 | C377 `[fixed]` | **A guarded clause reading its own term was refused where no base clause gives a shape.** Clauses are compiled in the order the interpreter tries them, so a guarded one reading its own sequence asked its shape before any clause had given it: a sample and hold, `y_n \| n > 5 = y_(n-1)` and `y_n = p_n`, and a fault latched, `f_n \| n > 0 and f_(n-1) == 1 = 1` and `f_n = p_n > 2`, were refused, "its shape depends on itself", where the interpreter answers both. Where no base clause gives a shape and a guarded clause names its own sequence, the unguarded clause is now compiled first; the chain the step tests is unchanged. No golden, expected header or report moves. In 17 lines of `compile.hpp`, 2 of comment, and 7 removed; `compile/drift.ink`'s `tripped` holds it. Found by the end-to-end exploration of a robot loop, latching a sensor's failure. |
 | C378 `[fixed]` | **A hold in a guard was refused, saying a term was computed again.** A guard is compiled as the right of an `and` is, its reads deferred, and a hold was refused wherever reads were: `y_n \| s_(floor(n/10)) > 0 = 1` and `y_n = 0`, with `s_m = x_(10*m)`, was refused, "s_(...): a hold where a term is computed again", where `y_n = s_(floor(n/10)) > 0` compiles. A hold in a guard is now compiled as one in a value is; one on the right of an `and` or `or`, read only where the left has not decided, is still refused, and says so: "a hold on the right of 'and' or 'or'". No golden, expected header or report moves. In 8 lines of `compile.hpp`, 1 of comment, and 2 removed; `compile/decimate.ink`'s `polled` holds it, and `test/cli.cmake`'s `compile_slow_right_refused` the refusal. Found by the end-to-end exploration of a robot loop, its position fix read every tenth step. |
 | C379 `[fixed]` | **A history's own term was refused for what its input's argument reads.** Whether a term init folds can change with a parameter was asked of everything the input reads, its argument included, though the interpreter tries the history's clauses first: with `steering(k = 2, y_n)` giving `u_n = k*(1 - y_n)` and a plant `railing(u_n)` whose history `u_n \| n < 0 = 1/2` it reads at 0 as `u_(n-1)`, the two instances closing the loop, compiled together, were refused, "rail.u's history reads steer.k, which the host may assign after init", where the interpreter gives 1/2. Where a clause of the history holds, a base clause or a guard, init now folds its term, which a history may not read a parameter to give; where none does, the argument gives it, and a parameter it reads is refused as before, as `history_gained`. No golden, expected header or report moves. In 12 lines of `compile.hpp`, 2 of comment, and 1 removed; `test/cli.cmake`'s `history_railed` holds it. Found by the end-to-end exploration of a robot loop, its controller and plant instances of their own. |
-| C380 `[open]` | **A compiled guard takes the clause after where the interpreter refuses a NaN read before what falls.** A guard's truth NaN where a status it asks holds does not hold, whatever made it NaN, where the interpreter refuses the first comparison of NaN it reads: with `nn(z_n?)` giving `y_n \| z_n > 0 and z_(n-1) > 0 = 1` and `y_n = 0`, and z NaN and present at 3 and absent at 2, the step takes y_3 = 0 and the interpreter refuses it, "a comparison needs a number"; so with a limit that runs out, `y_n \| x_n > 0 and lim qp(x_n) > 0 = 1` where x is NaN, before optional inputs. Open: statuses would need the order of reads. Found by the implementation review of optional inputs. |
+| C380 `[open]` | **A compiled guard takes the clause after where the interpreter refuses a NaN read before what falls.** A guard's truth NaN where a status it asks holds does not hold, whatever made it NaN, where the interpreter refuses the first comparison of NaN it reads: with `nn(z_n?)` giving `y_n \| z_n > 0 and z_(n-1) > 0 = 1` and `y_n = 0`, and z NaN and present at 3 and absent at 2, the step takes y_3 = 0 and the interpreter refuses it, "a comparison needs a number"; so with a limit that runs out, `y_n \| x_n > 0 and lim qp(x_n) > 0 = 1` where x is NaN, before optional inputs. Through a sibling's chain too: with `rise(z_n?)` giving `d_n \| z_n - z_(n-3) > 0 = z_n - z_(n-3)` and `d_n = 0`, and `src()` giving `t_n \| mod(n, 4) == 0 = n` and `z_n \| mod(n, 2) == 0 = t_n`, `r = rise(z_n = s.z_n)` has its z given and refused at 2, s.t_2 having no clause, and z_-1 absent, so the step takes d_2 = 0 where the interpreter refuses it, "no clause of t applies". Open: statuses would need the order of reads. Found by the implementation review of optional inputs. |
 | C381 `[fixed]` | **Configuring with two sanitizers and no build type failed.** Whether C363 is timed was decided in a generator expression, `$<BOOL:${INKAMATH_SANITIZE}>`, where the comma in `address,undefined` made two parameters: `cmake -S . -B build -G Ninja -DINKAMATH_SANITIZE=address,undefined`, the command §5 gives with the sanitizers added, stopped at generate, "$<BOOL> expression requires exactly one parameter". CI passes `Debug`, whose `$<OR:...>` never reads the rest, so it did not see it. The sanitizers are now asked in CMake itself. No golden or test moves; configuring is the test, which no ctest can hold. In 6 lines of `test/CMakeLists.txt`, 2 of comment, and 1 removed. Found by the implementation of optional inputs and its review. |
 | C382 `[fixed]` | **A gradient by a vector at an exact point parted from forward mode's in the last bit, through the prelude.** At an exact point, reverse mode took a prelude function's slope by the walk's own nodes, where at an inexact point it takes the header's: `grad_(u = [1; 1/2]) 20*cos(u[1]) == [grad_(x = 1) 20*cos(x); 0]` was `~0`, the first an ulp from -20 sin 1, where `cos(u[1])` alone and the point `[~1; 1/2]` give `~1`. So `test/compile/hessian.ink`'s `p.G`, which the header computes as forward mode does, was 3.6e-15 from the interpreter's at 1, and C and w after it by what that moved, as was `tensorgrad.ink`'s attend.WQ, 1.7e-18. Taking the header's slope there, as C329 does, would not do: at an exact point that is not a double, 1/3 or 13/5, forward mode's walk is an ulp from the header's slope at the double, for cos, sin, tanh, atan and log alike. Where such a function's argument moves and is exact, reverse mode now gives way to forward mode. Every term of `p` and `attend` is within 0, and `test/cli.cmake`'s `check_hessian_p` holds p's so again, as before C382; no other golden or expected header moves, nor any other report but in its estimate of the interpreter's error, `swing`'s, and README's `J([1/2; 3])` moves, whose 6 is ~6, forward mode marking the whole gradient where a cell meets a double. In 8 lines of `derivative.hpp`, 3 of comment, and 2 removed; `reverse.ink` holds it. Found by the implementation of grad's order. |
 | C383 `[fixed]` | **A compiled Hessian of a body not reading v answered 0.** A Hessian's body is its inner grad's, whose point is v, so the compiler's test that the body reads the name passed it: `c_n = grad_(v = y_(n-1))^2 3*y_(n-1)[1]` was the zero matrix, where the interpreter refuses it, "grad's expression does not read v", and `--check` exited 1. The inner grad's body is asked now, as the interpreter asks it. In 4 lines of `compile.hpp`, 1 of comment; `test/cli.cmake`'s `compile_hessian_refused` holds it. No golden, expected header or report moves. Found by the implementation review of grad's order. |
@@ -1903,7 +1903,11 @@ closures need one anyway, and can bring it.
 | C386 `[fixed]` | **A compiled nest at constant points was computed in doubles.** A value moving by the outer grad is never a constant, so `grad_(x = 1/10)^2 ((x*3 > 3/10) + x^3)` took 0.1*3 as 0.30000000000000004 and answered 0.6, where the interpreter refuses, "a comparison jumps at x = 0.1": the implementation's departure. A nest whose innermost body, each grad's name its point's value, is a constant reading no parameter is now the interpreter's value, as a limit of numbers is, and NaN where it refuses. In 41 lines of `compile.hpp`, 4 of comment; `compile/hessian.ink`'s `c` holds it, its report expected in full. No golden, expected header or report moves. Found by the implementation review of grad's order. |
 | C387 `[fixed]` | **A nest's infinite power was refused at the innermost point, not the one that makes it so.** `grad_(t = 0) grad_(s = 1) s*t^(1/2)` said "a power's derivative is infinite at s = 1", where t = 0 makes it infinite. The refusal now names the innermost grad the base moves with, as a complex point's does. In 13 lines of `derivative.hpp`, 2 of comment, and 6 removed; `hessian.ink` holds it. No other golden moves. Found by the implementation review of grad's order. |
 | C388 `[fixed]` | **A comparison or a fractional power of a prelude call constant in the clause taken was NaN compiled.** A call of the prelude is a function of the header, and its part was taken as there wherever its argument's is, where the interpreter takes the clause's: `grad_(t = x_n) ((max(t, 0) > 0) + t^3)` was NaN at x = -0.75, where `max` gives the constant 0 and the interpreter 1.6875, and `grad_(t = x_n) (max(t, 0)^(1/2) + t^3)` NaN at x = -0.5, 0 times infinity, where it gives 0.75; at first order, before grad's order, and in a nest alike. Where its part is there is now a function of the header too, `max_ma`, as its part is, an int, and the call's part is there where both it and an argument's are; in a nest, each part's, the function made as its value's. No golden or expected header moves; four check programs test where exp's part is there, its clauses past 1000 constants, as a jump, a quotient or log's value reads it, `fall`, `smooth`, `token` and `tuned`, 1% longer, their reports as they were. In 35 lines of `compile.hpp`, 4 of comment, and 10 removed; `compile/grad.ink`'s `maxed` holds it. Found by the implementation review of grad's order, on integration too. |
-| C393 `[fixed]` | **A guard reading a matrix limit's status was no C++.** The status passed the limit's answer a compound literal, `robot_lim0(m_, t18_, 0.1, (double[6][2]){{0.0}})` in `test/compile/robot.ink`'s `loop`, with `--float` too, which C++ refuses, "taking address of temporary array", where the headers are said to build strict as C++; nothing built them so. It is passed an array of the step's now, unread. `strict` builds each header as C++17 too, and `compile_status_strict` holds loop's. No golden, expected header or report moves; loop's header declares the array, and its temporaries after it are numbered one higher. In 8 lines of `compile.hpp`, 1 of comment, and 4 removed. Found by review. |
+| C389 `[fixed]` | **A sibling's chain was compiled as giving no term where its guard cannot yet be read.** An inner instance's optional input given a sibling's chain takes the chain's status, which tried the guard where the step's term is NaN because the guard's reads have not begun: with `z_0 = 1` and `z_n \| y_(n-2) > 5 = n`, the interpreter refuses z_1, reading y_-1, and the status read the window's 0 there, so e's z was absent and its x 0 at 1 and 2, where the interpreter refuses them. The status is 1 there now, the term given and refused, as the step's NaN says. No golden or expected header moves. In 9 lines of `compile.hpp`, 1 of comment, and 1 removed; `compile/inner.ink`'s `gb` holds it. Found by the implementation review of an inner instance's optional input. |
+| C390 `[fixed]` | **A slow chain held by an inner instance's optional input was compiled as always given.** A hold returned before the read asked its chain's status, so `h = held(z_n = s.y_(floor(n/2)))`, with `y_m \| mod(m, 3) == 0 = x_(2*m)`, gave h's z present at every step: NaN at 2, where the interpreter finds it absent and its x holds 0.25, and NaN from there. The status kept is the latest term's, and a hold may name an older one, as a read back in time does, which is refused for now; so is this, "h.z is given s.y_(...), whose chain may give none, held, for now". No golden or expected header moves. In 11 lines of `compile.hpp`, 1 of comment, and 4 removed; `compile_inner_hold` in `test/cli.cmake` holds it. Found by the implementation review of an inner instance's optional input. |
+| C391 `[open]` | **An inner instance's optional input given a sibling's chain that starts late started late too, and so did what reads it back.** A chain with no base clause whose guard reads back in time starts where the guard can be read, and the inner input given it there: with `rise(z_n?)` giving `d_n \| z_n - z_(n-3) > 0 = z_n - z_(n-3)` and `d_n = 0`, and `src()` giving `y_0 = 0`, `y_n = y_(n-1) + 1` and `z_n \| y_(n-1) > 2 = y_n`, `r = rise(z_n = s.z_n)` starts its z at 1 and its d at 4, so d is NaN from 1 to 3, where the interpreter gives 0, z_1 to z_3 absent; `--check` says "none at 1, where the interpreter gives 0". Open: the inner input would start with the stream, refused until its argument starts, which Starts has no form for. Found by the implementation review of an inner instance's optional input. |
+| C392 `[fixed]` | **A refusal of an inner optional input's lagged or held argument named its two terms from two places.** The input was qualified from where it is compiled and the term given it from its own model, so a file's instance read "lg.h.z is given s.z_(n-1)". Both are qualified alike now, "lg.h.z is given lg.s.z_(n-1)"; a model compiled reads as before. In 1 line of `compile.hpp`, changed; `compile_inner_lag_file` in `test/cli.cmake` holds it. Found by the implementation review of an inner instance's optional input. |
+| C393 `[fixed]` | **A guard reading a matrix limit's status was no C++.** The status passed the limit's answer a compound literal, `robot_lim0(m_, t18_, 0.1, (double[6][2]){{0.0}})` in `test/compile/robot.ink`'s `loop`, now `inner.ink`'s,, with `--float` too, which C++ refuses, "taking address of temporary array", where the headers are said to build strict as C++; nothing built them so. It is passed an array of the step's now, unread. `strict` builds each header as C++17 too, and `compile_status_strict` holds loop's. No golden, expected header or report moves; loop's header declares the array, and its temporaries after it are numbered one higher. In 8 lines of `compile.hpp`, 1 of comment, and 4 removed. Found by the implementation review of an inner instance's optional input. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -12246,7 +12250,7 @@ the clause for a limit that does not converge as done, the order from here:
     needs it. So `test/compile/robot.ink` and `test/data/robot.ink` keep
     `ok_n`: their fix is the loop's GPS instance's, given to the filter
     instance, which this refuses, and the spec's robot entries are the
-    interpreter's already.
+    interpreter's already. Lifted by the entry below.
   - The definition's stage checks the arguments forwarded too where the
     inner model is defined already, as the spec's `dbl` entry asks.
   - A call's arguments are read wherever the call is, as the interpreter
@@ -12255,11 +12259,151 @@ the clause for a limit that does not converge as done, the order from here:
   - Within a model only: a model's body reading another instance of the
     session's optional input is not checked, and is refused where it is
     absent, as from outside.
-- **An inner instance's optional input, compiled**, optional inputs'
-  departure: `test/compile/robot.ink` compiled without `ok_n`, its fix the
-  GPS instance's z given to the filter's optional input and checked against
-  `robot_loop.ink`'s simulation. A new compiled status, no clause of a
-  sibling's chain gave the term, and a forwarded flag; about 40 lines.
+- `[done]` **An inner instance's optional input, compiled**, optional inputs'
+  departure: the robot's loop compiled without `ok_n`, its fix the GPS
+  instance's z given to the filter's optional input. The interpreter
+  answers all of it already, so its answers are the oracle and nothing in
+  it changes; the step is to give them.
+
+  Decided:
+  - **The flag is the argument's.** An inner instance's optional input
+    given the outer model's own optional input, or another instance's, as
+    the file's `fwd.e` is given `fwd.z`, takes its flag, forwarded;
+    given a sequence, a sibling's, the model's own or the file's, 1 where a
+    clause of its chain gave the term and 0 where none did, a new status
+    of the step, a guarded closed form's too, as `zd` gives the file's
+    `fwd.z`, through the argument's arithmetic too, `2*s.z_n` as `s.z_n`,
+    as the interpreter reads an argument (optional inputs, *absent is a
+    term that is not there*); given anything else, a plain input or the
+    index alone, 1.
+    Before the stream it is absent whatever the argument gives there, but
+    where a history of the inner model's gives it, as interpreted: in
+    `sib`, e's z_-3 is absent where s's term is -11/4.
+  - **Where a clause gave NaN, the term is present.** The chain's status
+    is its end, every guard false. A clause whose value is NaN gave the
+    term, and a guard reading it is NaN and refused, as for the model's own
+    input; a guard of the chain that is NaN is the term's refusal, present
+    too, as the interpreter refuses it rather than finding it absent.
+  - **The inner input keeps its window and flags** in its instance's
+    struct, `int z_present[k]` beside `z[k]` as the model's own does,
+    filled at each step from the argument, its cells NaN where absent;
+    init clears them but where a history gives a term, folded as the
+    model's own, so that before the stream is absent with no case of its
+    own. The step's signature does not change: a forwarded flag is the
+    step's `z_present_in_`, a sibling's the step computes.
+  - **The audit names the input as the guard writes it**, `robot.f.x:
+    where z is absent`, as it names `lim Z`: the clause quoted beside it
+    says whose.
+  - **A file's definition** reading an instance's optional input compiles
+    as the interpreter reads it, as any term, in a guard or outside one:
+    `r_n = fwd.e.z_n` is NaN where the interpreter refuses it as absent,
+    as the step answers a refusal (C86). Refusing it as in a model, where
+    the interpreter refuses it too, would cost lines to refuse what the
+    step gives faithfully.
+  - **The robot**: `test/compile/inner.ink`'s `robot` is `robot_loop.ink`'s
+    loop, `P_0` 1/100, the fix out from 300 to 490 and the reference
+    stepping at 350, so that the flags the simulation gives are those of
+    the step checked, over 600 steps; `test/compile/robot.ink`, a 200-step
+    loop with `ok_n`, goes with its check. `test/data/robot.ink` loses
+    `ok_n` too, `fc2`'s frozen test written in guards, and `robot_loop.ink`
+    does not move: rewritten so in the spec's scratch, its 13 answers were
+    as recorded. That needs no compiler, so the departure was wrong to tie
+    it to this item; it can go first, in a commit of its own.
+
+  Rejected:
+  - **NaN as a sibling's flag**, `!isnan(g.z)`: no status to add, but a
+    clause that gives NaN, a fault, would be taken for an outage, which
+    optional inputs rejected for the model's own input. `sib` holds it:
+    its x would be 73/4 at 20, where it is refused.
+  - **The argument's window read in place of the input's own**: a lagged
+    read would ask a sibling's status at a past index, a window of flags
+    beside each sequence an argument reads, and before the stream the
+    argument's term computed again there, s.z_-3, would be present.
+  - **A flag argument on the step for each inner input**: the host would
+    give what the step computes, and could give it wrong.
+  - **Refusing an argument other than a bare term**: its flag is the
+    statuses its reads ask, as a guard's are, so refusing `2*s.z_n` would
+    cost a test and buy nothing.
+
+  Still refused, or open: a read of an inner instance's optional input
+  outside a guard in a model where it is defined, as the interpreter
+  refuses it; an argument reading back in time a term whose chain
+  may give none, `h = last(z_n = s.z_(n-1))`, which the interpreter
+  answers and the step would answer only with that chain's status kept at
+  past indices, refused for now, "cannot compile h.x: h.z is given
+  s.z_(n-1), whose chain may give none, read back in time, for now"; and
+  C380 through a sibling, a guard reading first a
+  term whose chain refuses it, its guard NaN or its value refused, and
+  then one absent, which the step falls from where the interpreter
+  refuses. The story does not reach it; C380's second reproducer does.
+
+  What moves: `test/compile/robot.ink` and its check, for `inner.ink`'s
+  `robot`; `test/data/robot.ink`, `robot_loop.ink` unchanged; README
+  section 5's "An inner instance's optional input is refused, for now",
+  for the flag's rule. No golden or other report.
+
+  About 45 lines, the interpreter's none. The compiler's 40: the refusal
+  gone and `Optional` taking an inner input, so that its struct fields,
+  window shift, NaN cells and flags cleared in init, and history folds
+  come as the model's own, 6; its flag filled at each step from the
+  argument's reads, forwarded, another instance's, a chain's status or 1,
+  15; a chain's status, its end, every guard false and NaN not false, 8;
+  `Flag` asking an inner input's status, under the name the guard
+  writes, 4; an inner input left out of `Recomputed`, so that a read
+  before the stream is NaN and falls rather than computing the argument
+  again there, `k.d_0` 3 where it is 0, 3; the lagged sibling refused, 4.
+  `--check`'s 5, the audit's name as written, its replay as it is since
+  the step takes no new input. 20,129 lines at ab4d0de by `wc -l
+  include/inkamath/*.hpp src/*`; past 68, one and a half times 45, the
+  implementation stops and reports.
+
+  Specified in `test/data/spec/inner.ink`, 28 entries, each passing today
+  since the interpreter gives it: the forwarded and plain inputs before
+  the stream, the sibling's chain and its NaN, and the loop as one
+  instance; values by hand and in Python's fractions, the loop's by a
+  simulation in doubles apart from inkamath with scipy's gain, which gives
+  `robot_loop.ink`'s flags and u_300 = -0.0848377303296. What fails by
+  design is compiled: `test/compile/inner.ink` and `test/cli.cmake`'s spec
+  part, `cli_spec`: the headers of `fw` and `loop`, strict C; the file
+  compiled whole with nothing to list, `r` among it; the lagged sibling
+  refused; and the reports of `robot`, `fwd` and `sib`, and of the
+  review's `dp`, two levels deep, `ow`, the model's own guarded closed
+  form, `gp`, a sibling's guard NaN, and `hs`, a history on the inner
+  input, their values by hand. Skipped while e.z is refused as today, and
+  only then.
+
+  Done in 47 lines, against the 45 estimated and the stop at 68, all the
+  compiler's: `Optional` taking an inner input by its argument's mark, a
+  history registered for each so that init folds it as the model's own,
+  and `Recomputed` leaving it out; the argument compiled asking the
+  statuses of what it reads, its flag their conjunction; a chain's status
+  as the step's chain tries it, a NaN guard giving the term; `Flag` by the
+  name the guard writes. `--check` needed none of its 5: the audit names
+  what `Flag` records. The spec is the golden `test/data/inner.ink`, every
+  entry as written; `test/compile/inner.ink` is a cli case, its robot
+  checked over 600 steps by `check_robot_600_report`, in place of
+  `test/compile/robot.ink`'s 200, and
+  `cli_spec` and the spec suite are gone. 20,160 to 20,207 lines at
+  20aca6e's merge by `wc -l include/inkamath/*.hpp src/*`, 20,129 to
+  20,176 from ab4d0de.
+  Departures:
+  - **The chain's status is a field**, `int z_given_` in the struct beside
+    a sequence an inner input's argument reads, where the spec said a
+    status of the step: a step split into functions would not reach a
+    local.
+  - The lagged sibling is refused where a guard reads the inner input,
+    `h.x`, as specified, but recorded where the argument is compiled.
+  - An inner optional input its instance leaves out is refused, "e.z is an
+    input nothing gives", where the interpreter answers it absent at every
+    step.
+  - The robot's report is checked in `test/CMakeLists.txt`'s list,
+    `check_robot_600_report`, MSVC's build too, as `check_robot_200_report`
+    was, its lines in the order the program writes them; the other stories'
+    reports are cli.cmake's, under GCC and Clang only.
+- **An inner optional input left out, compiled** as absent at every step, as
+  interpreted: the model without one of its sensors, the robot's filter with
+  no fix, where it is refused today, "e.z is an input nothing gives"; about
+  10 to 15 lines.
 - **A definition the host implements**, as the C-hook study sketched:
   `--compile nav.ink nav --host qp` names it, with no syntax; the header
   declares `int nav_qp(const double H[4], const double f[2], double

@@ -33,7 +33,7 @@ imu(a_n, v_n) = {
 }
 
 # The position fix, every tenth step, with noise; from fix 30 to 49 it fails:
-# mode 1 says so (ok = 0), mode 2 freezes at its last value and says ok.
+# mode 1 gives none, mode 2 freezes at its last value.
 gps(mode = 1, p_n) = {
     r_0 = 4242
     r_n = mod(16807*r_(n-1), 2^31 - 1)
@@ -41,19 +41,17 @@ gps(mode = 1, p_n) = {
     y_0 = p_0 + (r_0/(2^31 - 1) - 1/2)/5
     y_m | down(m) and mode == 2 = y_(m-1)
     y_m = p_(10*m) + (r_(10*m)/(2^31 - 1) - 1/2)/5
-    z_n = y_(floor(n/10))
-    okf_n | down(floor(n/10)) and mode == 1 = 0
-    okf_n = 1
+    z_n | mode == 2 or down(floor(n/10)) == 0 = y_(floor(n/10))
 }
 
-# What runs on the robot: inputs the IMU, the fix and its flag, at 100 Hz.
+# What runs on the robot: inputs the IMU and the fix, optional, at 100 Hz.
 # Its correction's weights were fitted offline to the bias.
 nav(qp = 1, qa = 1/5, rz = 1/300, gate = 4, pmax = 1/400, umax = 3/2,
     W = [~1.0087082446036357; ~-0.49608088328325778; ~0.23801367405832982; ~2.0196709407791769],
     cb = [~-0.0017651237166237193; ~0.24287475294768127; ~-0.24650153472845093; ~-0.019883014028842676],
     V = [~0.0038140777920965263, ~-0.0014083530162575402, ~0.016730466244441917, ~0.19218841286451346],
     d = ~0.054968825254486729,
-    r_n, am_n, z_n, ok_n) = {
+    r_n, am_n, z_n?) = {
     h(s)[j<=4] = tanh(s[j])
     corr(v) = V*h(W*v + cb) + d
     kg(q) | gain([q 0; 0 1/10], ~1/10)[1,1] > 0 = gain([q 0; 0 1/10], ~1/10)
@@ -69,10 +67,11 @@ nav(qp = 1, qa = 1/5, rz = 1/300, gate = 4, pmax = 1/400, umax = 3/2,
     xp_n = F*x_(n-1) + G*ac_n
     Pp_n = F*P_(n-1)*F' + Qn
     S_n = [1 0]*Pp_n*[1; 0] + rz
-    nu_n = z_n - [1 0]*xp_n
-    frozen_n = n >= 20 and z_n == z_(n-10) and z_n == z_(n-20)
-    fix_n = mod(n, 10) == 0 and ok_n == 1 and frozen_n == 0 and nu_n^2 < gate^2*S_n
-    x_n | fix_n == 1 = xp_n + Pp_n*[1; 0]*nu_n/S_n
+    frozen_n | n >= 20 and z_n == z_(n-10) and z_n == z_(n-20) = 1
+    frozen_n = 0
+    fix_n | mod(n, 10) == 0 and frozen_n == 0 and (z_n - [1 0]*xp_n)^2 < gate^2*S_n = 1
+    fix_n = 0
+    x_n | mod(n, 10) == 0 and frozen_n == 0 and (z_n - [1 0]*xp_n)^2 < gate^2*S_n = xp_n + Pp_n*[1; 0]*(z_n - [1 0]*xp_n)/S_n
     x_n = xp_n
     P_n | fix_n == 1 = Pp_n - Pp_n*[1; 0]*[1 0]*Pp_n/S_n
     P_n = Pp_n
@@ -88,11 +87,11 @@ nav(qp = 1, qa = 1/5, rz = 1/300, gate = 4, pmax = 1/400, umax = 3/2,
 world = cart(u_n = fc.u_n)
 sens = imu(a_n = world.a_n, v_n = world.v_n)
 fix = gps(p_n = world.p_n)
-fc = nav(r_n = 1 - 3/2*(n >= 350), am_n = sens.am_n, z_n = fix.z_n, ok_n = fix.okf_n)
+fc = nav(r_n = 1 - 3/2*(n >= 350), am_n = sens.am_n, z_n = fix.z_n)
 
 # The same loop, the fix frozen instead of flagged.
 
 world2 = cart(u_n = fc2.u_n)
 sens2 = imu(a_n = world2.a_n, v_n = world2.v_n)
 fix2 = gps(mode = 2, p_n = world2.p_n)
-fc2 = nav(r_n = 1 - 3/2*(n >= 350), am_n = sens2.am_n, z_n = fix2.z_n, ok_n = fix2.okf_n)
+fc2 = nav(r_n = 1 - 3/2*(n >= 350), am_n = sens2.am_n, z_n = fix2.z_n)

@@ -355,6 +355,7 @@ private:
         int general_clause = -1;  // the place of the clause that always applies, if one does
         Reads                                   general_reads;
         std::vector<std::string>                general;
+        std::string present;  // of an inner optional input, where its argument is present
         Extent                                  size{0, 0};  // none until known
         bool                                    based = false, compiling = false, compiled = false;
         std::map<std::string, std::set<int>>    reads;  // lags, by the sequence read
@@ -437,7 +438,9 @@ private:
             const std::string key = scope.Qualified(name);
             if (!definition->Value() || aside_.count(key)) continue;
             if (definition->argument) {
-                if (!definition->Clauses().empty()) History(key, *definition);
+                // An inner optional input is absent before the stream but where a history gives it.
+                if (!definition->Clauses().empty() || (definition->optional && &scope != &root_))
+                    History(key, *definition);
                 if (definition->argument->input) continue;
                 Define(key, *definition->argument);
                 if (!definition->declared.empty()) stated_[key] = definition.get();
@@ -1359,8 +1362,6 @@ private:
             const Reference<Value>& definition =
                 found->second->argument ? *found->second->argument : *found->second;
             const std::string key = scope->Qualified(name);
-            if (found->second->optional && scope != &root_)
-                throw Reason(key + ", an inner instance's optional input, for now");
             if (definition.input) {
                 if (scope == &root_) return {nullptr, scope, key};
                 throw Reason(key + " is an input nothing gives");
@@ -1374,8 +1375,11 @@ private:
         throw Reason((own ? own : scope_)->Qualified(name) + " is not defined");
     }
 
-    // An input of the model compiled marked optional (DESIGN.md).
+    // An input marked optional, the model compiled's or an inner instance's (DESIGN.md).
     bool Optional(const std::string& key) const {
+        const auto inner = sequences_.find(key);
+        if (inner != sequences_.end() && inner->second.definition)
+            return !inner->second.definition->passes.empty();
         return model_ && std::ranges::any_of(model_->parameters, [&](const auto& p) {
                    return p.optional && p.name == key;
                });
@@ -1693,9 +1697,18 @@ private:
                     const std::optional<std::string> condition =
                         guarded ? Condition(p.guard()) : std::optional<std::string>("");
                     if (!condition) return;
-                    clause_reads_   = &value_reads;
+                    clause_reads_ = &value_reads;
+                    std::set<std::string>                 asked;
+                    const bool                            flagged = Optional(name);
+                    const Setting<std::set<std::string>*> giving(given_, flagged ? &asked : given_),
+                        asking(statuses_, flagged ? &asked : statuses_);
                     const Code code = Emit(clause.expression);
-                    clause_reads_   = nullptr;
+                    // Present where every input and chain it reads is, whatever its limits.
+                    for (const std::string& status : asked)
+                        if (status.starts_with("!m_->"))
+                            sequence.present +=
+                                (sequence.present.empty() ? "" : " && ") + status.substr(1);
+                    clause_reads_ = nullptr;
                     Shape(sequence, code);
                     const int place =
                         static_cast<int>(&clause - sequence.definition->Clauses().data());
@@ -4024,10 +4037,14 @@ private:
         }
         if (!reading_) return Seeded(key, read, call.subexpr());
         if (const auto sample = Sampled(call.subexpr())) {
-            Flag(asking, key, definition, "\x0e" + std::to_string(sample->second) + "\x0f");
+            Flag(asking, key, "\x0e" + std::to_string(sample->second) + "\x0f");
             return Sample(key, read, sample->first, sample->second);
         }
-        if (const auto hold = Held(call.subexpr())) return Holding(key, read, *hold);
+        if (const auto hold = Held(call.subexpr())) {
+            Code code = Holding(key, read, *hold);
+            Flag(asking, key, "");  // its status at the term held is not kept
+            return code;
+        }
         const int lag = Lag(call.subexpr(), key) + shift_;
         // A cycle is told by its reads (Reaches), and this one, which an
         // early term's are not, is recorded once what it reads is compiled.
@@ -4046,6 +4063,7 @@ private:
         }
         const auto part =
             static_cast<std::size_t>(std::ranges::find(read.parts, key) - read.parts.begin());
+        Flag(asking, key, std::to_string(lag));
         if (lag > 0 && ClosedForm(read) && !histories_.count(key)) return At(read, lag, part);
         (shift_ && early_ >= 0 ? earlies_[static_cast<std::size_t>(early_)].reads
          : deferring_          ? reading_->deferred
@@ -4054,7 +4072,6 @@ private:
         if (clause_reads_) (*clause_reads_)[key].insert(lag);
         Code code  = Array("m_->" + key + "[" + std::to_string(lag) + "]", read.size);
         code.whole = true;
-        Flag(asking, key, definition, std::to_string(lag));
         // Before its window holds the term, one with no base clause is
         // computed again at that index, as the interpreter answers it there
         // (DESIGN.md, C71); Checked keeps whichever the reader needs. A
@@ -4074,14 +4091,34 @@ private:
         return code;
     }
 
-    // Where a guard's truth is NaN, an optional input's flag says why.
-    void Flag(std::set<std::string>* asking, const std::string& key,
-              const Reference<Value>* definition, const std::string& at) {
-        if (!asking || definition || !Optional(key)) return;
-        const std::string status = "!m_->" + key + "_present[" + at + "]";
+    // Where a guard's truth is NaN, an optional input's flag says why, by the
+    // name the guard writes; an inner one's argument asks too whether a chain
+    // it reads gave the term (DESIGN.md, an inner instance's optional input).
+    void Flag(std::set<std::string>* asking, const std::string& key, const std::string& at) {
+        const std::string& label = scope_->label;
+        const std::string  written =
+            key.starts_with(label + ".") ? key.substr(label.size() + 1) : key;
+        const Reference<Value>* read = sequences_.at(key).definition;  // a chain that may give none
+        const bool              chain = asking && asking == given_ && read && !ByCells(*read) &&
+                           std::ranges::none_of(read->Clauses(), [](const Clause<Value>& c) {
+                               return c.parameters.general() && !c.parameters.guarded();
+                           });
+        // Refused where a guard reads the input that is given it.
+        if (chain && at != "0") {
+            back_[within_] = within_ + " is given " + key +  // both named as Qualified does
+                             (at.empty() ? "_(...), whose chain may give none, held, for now"
+                                         : "_(" + index_ + "-" + at +
+                                               "), whose chain may give none, read back in time, "
+                                               "for now");
+            return;
+        }
+        if (asking && back_.count(key)) throw Reason(back_.at(key));
+        if (!asking || at.empty() || !(chain || Optional(key))) return;
+        const std::string status = "!m_->" + key + (chain ? "_given_" : "_present[" + at + "]");
+        if (chain) chains_.insert(key);
         asking->insert(status);
-        what_[status] = {{key, "is absent"}};
-        if (read_) read_->push_back({key, "is absent"});
+        what_[status] = {{written, "is absent"}};
+        if (read_) read_->push_back({written, "is absent"});
     }
 
     // A sequence with no base clause that reads no term is a closed form, and
@@ -4097,7 +4134,8 @@ private:
     // One with no base clause, which the interpreter answers wherever its
     // clauses can be evaluated, below where the step starts it too.
     static bool Recomputed(const Sequence& sequence) {
-        return sequence.definition && sequence.bases.empty() && !ByCells(*sequence.definition);
+        return sequence.definition && sequence.bases.empty() && !ByCells(*sequence.definition) &&
+               sequence.definition->passes.empty();  // an inner optional input is absent there
     }
 
     // A term computed again 'lag' before the reader's index, its clauses
@@ -6655,6 +6693,7 @@ private:
             if (Optional(name))
                 members.push_back(
                     {"int", name + "_present", "[" + std::to_string(sequence.depth) + "]"});
+            if (chains_.count(name)) members.push_back({"int", name + "_given_", ""});
             if (clauses_ && !sequence.guarded.empty())
                 members.push_back({"int", name + "_clause_", ""});
             if (!sequence.taken.empty())
@@ -6756,6 +6795,26 @@ private:
                  sequence.parts.empty() ? std::vector{name} : sequence.parts) {
                 if (rated) out += shifted(part, indent);
                 assignments += Assigned(part, indent);
+                const Sequence& given = sequences_.at(part);
+                if (Optional(part))
+                    assignments += indent + "m_->" + part + "_present[0] = " +
+                                   (given.present.empty() ? "1" : given.present) + ";\n";
+                // A chain gave the term where a guard held or was NaN, a double (C331).
+                std::string gave = indent + "m_->" + part + "_given_ = ";
+                for (const auto& [index, base] : given.bases)
+                    gave += "m_->index_ == " + std::to_string(index) + " ? 1 : ";
+                for (const Guarded& guarded : given.guarded) {
+                    // Before its guard's reads begin the term is refused, NaN, as Assigned writes.
+                    const std::string from = std::to_string(guarded.guard_from);
+                    for (int n = given.start; n < guarded.guard_from; ++n)
+                        if (!given.bases.count(n)) {
+                            gave += "m_->index_ < " + from + " ? 1 : ";
+                            break;
+                        }
+                    gave += "(" + guarded.condition + ") != 0.0 ? 1 : ";
+                }
+                if (chains_.count(part))
+                    assignments += gave + (given.general_clause < 0 ? "0" : "1") + ";\n";
             }
             // Resolved before what is used is known: a term read back that is
             // not computed again leaves its temporaries unread.
@@ -6871,6 +6930,9 @@ private:
     bool                             guarding_ = false;  // in a guard, which asks only for values
     // Where a guard's truth is NaN, what asks whether a limit it reads ran out.
     std::set<std::string>*           statuses_ = nullptr;
+    std::set<std::string>*             given_    = nullptr;  // an inner optional input's argument's
+    std::set<std::string>              chains_;              // whose status such an argument asks
+    std::map<std::string, std::string> back_;  // such an argument reading a chain back, refused
     std::map<std::string, std::set<Compiled::Named>>     what_;  // each status's limits, by name
     std::map<const Expression<Value>*, Compiled::Fallen> fallen_;
     std::string unconverged_;  // where the last guard compiled read a limit that ran out

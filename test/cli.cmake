@@ -2424,8 +2424,7 @@ set(exit 1)
 check(compile_reduce)
 
 # Optional inputs (DESIGN.md): the step takes a flag after its optional
-# input, the struct keeps the flags beside its window, and an inner
-# instance's optional input is refused for now.
+# input, and the struct keeps the flags beside its window.
 set(args --compile ${CMAKE_CURRENT_LIST_DIR}/compile/optional.ink track -o track.h)
 check(compile_optional)
 holds(compile_optional track.h
@@ -2433,12 +2432,141 @@ holds(compile_optional track.h
       " *     track_step(&m, z, z_present);  once for each index, the first 0\n"
       "    int z_present[4];\n" "    m_->z[0] = z_present_in_ ? z_in_ : NAN;\n")
 strict(compile_optional track.h)
-file(WRITE "${OUT}/forwarded.ink" "last(z_n?) = {\n    x_0 = 0\n    x_n | z_n >= 0 = z_n\n"
-     "    x_n = x_(n-1)\n}\nfw(z_n?) = {\n    e = last(z_n = z_n)\n    y_n = e.x_n\n}\n")
-set(args --compile forwarded.ink fw -o fw.h)
-set(stderr "inkamath: cannot compile e.x: e.z, an inner instance's optional input, for now\n")
+
+# An inner instance's optional input (DESIGN.md): compile/inner.ink's headers,
+# the file compiled whole, a lagged sibling refused, and the reports of
+# fwd, sib, dp, ow, gp, hs and gb; test/CMakeLists.txt checks its robot.
+set(story "${CMAKE_CURRENT_LIST_DIR}/compile/inner.ink")
+set(args --compile ${story} fw -o fw.h)
+check(compile_inner)
+holds(compile_inner fw.h
+      "static inline void fw_step(fw* m_, double z_in_, int z_present_in_, double w_in_) {\n"
+      "        int z_present[4];\n")
+strict(compile_inner fw.h)
+set(args --compile ${story} loop -o loop.h)
+check(compile_inner_loop)
+holds(compile_inner_loop loop.h "static inline void loop_step(loop* m_) {\n"
+      "        int z_present[1];\n")
+strict(compile_inner_loop loop.h)
+set(args --compile ${story})
+check(compile_inner_file)
+file(WRITE "${OUT}/lag.ink" "held(z_n?) = {\n    x_0 = 0\n    x_n | z_n >= 0 = z_n\n"
+     "    x_n = x_(n-1)\n}\nsrc() = {\n    z_n | mod(n, 3) == 0 = n\n}\n"
+     "lag() = {\n    s = src()\n    h = held(z_n = s.z_(n-1))\n}\n")
+set(args --compile lag.ink lag -o lag.h)
+set(stderr "inkamath: cannot compile h.x: h.z is given s.z_(n-1), whose chain may give none, read back in time, for now\n")
 set(exit 1)
-check(compile_optional_inner)
+check(compile_inner_lag)
+# The file's instance of it, both names said from the file.
+file(APPEND "${OUT}/lag.ink" "lg = lag()\n")
+set(args --compile lag.ink)
+set(stdout "cannot compile lg.h.x: lg.h.z is given lg.s.z_(n-1), whose chain may give none, read back in time, for now\n")
+set(exit 1)
+check(compile_inner_lag_file)
+# A slow chain held, whose status at the term held the step does not keep.
+file(WRITE "${OUT}/hold.ink" "held(z_n?) = {\n    x_0 = 0\n    x_n | z_n >= 0 = z_n\n"
+     "    x_n = x_(n-1)\n}\nslow(x_n) = {\n    y_m | mod(m, 3) == 0 = x_(2*m)\n}\n"
+     "hold() = {\n    s = slow(x_n = n)\n    h = held(z_n = s.y_(floor(n/2)))\n}\n")
+set(args --compile hold.ink hold -o hold.h)
+set(stderr "inkamath: cannot compile h.x: h.z is given s.y_(...), whose chain may give none, held, for now\n")
+set(exit 1)
+check(compile_inner_hold)
+if(CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
+    # A report's first line, then a line for each pattern in any order, then
+    # the guards' lines as given; ';' read as ',', which a list splits at.
+    function(reported instance steps status first guards)
+        set(args --check ${story} ${instance} --steps ${steps} -o ${instance}.c)
+        check(check_inner_${instance})
+        # Uncontracted, as test/CMakeLists.txt builds a check (C97).
+        execute_process(COMMAND "${CC}" -std=c11 -O2 -ffp-contract=off ${instance}.c
+                                -o ${instance} -lm
+                        WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
+                        ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
+        if(failed)
+            message(SEND_ERROR "check_inner_${instance}: ${instance}.c does not build\n${errors}")
+            return()
+        endif()
+        execute_process(COMMAND "${OUT}/${instance}" WORKING_DIRECTORY "${OUT}"
+                        OUTPUT_VARIABLE report RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
+        string(REPLACE ";" "," text "${report}")
+        string(REPLACE ";" "," guards "${guards}")
+        string(LENGTH "${text}" all)
+        string(LENGTH "${guards}" last)
+        set(bad "")
+        set(head "")
+        if(all LESS last)
+            set(bad 1)
+        else()
+            math(EXPR from "${all} - ${last}")
+            string(SUBSTRING "${text}" ${from} ${last} tail)
+            string(SUBSTRING "${text}" 0 ${from} head)
+            if(NOT "${tail}" STREQUAL "${guards}")
+                set(bad 1)
+            endif()
+        endif()
+        string(REPLACE "\n" ";" lines "${head}")
+        list(REMOVE_ITEM lines "")
+        list(POP_FRONT lines top)
+        list(LENGTH lines got)
+        list(LENGTH ARGN want)
+        if(NOT code EQUAL status OR NOT got EQUAL want OR
+           NOT "${top}" STREQUAL "${instance}: ${steps} steps from 0, ${first}")
+            set(bad 1)
+        endif()
+        foreach(pattern IN LISTS ARGN)
+            set(found "")
+            foreach(line IN LISTS lines)
+                if(line MATCHES "^${instance}\\.${pattern}$")
+                    set(found 1)
+                endif()
+            endforeach()
+            if(NOT found)
+                set(bad 1)
+            endif()
+        endforeach()
+        if(bad)
+            string(REPLACE ";" "\n" each "${ARGN}")
+            message(SEND_ERROR "check_inner_${instance}: exit ${code}\n${report}--- where it is to exit ${status}, say '${first}', then a line for each of\n${each}\n--- in any order, then\n${guards}")
+        endif()
+    endfunction()
+
+    set(last "")
+    foreach(i e k)
+        string(APPEND last
+               "@.${i}.d: where z is absent, 'd_n | z_n - z_(n-3) > 0 = z_n - z_(n-3)' falls to 'd_n = 0'\n"
+               "@.${i}.x: where z is absent, 'x_n | z_n >= 0 = z_n' falls to 'x_n = x_(n-1)'\n")
+        if(i STREQUAL "e")
+            set(one "${last}")
+        endif()
+    endforeach()
+    string(REPLACE "@" "fwd" guards "${last}")
+    reported(fwd 100 0 "against exact values" "${guards}" "e\\.z: within 0" "e\\.x: within 0"
+             "e\\.d: within 0" "k\\.z: within 0" "k\\.x: within 0" "k\\.d: within 0" "y: within 0")
+    string(REPLACE "@" "sib" guards "${last}")
+    set(nan "-?nan at 20, where the interpreter's term is not a finite number")
+    reported(sib 100 1 "against exact values until 20 and inexact ones from there" "${guards}"
+             "s\\.z: ${nan}" "e\\.z: ${nan}" "k\\.z: ${nan}" "e\\.x: within 0" "e\\.d: within 0"
+             "k\\.x: within 0" "k\\.d: within 0")
+    string(REPLACE "@" "dp.a" guards "${last}")
+    set(terms "")
+    foreach(s z w e.z e.x e.d k.z k.x k.d y)
+        string(REPLACE "." "\\." s "a.${s}")
+        list(APPEND terms "${s}: within 0")
+    endforeach()
+    reported(dp 100 0 "against exact values" "${guards}" ${terms})
+    string(REPLACE "@" "ow" guards "${one}")
+    reported(ow 100 0 "against exact values" "${guards}" "q: within 0" "e\\.z: within 0"
+             "e\\.x: within 0" "e\\.d: within 0")
+    string(REPLACE "@" "gp" guards "${one}")
+    reported(gp 100 0 "against exact values" "${guards}" "s\\.z: within 0" "e\\.z: within 0"
+             "e\\.x: within 0" "e\\.d: within 0")
+    reported(hs 100 0 "against exact values"
+             "hs.e.d: where z is absent, 'd_n | z_n - z_(n-3) > 0 = z_n - z_(n-3)' falls to 'd_n = -1'\n"
+             "q: within 0" "e\\.z: within 0" "e\\.d: within 0")
+    reported(gb 100 0 "against exact values"
+             "gb.e.x: where z is absent, 'x_n | z_n >= 0 = z_n' falls to 'x_n = x_(n-1)'\n"
+             "s\\.y: within 0" "s\\.z: within 0" "e\\.z: within 0" "e\\.x: within 0")
+endif()
 
 # grad's order compiled (DESIGN.md): compile/hessian.ink's instances each
 # within 0 of the interpreter, and the nests still refused.
@@ -2450,7 +2578,7 @@ strict(compile_hessian lag.h)
 # A guard reading a matrix limit's status, built as C++ too (C393).
 foreach(flags "robot.h" "float/robot.h;--float")
     list(POP_FRONT flags header)
-    set(args --compile ${CMAKE_CURRENT_LIST_DIR}/compile/robot.ink loop ${flags} -o ${header})
+    set(args --compile ${CMAKE_CURRENT_LIST_DIR}/compile/inner.ink loop ${flags} -o ${header})
     check(compile_status_strict)
     strict(compile_status_strict ${header})
 endforeach()

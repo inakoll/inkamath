@@ -130,6 +130,9 @@ TEST_CASE("optinputs") {
 TEST_CASE("hessian") {
     check_transcript("hessian.ink");
 }
+TEST_CASE("inner") {
+    check_transcript("inner.ink");
+}
 TEST_CASE("tolerance") {
     check_transcript("tolerance.ink");
 }
