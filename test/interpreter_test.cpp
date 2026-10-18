@@ -415,12 +415,12 @@ TEST_CASE("nested calls parse in linear time") {
 TEST_SUITE_END();
 
 // An inner instance's optional input compiled (DESIGN.md): the interpreter's
-// answers the step is held to, which it gives already. Marked may_fail as a
-// specification is, and never recorded: one taken from the code it judges is
-// worth nothing.
+// answers the step is held to, which it gives already, so gating, unlike a
+// specification failing by design; never recorded: one taken from the code
+// it judges is worth nothing.
 TEST_SUITE_BEGIN("spec");
 
-TEST_CASE("inner" * doctest::may_fail()) {
+TEST_CASE("inner") {
     check_spec("spec/inner.ink");
 }
 
