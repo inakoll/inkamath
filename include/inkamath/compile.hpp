@@ -4606,13 +4606,15 @@ private:
         std::vector<Code> points, parts;
         for (std::size_t v = 0; v < expression->Variables().size(); ++v)
             points.push_back(Emit(expression->Point(v)));
-        Asked([&] { Reasoned([&] { Derivative<Value>(definitions_).Names(*expression); }); }, true);
+        Asked([&] { Reasoned([&] { Derivative<Value>(definitions_).Names(*expression, true); }); },
+              true);
         const bool hessian =
             Reasoned([&] { return Derivative<Value>::Hessian(*expression, points[0].size); });
         // Its inner grad's point reads v, where its body may not.
         if (hessian) {
             auto& inner = static_cast<GradExpression<Value>&>(*expression->Body());
-            Asked([&] { Reasoned([&] { Derivative<Value>(definitions_).Names(inner); }); }, true);
+            Asked([&] { Reasoned([&] { Derivative<Value>(definitions_).Names(inner, true); }); },
+                  true);
         }
         if (depth_ + (hessian ? 1 : 0) > 1)
             throw Reason("a derivative of a derivative of a derivative, for now");
