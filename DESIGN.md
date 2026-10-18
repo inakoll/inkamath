@@ -12262,7 +12262,8 @@ the clause for a limit that does not converge as done, the order from here:
 
   Decided:
   - **The flag is the argument's.** An inner instance's optional input
-    given the outer model's own optional input takes its flag, forwarded;
+    given the outer model's own optional input, or another instance's, as
+    the file's `fwd.e` is given `fwd.z`, takes its flag, forwarded;
     given a sequence, a sibling's, the model's own or the file's, 1 where a
     clause of its chain gave the term and 0 where none did, a new status
     of the step, a guarded closed form's too, as `zd` gives the file's
