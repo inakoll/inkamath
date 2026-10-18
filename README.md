@@ -299,7 +299,8 @@ term among them, so a model of N steps after its initial term, `y_0` to
 
 `--float`, beside `--compile` or an instance's `--check`, writes floats where
 the header writes doubles, every constant the nearest float, for a target that
-computes in float. Its check holds each term within a thousandth of one plus
+computes in float; its first comment names what reads a constant folded from
+inexact numbers, computed at the interpreter's precision, not a float's. Its check holds each term within a thousandth of one plus
 the interpreter's and says the most any term came in units of a float, the
 spacing of floats at the interpreter's term, a term of 0 counting none:
 `test/compile/float.ink`. Where that most reaches 2^23 units, as a term a

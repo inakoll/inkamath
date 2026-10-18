@@ -1071,6 +1071,19 @@ holds(compile_c395 c395.h [[ * sequence: w, y and z. A value folded for y and z 
  * past a thousand digits, as the interpreter marks it, may be far from exact.
 ]])
 
+# C396: with --float, a constant folded in double from inexact numbers, a
+# machine epsilon by halving, is named in the header: 2^-52, where a float's
+# halving gives 2^-23. A number made inexact, ~(17/4), is not.
+file(WRITE "${OUT}/c396.ink" "ep(x) | 1 + x/2 > 1 = ep(x/2)\nep(x) = x\n"
+     "y_n = n*ep(~1)\nz_n = n*~(17/4)\n")
+set(args --compile c396.ink --float -o c396.h)
+check(compile_float_c396)
+holds(compile_float_c396 c396.h [[ * sequence: y and z. Every value is a float, and every operation rounds to
+ * one. A value folded for y from inexact numbers was computed at the
+ * interpreter's precision, not a float's, and a float step may compute
+ * another.
+]])
+
 # C161: a float's inverse starts from the identity in floats, which MSVC's
 # /W4 asks of an int converted to one.
 file(WRITE "${OUT}/c161.ink" "z_n = [2 1; 1 n]^-1*[1; 1]\n")
