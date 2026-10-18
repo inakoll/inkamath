@@ -228,3 +228,35 @@ bpair() = {
     e = kept(z_n = s.z_n)
 }
 gb = bpair()
+
+# 'lt', a sibling's chain that starts late (C391): s.z's guard reads
+# y_(n-1), so the interpreter refuses s.z_0, reading y_-1, and no clause
+# gives s.z_1 to s.z_3. e's z starts with the stream all the same: there
+# and refused at 0, absent from 1 to 3, and n from 4. So e.x is refused
+# at 0, -1 from 1 to 3 and n from 4, and e.d, which reads z_(n-3) first,
+# is refused at 3, 0 below and to 6, and 3 from 7, where starting e's z
+# with s's own would leave e.d NaN from 1 to 3. b's z, s.y_(n-1), is
+# absent at 0, below y's base clause, and n - 1 from 1: b.x is -1 at 0,
+# and b.d 0 to 3 and 3 from 4. Checked, s.y, e.z, e.x, e.d, b.z, b.x and
+# b.d within 0 against the interpreter's refusals, s.z from 1, where the
+# step computes it, then the guards, b's and e's alike:
+#
+#     lt.b.d: where z is absent, 'd_n | z_(n-3) >= 0 and z_n > z_(n-3) = z_n - z_(n-3)' falls to 'd_n = 0'
+#     lt.b.x: where z is absent, 'x_n | z_n >= 0 = z_n' falls to 'x_n = -1'
+early(z_n?) = {
+    x_n | z_n >= 0 = z_n
+    x_n = -1
+    d_n | z_(n-3) >= 0 and z_n > z_(n-3) = z_n - z_(n-3)
+    d_n = 0
+}
+lsrc() = {
+    y_0 = 0
+    y_n = y_(n-1) + 1
+    z_n | y_(n-1) > 2 = y_n
+}
+lpair() = {
+    s = lsrc()
+    e = early(z_n = s.z_n)
+    b = early(z_n = s.y_(n-1))
+}
+lt = lpair()

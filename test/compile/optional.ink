@@ -64,3 +64,26 @@ steep(z_n?) = {
 }
 leaned = lean(z_n = zd_n)
 steeped = steep(z_n = zd_n)
+
+# C380: a guard stops at the first operand that stops it, as the
+# interpreter reads it, an absence or a limit run out falling to the
+# clause after and NaN refused. z is n at the odd n but 3, where it is
+# NaN, and absent at the even, so y is refused at 3, z_3 read first, and
+# 0 at 4, z_4 absent read first; x is NaN at 3 and 1 elsewhere, and
+# lim qp runs out wherever it is read, so w is refused at 3 and 0
+# elsewhere. Checked, y and w within 0 against the interpreter's
+# refusals, the guards last:
+#
+#     first.w: where lim qp runs out, 'w_n | x_n > 0 and lim qp(n) > 0 = 1' falls to 'w_n = 0'
+#     first.y: where z is absent, 'y_n | z_n > 0 and z_(n-1) > 0 = 1' falls to 'y_n = 0'
+stops(x_n, z_n?) = {
+    qp(s)_0 = 0
+    qp(s)_k = s + mod(k, 2)
+    y_n | z_n > 0 and z_(n-1) > 0 = 1
+    y_n = 0
+    w_n | x_n > 0 and lim qp(n) > 0 = 1
+    w_n = 0
+}
+zn_n | n == 3 = 0/~0
+zn_n | mod(n, 2) == 1 = n
+first = stops(x_n = 0/(n - 3 + ~0) + 1, z_n = zn_n)
