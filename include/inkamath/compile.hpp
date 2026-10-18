@@ -6788,12 +6788,12 @@ private:
                 if (Optional(part))
                     assignments += indent + "m_->" + part + "_present[0] = " +
                                    (given.present.empty() ? "1" : given.present) + ";\n";
-                // A chain gave the term where a guard held, or was NaN and refused it.
+                // A chain gave the term where a guard held or was NaN, a double (C331).
                 std::string gave = indent + "m_->" + part + "_given_ = ";
                 for (const auto& [index, base] : given.bases)
                     gave += "m_->index_ == " + std::to_string(index) + " ? 1 : ";
                 for (const Guarded& guarded : given.guarded)
-                    gave += "(" + guarded.condition + ") ? 1 : ";
+                    gave += "(" + guarded.condition + ") != 0.0 ? 1 : ";
                 if (chains_.count(part))
                     assignments += gave + (given.general_clause < 0 ? "0" : "1") + ";\n";
             }
