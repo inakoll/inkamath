@@ -68,9 +68,9 @@ endfunction()
 # Read by cases in every part.
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
-# The cases run as three tests of about equal time under the sanitizers: PART
-# 1 up to charpoly's refusal, 2 from it, 3 from eig's, and all where PART is
-# not given.
+# The cases run as four tests of about equal time under the sanitizers: PART
+# 1 up to charpoly's refusal, 2 from it, 3 from eig's, 4 from the frequency
+# response's, and all where PART is not given.
 if(NOT PART OR PART EQUAL 1)
 
 # Read from a pipe, it is a filter: no banner, no prompt, one answer for each
@@ -1261,7 +1261,7 @@ if(PART EQUAL 1)
 endif()
 endif()
 
-if(NOT PART EQUAL 3)
+if(NOT PART OR PART LESS 3)
 
 # The prelude's charpoly compiles; rho does not yet, by hurwitzb's sequence
 # with parameters by cells, and grad refuses it and abscissa where A moves, as
@@ -1808,8 +1808,10 @@ if(PART EQUAL 2)
 endif()
 endif()
 
-# Made in part 2 too, which part 3 runs without.
+# Made in part 2 too, which parts 3 and 4 run without.
 file(MAKE_DIRECTORY "${OUT}/float")
+
+if(NOT PART EQUAL 4)
 
 # grad refuses eig and smax where A moves (DESIGN.md, eig and smax). An eig
 # where A moves compiles since two matrices compare, its header 1.7 MB, too
@@ -2272,6 +2274,11 @@ cannot compile f${bounds}cannot compile h: g, a function of an instance, called 
 ")
 set(exit 1)
 check(compile_sums_refused)
+
+if(PART EQUAL 3)
+    return()
+endif()
+endif()
 
 # A frequency response does not compile: a compiled value is real, so the
 # complex e^(i*w*n) is refused, not its abs.

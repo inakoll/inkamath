@@ -81,7 +81,7 @@ set(timed "$<NOT:$<CONFIG:Debug>>")
 if(INKAMATH_SANITIZE)
     set(timed 0)
 endif()
-foreach(part 1 2 3)
+foreach(part 1 2 3 4)
     add_test(NAME cli_${part}
              COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=${part}
                      -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli_${part}
