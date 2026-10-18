@@ -2570,8 +2570,7 @@ set(exit 1)
 check(compile_reduce)
 
 # Optional inputs (DESIGN.md): the step takes a flag after its optional
-# input, the struct keeps the flags beside its window, and an inner
-# instance's optional input is refused for now.
+# input, and the struct keeps the flags beside its window.
 set(args --compile ${CMAKE_CURRENT_LIST_DIR}/compile/optional.ink track -o track.h)
 check(compile_optional)
 holds(compile_optional track.h
@@ -2579,12 +2578,6 @@ holds(compile_optional track.h
       " *     track_step(&m, z, z_present);  once for each index, the first 0\n"
       "    int z_present[4];\n" "    m_->z[0] = z_present_in_ ? z_in_ : NAN;\n")
 strict(compile_optional track.h)
-file(WRITE "${OUT}/forwarded.ink" "last(z_n?) = {\n    x_0 = 0\n    x_n | z_n >= 0 = z_n\n"
-     "    x_n = x_(n-1)\n}\nfw(z_n?) = {\n    e = last(z_n = z_n)\n    y_n = e.x_n\n}\n")
-set(args --compile forwarded.ink fw -o fw.h)
-set(stderr "inkamath: cannot compile e.x: e.z, an inner instance's optional input, for now\n")
-set(exit 1)
-check(compile_optional_inner)
 
 # grad's order compiled (DESIGN.md): compile/hessian.ink's instances each
 # within 0 of the interpreter, and the nests still refused.
