@@ -12320,7 +12320,12 @@ the clause for a limit that does not converge as done, the order from here:
 
   Still refused, or open: a read of an inner instance's optional input
   outside a guard, in a model where it is defined and in a file when
-  compiled, as above; and C380 through a sibling, a guard reading first a
+  compiled, as above; an argument reading back in time a term whose chain
+  may give none, `h = last(z_n = s.z_(n-1))`, which the interpreter
+  answers and the step would answer only with that chain's status kept at
+  past indices, refused for now, "cannot compile h.x: h.z is given
+  s.z_(n-1), whose chain may give none, read back in time, for now"; and
+  C380 through a sibling, a guard reading first a
   term whose chain's guard is NaN and then one absent, which the step
   falls from where the interpreter refuses. The story does not reach it.
 
@@ -12347,7 +12352,7 @@ the clause for a limit that does not converge as done, the order from here:
   design is compiled: `test/compile/inner.ink` and `test/cli.cmake`'s spec
   part, `cli_spec`: the headers of `fw` and `loop`, strict C; the file
   compiled whole with nothing to list; the read outside a guard refused;
-  and the reports of `robot`, `fwd` and `sib`. Skipped while e.z is
+  the lagged sibling refused; and the reports of `robot`, `fwd` and `sib`. Skipped while e.z is
   refused as today, and only then.
 - **A definition the host implements**, as the C-hook study sketched:
   `--compile nav.ink nav --host qp` names it, with no syntax; the header
