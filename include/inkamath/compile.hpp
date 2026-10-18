@@ -3658,10 +3658,14 @@ private:
         }
         const std::string called = named->second + "(m_" + (scalar ? ", 0" : "") + arguments;
         if (statuses_) {
-            const std::string status =
-                named->second + "(m_" +
-                (scalar ? ", 1" + arguments : arguments + ", (double" + shape + "){{0.0}}") +
-                ") != 0.0";
+            // A matrix's answer unread, in an array: C++ has no compound literal (C393).
+            const std::string unread =
+                scalar ? "" : Declare("unread\x1f" + shape, [&](const std::string& t) {
+                    return std::vector<std::string>{"double " + t + shape + ";"};
+                });
+            const std::string status = named->second + "(m_" +
+                                       (scalar ? ", 1" + arguments : arguments + ", " + unread) +
+                                       ") != 0.0";
             statuses_->insert(status);
             what_[status] = {{what, "runs out"}};
             if (read_) read_->push_back({what, "runs out"});
