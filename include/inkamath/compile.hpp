@@ -94,6 +94,21 @@ public:
         "typedef", "union",  "unsigned", "void",   "volatile", "while"};
     // The macros of the headers a step includes that a name can spell (C347).
     static inline const std::set<std::string> macros = {"BUFSIZ", "EOF", "INFINITY", "NAN", "NULL"};
+    // C++'s keywords that are not C's, the headers building as C++ too (C400).
+    static inline const std::set<std::string> cxx = {
+        "alignas", "alignof", "asm", "bitand", "bitor", "bool", "catch", "class", "compl",
+        "concept", "consteval", "constexpr", "constinit", "decltype", "delete", "explicit",
+        "export", "false", "friend", "mutable", "namespace", "new", "noexcept", "not", "nullptr",
+        "operator", "private", "protected", "public", "requires", "template", "this", "throw",
+        "true", "try", "typeid", "typename", "using", "virtual", "xor",
+        // and those only a header's file name can spell
+        "and", "and_eq", "char16_t", "char32_t", "char8_t", "co_await", "co_return", "co_yield",
+        "const_cast", "dynamic_cast", "not_eq", "or", "or_eq", "reinterpret_cast", "static_assert",
+        "static_cast", "thread_local", "wchar_t", "xor_eq"};
+    [[nodiscard]] static std::string Keeper(const std::string& name) {
+        if (keywords.count(name) || macros.count(name)) return "C";
+        return cxx.count(name) ? "C++" : "";
+    }
 
     // The session's sequences, or with a model, those of its instance with
     // every default and no input given (DESIGN.md, phase 15).
@@ -5309,14 +5324,14 @@ private:
         return code;
     }
 
-    // A name here is letters and digits, so it can only collide with C's own;
-    // one in an instance is several, 'fast.v'.
+    // A name here is letters and digits, so it can only collide with C's or
+    // C++'s own; one in an instance is several, 'fast.v'.
     static void Unreserved(const std::string& key) {
         for (std::size_t start = 0; start <= key.size();) {
             const std::size_t end  = std::min(key.find('.', start), key.size());
             const std::string name = key.substr(start, end - start);
-            if (keywords.count(name) || macros.count(name))
-                throw Reason(name + " is a word C keeps for itself");
+            if (const std::string keeper = Keeper(name); !keeper.empty())
+                throw Reason(name + " is a word " + keeper + " keeps for itself");
             start = end + 1;
         }
     }
