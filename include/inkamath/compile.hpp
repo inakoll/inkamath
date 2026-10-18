@@ -4101,7 +4101,7 @@ private:
                            });
         // Refused where a guard reads the input that is given it.
         if (chain && at != "0") {
-            back_[within_] = within_ + " is given " + written +
+            back_[within_] = within_ + " is given " + key +  // both named as Qualified does
                              (at.empty() ? "_(...), whose chain may give none, held, for now"
                                          : "_(" + index_ + "-" + at +
                                                "), whose chain may give none, read back in time, "

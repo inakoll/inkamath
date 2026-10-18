@@ -2453,6 +2453,12 @@ set(args --compile lag.ink lag -o lag.h)
 set(stderr "inkamath: cannot compile h.x: h.z is given s.z_(n-1), whose chain may give none, read back in time, for now\n")
 set(exit 1)
 check(compile_inner_lag)
+# The file's instance of it, both names said from the file.
+file(APPEND "${OUT}/lag.ink" "lg = lag()\n")
+set(args --compile lag.ink)
+set(stdout "cannot compile lg.h.x: lg.h.z is given lg.s.z_(n-1), whose chain may give none, read back in time, for now\n")
+set(exit 1)
+check(compile_inner_lag_file)
 # A slow chain held, whose status at the term held the step does not keep.
 file(WRITE "${OUT}/hold.ink" "held(z_n?) = {\n    x_0 = 0\n    x_n | z_n >= 0 = z_n\n"
      "    x_n = x_(n-1)\n}\nslow(x_n) = {\n    y_m | mod(m, 3) == 0 = x_(2*m)\n}\n"
