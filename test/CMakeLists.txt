@@ -81,7 +81,7 @@ set(timed "$<NOT:$<CONFIG:Debug>>")
 if(INKAMATH_SANITIZE)
     set(timed 0)
 endif()
-foreach(part 1 2 3)
+foreach(part 1 2 3 4)
     add_test(NAME cli_${part}
              COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=${part}
                      -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli_${part}
@@ -243,6 +243,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          estimate:steep estimate:giant estimate:spaced elementary:els trig:tri atan:bea
                          grad:line grad:fall grad:hinge grad:edge grad:clip grad:steer grad:saw
                          grad:ring grad:notch grad:apart grad:smooth grad:cusp grad:over grad:flag
+                         grad:maxed
                          tensor:heads tensor:whirl tensor:batch tensor:spread
                          tensor:speck cellguards:rfit cellguards:tfit cellguards:layer
                          cellguards:kink cellguards:crest cellguards:mask cellguards:order
@@ -279,7 +280,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          fallback:faraway fallback:voided fallback:covered fallback:ored
                          fallback:spelled fallback:joined fallback:routed fallback:returned
                          fallback:respelled fallback:preceded fallback:defaulted fallback:sentried
-                         fallback:partway pendloop:cart motorloop:motor robot:robot:200
+                         fallback:partway pendloop:cart motorloop:motor inner:robot:600
                          lcg:lcgs optional:seen optional:leaned
                          optional:steeped hessian:k hessian:z hessian:c)
     string(REPLACE ":" ";" checked ${checked})
@@ -406,11 +407,25 @@ set_tests_properties(check_cart_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^cart: 100 steps from 0, against exact values until 0 and inexact ones from there\ncart\\.s: within 0${about}\ncart\\.u: within 0${about}\n$")
 set_tests_properties(check_motor_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^motor: 100 steps from 0, against exact values until 14 and inexact ones from there\nmotor\\.x: within 3\\.6e-15${about}\nmotor\\.e: within 3\\.3e-16${about}\nmotor\\.u: within 1\\.4e-14${about}\n$")
-# compile/robot.ink's loop, each flag exact and the fallback audited; what
-# libm's tanh decides, by its form.
-set(near "within (0|[1-9](\\.[0-9])?e-1[5-9])${about}\n")
-set_tests_properties(check_robot_200_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^robot: 200 steps from 0, against exact values until 0 and inexact ones from there\nrobot\\.f\\.Pp: ${near}robot\\.f\\.S: ${near}robot\\.g\\.ok: within 0\nrobot\\.f\\.ok: within 0\nrobot\\.g\\.r: within 0\nrobot\\.s\\.r: within 0\n(robot\\.[wgsf]\\.(p|y|z|v|a|am|ac|xp|nu): ${near})+robot\\.f\\.fix: within 0\nrobot\\.f\\.P: ${near}robot\\.f\\.lost: within 0\nrobot\\.f\\.top: within 0\n(robot\\.[wf]\\.(x|uc|u): ${near})+robot\\.f\\.kg: where lim Z runs out, 'kg\\(q\\) \\| gain\\(\\[q 0\; 0 1/10\\], ~1/10\\)\\[1,1\\] > 0 = gain\\(\\[q 0\; 0 1/10\\], ~1/10\\)' falls to 'kg\\(q\\) = \\[3 5/2\\]'\n$")
+# compile/inner.ink's robot, each flag exact and the guards audited; what
+# libm's tanh decides, by its form: 0 or below 1e-15 by the fail pattern, as
+# a pattern holds no more than 9 groups.
+set(near "within [0-9.e-]+${about}\n")
+set(robot "^robot: 600 steps from 0, against exact values until 0 and inexact ones from there\n")
+foreach(term IN ITEMS f.Pp~ f.S~ f.r g.r s.r w.p~ g.p~ g.z~ f.z~ w.v~ s.v~ w.a~ s.a~ s.am~ f.am~
+                      f.ac~ f.xp~ f.fix f.P~ f.lost f.top f.x~ f.uc~ f.u~ w.u~)
+    string(REPLACE "~" "" name ${term})
+    string(REPLACE "." "\\." name ${name})
+    if(term MATCHES "~")
+        string(APPEND robot "robot\\.${name}: ${near}")
+    else()
+        string(APPEND robot "robot\\.${name}: within 0\n")
+    endif()
+endforeach()
+set(gated "\\(z_n - \\[1 0\\]\\*xp_n\\)\\^2 < gate\\^2\\*S_n")
+set_tests_properties(check_robot_600_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "${robot}robot\\.f\\.fix: where z is absent, 'fix_n \\| ${gated} = 1' falls to 'fix_n = 0'\nrobot\\.f\\.kg: where lim Z runs out, 'kg\\(q\\) \\| gain\\(\\[q 0\; 0 1/10\\], ~1/10\\)\\[1,1\\] > 0 = gain\\(\\[q 0\; 0 1/10\\], ~1/10\\)' falls to 'kg\\(q\\) = \\[3 5/2\\]'\nrobot\\.f\\.x: where z is absent, 'x_n \\| ${gated} = xp_n \\+ Pp_n\\*\\[1\; 0\\]\\*\\(z_n - \\[1 0\\]\\*xp_n\\)/S_n' falls to 'x_n = xp_n'\n$"
+    FAIL_REGULAR_EXPRESSION "within ((0\\.|[1-9])[0-9.]*|[0-9.]+e-(0[0-9]|1[0-4]))\;")
 # Rigid bodies and an invariant filter, from two explorations: a double
 # pendulum by the RNEA, a rational rotation's powers, and the contact-aided
 # RIEKF of Hartley et al. (2020) on 21 steps of a simulated walk.
@@ -537,6 +552,8 @@ set_tests_properties(check_swing_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^swing: 100 steps from 0, against exact values until 1 and inexact ones from there\n(swing\\.[A-Za-z]+: within [0-9.e+-]+(, from 1)?${about}\n)+$")
 set_tests_properties(check_over_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^over: 100 steps from 0, against exact values\nover\\.y: within 1\\.4e-20\nover\\.z: within [0-9.e+-]+\n$")
+set_tests_properties(check_maxed_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^maxed: 100 steps from 0, against exact values until 3 and inexact ones from there\nmaxed\\.a: within 0\nmaxed\\.b: within 0${about}\nmaxed\\.c: within 0\nmaxed\\.d: within 0${about}\n$")
 # Its known limit, C110, held where it parts.
 set_tests_properties(check_apart_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^apart: 100 steps from 0, against exact values\napart\\.y: [-a-z()]+ at 0, where the interpreter gives 0\n$")
@@ -737,10 +754,9 @@ set_tests_properties(check_see_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_learn_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^learn: 100 steps from 0, against exact values\nlearn\\.K: within 0\nlearn\\.W: within 0\nlearn\\.a: within 0\nlearn\\.d: within 0\nlearn\\.E: within [1-9](\\.[0-9])?e-1[4-6]\n$")
 # A gradient with respect to a tensor compiled (DESIGN.md), as
-# compile/tensorgrad.ink gives it; attend's exp is a double's, as heads' is,
-# but at its first step's exact scores, where the interpreter walks exp.
+# compile/tensorgrad.ink gives it; attend's exp is a double's, as heads' is.
 set_tests_properties(check_attend_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^attend: 100 steps from 0, against exact values until 1 and inexact ones from there\nattend\\.WQ: within 1\\.7e-18${about}\n$")
+    "^attend: 100 steps from 0, against exact values until 1 and inexact ones from there\nattend\\.WQ: within 0${about}\n$")
 set_tests_properties(check_small_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^small: 100 steps from 0, against exact values\nsmall\\.g: within 0\nsmall\\.o: within 0\nsmall\\.s: within 0\n$")
 set_tests_properties(check_saliency_3_report PROPERTIES PASS_REGULAR_EXPRESSION

@@ -45,28 +45,32 @@ function(holds name file)
     endforeach()
 endfunction()
 
-# As a host builds it whose flags refuse more than the checks' (C331).
+# As a host builds it whose flags refuse more than the checks' (C331), as C
+# and as C++ (C393).
 function(strict name file)
     if(NOT CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
         return()
     endif()
     string(MAKE_C_IDENTIFIER "${file}" unit)
     file(WRITE "${OUT}/${unit}.c" "#include \"${file}\"\n")
-    execute_process(COMMAND "${CC}" -std=c11 -Wall -Wextra -Wpedantic -Wconversion -Wshadow
-                            -Werror ${ARGN} -fsyntax-only "${unit}.c"
-                    WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
-                    ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
-    if(failed)
-        message(SEND_ERROR "${name}: ${file} is no strict C11\n${errors}")
-    endif()
+    foreach(language "C11;-std=c11" "C++17;-x;c++;-std=c++17")
+        list(POP_FRONT language standard)
+        execute_process(COMMAND "${CC}" ${language} -Wall -Wextra -Wpedantic -Wconversion
+                                -Wshadow -Werror ${ARGN} -fsyntax-only "${unit}.c"
+                        WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
+                        ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
+        if(failed)
+            message(SEND_ERROR "${name}: ${file} is no strict ${standard}\n${errors}")
+        endif()
+    endforeach()
 endfunction()
 
 # Read by cases in every part.
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
-# The cases run as three tests of about equal time under the sanitizers: PART
-# 1 up to charpoly's refusal, 2 from it, 3 from eig's, and all where PART is
-# not given.
+# The cases run as four tests of about equal time under the sanitizers: PART
+# 1 up to charpoly's refusal, 2 from it, 3 from eig's, 4 from the frequency
+# response's, and all where PART is not given.
 if(NOT PART OR PART EQUAL 1)
 
 # Read from a pipe, it is a filter: no banner, no prompt, one answer for each
@@ -1257,7 +1261,7 @@ if(PART EQUAL 1)
 endif()
 endif()
 
-if(NOT PART EQUAL 3)
+if(NOT PART OR PART LESS 3)
 
 # The prelude's charpoly compiles; rho does not yet, by hurwitzb's sequence
 # with parameters by cells, and grad refuses it and abscissa where A moves, as
@@ -1804,8 +1808,10 @@ if(PART EQUAL 2)
 endif()
 endif()
 
-# Made in part 2 too, which part 3 runs without.
+# Made in part 2 too, which parts 3 and 4 run without.
 file(MAKE_DIRECTORY "${OUT}/float")
+
+if(NOT PART EQUAL 4)
 
 # grad refuses eig and smax where A moves (DESIGN.md, eig and smax). An eig
 # where A moves compiles since two matrices compare, its header 1.7 MB, too
@@ -2269,6 +2275,11 @@ cannot compile f${bounds}cannot compile h: g, a function of an instance, called 
 set(exit 1)
 check(compile_sums_refused)
 
+if(PART EQUAL 3)
+    return()
+endif()
+endif()
+
 # A frequency response does not compile: a compiled value is real, so the
 # complex e^(i*w*n) is refused, not its abs.
 file(WRITE "${OUT}/response.ink" "y_n = abs(e^(i*w*n))\n")
@@ -2420,8 +2431,7 @@ set(exit 1)
 check(compile_reduce)
 
 # Optional inputs (DESIGN.md): the step takes a flag after its optional
-# input, the struct keeps the flags beside its window, and an inner
-# instance's optional input is refused for now.
+# input, and the struct keeps the flags beside its window.
 set(args --compile ${CMAKE_CURRENT_LIST_DIR}/compile/optional.ink track -o track.h)
 check(compile_optional)
 holds(compile_optional track.h
@@ -2429,12 +2439,141 @@ holds(compile_optional track.h
       " *     track_step(&m, z, z_present);  once for each index, the first 0\n"
       "    int z_present[4];\n" "    m_->z[0] = z_present_in_ ? z_in_ : NAN;\n")
 strict(compile_optional track.h)
-file(WRITE "${OUT}/forwarded.ink" "last(z_n?) = {\n    x_0 = 0\n    x_n | z_n >= 0 = z_n\n"
-     "    x_n = x_(n-1)\n}\nfw(z_n?) = {\n    e = last(z_n = z_n)\n    y_n = e.x_n\n}\n")
-set(args --compile forwarded.ink fw -o fw.h)
-set(stderr "inkamath: cannot compile e.x: e.z, an inner instance's optional input, for now\n")
+
+# An inner instance's optional input (DESIGN.md): compile/inner.ink's headers,
+# the file compiled whole, a lagged sibling refused, and the reports of
+# fwd, sib, dp, ow, gp, hs and gb; test/CMakeLists.txt checks its robot.
+set(story "${CMAKE_CURRENT_LIST_DIR}/compile/inner.ink")
+set(args --compile ${story} fw -o fw.h)
+check(compile_inner)
+holds(compile_inner fw.h
+      "static inline void fw_step(fw* m_, double z_in_, int z_present_in_, double w_in_) {\n"
+      "        int z_present[4];\n")
+strict(compile_inner fw.h)
+set(args --compile ${story} loop -o loop.h)
+check(compile_inner_loop)
+holds(compile_inner_loop loop.h "static inline void loop_step(loop* m_) {\n"
+      "        int z_present[1];\n")
+strict(compile_inner_loop loop.h)
+set(args --compile ${story})
+check(compile_inner_file)
+file(WRITE "${OUT}/lag.ink" "held(z_n?) = {\n    x_0 = 0\n    x_n | z_n >= 0 = z_n\n"
+     "    x_n = x_(n-1)\n}\nsrc() = {\n    z_n | mod(n, 3) == 0 = n\n}\n"
+     "lag() = {\n    s = src()\n    h = held(z_n = s.z_(n-1))\n}\n")
+set(args --compile lag.ink lag -o lag.h)
+set(stderr "inkamath: cannot compile h.x: h.z is given s.z_(n-1), whose chain may give none, read back in time, for now\n")
 set(exit 1)
-check(compile_optional_inner)
+check(compile_inner_lag)
+# The file's instance of it, both names said from the file.
+file(APPEND "${OUT}/lag.ink" "lg = lag()\n")
+set(args --compile lag.ink)
+set(stdout "cannot compile lg.h.x: lg.h.z is given lg.s.z_(n-1), whose chain may give none, read back in time, for now\n")
+set(exit 1)
+check(compile_inner_lag_file)
+# A slow chain held, whose status at the term held the step does not keep.
+file(WRITE "${OUT}/hold.ink" "held(z_n?) = {\n    x_0 = 0\n    x_n | z_n >= 0 = z_n\n"
+     "    x_n = x_(n-1)\n}\nslow(x_n) = {\n    y_m | mod(m, 3) == 0 = x_(2*m)\n}\n"
+     "hold() = {\n    s = slow(x_n = n)\n    h = held(z_n = s.y_(floor(n/2)))\n}\n")
+set(args --compile hold.ink hold -o hold.h)
+set(stderr "inkamath: cannot compile h.x: h.z is given s.y_(...), whose chain may give none, held, for now\n")
+set(exit 1)
+check(compile_inner_hold)
+if(CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
+    # A report's first line, then a line for each pattern in any order, then
+    # the guards' lines as given; ';' read as ',', which a list splits at.
+    function(reported instance steps status first guards)
+        set(args --check ${story} ${instance} --steps ${steps} -o ${instance}.c)
+        check(check_inner_${instance})
+        # Uncontracted, as test/CMakeLists.txt builds a check (C97).
+        execute_process(COMMAND "${CC}" -std=c11 -O2 -ffp-contract=off ${instance}.c
+                                -o ${instance} -lm
+                        WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
+                        ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
+        if(failed)
+            message(SEND_ERROR "check_inner_${instance}: ${instance}.c does not build\n${errors}")
+            return()
+        endif()
+        execute_process(COMMAND "${OUT}/${instance}" WORKING_DIRECTORY "${OUT}"
+                        OUTPUT_VARIABLE report RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
+        string(REPLACE ";" "," text "${report}")
+        string(REPLACE ";" "," guards "${guards}")
+        string(LENGTH "${text}" all)
+        string(LENGTH "${guards}" last)
+        set(bad "")
+        set(head "")
+        if(all LESS last)
+            set(bad 1)
+        else()
+            math(EXPR from "${all} - ${last}")
+            string(SUBSTRING "${text}" ${from} ${last} tail)
+            string(SUBSTRING "${text}" 0 ${from} head)
+            if(NOT "${tail}" STREQUAL "${guards}")
+                set(bad 1)
+            endif()
+        endif()
+        string(REPLACE "\n" ";" lines "${head}")
+        list(REMOVE_ITEM lines "")
+        list(POP_FRONT lines top)
+        list(LENGTH lines got)
+        list(LENGTH ARGN want)
+        if(NOT code EQUAL status OR NOT got EQUAL want OR
+           NOT "${top}" STREQUAL "${instance}: ${steps} steps from 0, ${first}")
+            set(bad 1)
+        endif()
+        foreach(pattern IN LISTS ARGN)
+            set(found "")
+            foreach(line IN LISTS lines)
+                if(line MATCHES "^${instance}\\.${pattern}$")
+                    set(found 1)
+                endif()
+            endforeach()
+            if(NOT found)
+                set(bad 1)
+            endif()
+        endforeach()
+        if(bad)
+            string(REPLACE ";" "\n" each "${ARGN}")
+            message(SEND_ERROR "check_inner_${instance}: exit ${code}\n${report}--- where it is to exit ${status}, say '${first}', then a line for each of\n${each}\n--- in any order, then\n${guards}")
+        endif()
+    endfunction()
+
+    set(last "")
+    foreach(i e k)
+        string(APPEND last
+               "@.${i}.d: where z is absent, 'd_n | z_n - z_(n-3) > 0 = z_n - z_(n-3)' falls to 'd_n = 0'\n"
+               "@.${i}.x: where z is absent, 'x_n | z_n >= 0 = z_n' falls to 'x_n = x_(n-1)'\n")
+        if(i STREQUAL "e")
+            set(one "${last}")
+        endif()
+    endforeach()
+    string(REPLACE "@" "fwd" guards "${last}")
+    reported(fwd 100 0 "against exact values" "${guards}" "e\\.z: within 0" "e\\.x: within 0"
+             "e\\.d: within 0" "k\\.z: within 0" "k\\.x: within 0" "k\\.d: within 0" "y: within 0")
+    string(REPLACE "@" "sib" guards "${last}")
+    set(nan "-?nan at 20, where the interpreter's term is not a finite number")
+    reported(sib 100 1 "against exact values until 20 and inexact ones from there" "${guards}"
+             "s\\.z: ${nan}" "e\\.z: ${nan}" "k\\.z: ${nan}" "e\\.x: within 0" "e\\.d: within 0"
+             "k\\.x: within 0" "k\\.d: within 0")
+    string(REPLACE "@" "dp.a" guards "${last}")
+    set(terms "")
+    foreach(s z w e.z e.x e.d k.z k.x k.d y)
+        string(REPLACE "." "\\." s "a.${s}")
+        list(APPEND terms "${s}: within 0")
+    endforeach()
+    reported(dp 100 0 "against exact values" "${guards}" ${terms})
+    string(REPLACE "@" "ow" guards "${one}")
+    reported(ow 100 0 "against exact values" "${guards}" "q: within 0" "e\\.z: within 0"
+             "e\\.x: within 0" "e\\.d: within 0")
+    string(REPLACE "@" "gp" guards "${one}")
+    reported(gp 100 0 "against exact values" "${guards}" "s\\.z: within 0" "e\\.z: within 0"
+             "e\\.x: within 0" "e\\.d: within 0")
+    reported(hs 100 0 "against exact values"
+             "hs.e.d: where z is absent, 'd_n | z_n - z_(n-3) > 0 = z_n - z_(n-3)' falls to 'd_n = -1'\n"
+             "q: within 0" "e\\.z: within 0" "e\\.d: within 0")
+    reported(gb 100 0 "against exact values"
+             "gb.e.x: where z is absent, 'x_n | z_n >= 0 = z_n' falls to 'x_n = x_(n-1)'\n"
+             "s\\.y: within 0" "s\\.z: within 0" "e\\.z: within 0" "e\\.x: within 0")
+endif()
 
 # grad's order compiled (DESIGN.md): compile/hessian.ink's instances each
 # within 0 of the interpreter, and the nests still refused.
@@ -2443,11 +2582,16 @@ set(args --compile ${story} lag -o lag.h)
 check(compile_hessian)
 strict(compile_hessian lag.h)
 
+# A guard reading a matrix limit's status, built as C++ too (C393).
+foreach(flags "robot.h" "float/robot.h;--float")
+    list(POP_FRONT flags header)
+    set(args --compile ${CMAKE_CURRENT_LIST_DIR}/compile/inner.ink loop ${flags} -o ${header})
+    check(compile_status_strict)
+    strict(compile_status_strict ${header})
+endforeach()
+
 set(inexact "against exact values until 1 and inexact ones from there")
-# p.G an ulp from the interpreter's at 1, where reverse mode at an exact
-# point is not forward mode's (C382), and C and w after it by what it moves.
-set(parted "p.C: within 1e-17, from 1" "p.G: within 3.6e-15, from 1" "p.w: within 2.1e-17")
-foreach(checked IN ITEMS "p:${inexact}:M q" "h:${inexact}:k s M C G w q"
+foreach(checked IN ITEMS "p:${inexact}:M C G w q" "h:${inexact}:k s M C G w q"
                          "b:against exact values:d q")
     string(REPLACE ":" ";" checked "${checked}")
     list(POP_FRONT checked instance against terms)
@@ -2476,15 +2620,6 @@ foreach(checked IN ITEMS "p:${inexact}:M q" "h:${inexact}:k s M C G w q"
     list(LENGTH terms want)
     list(LENGTH lines got)
     set(bad "")
-    foreach(line IN LISTS parted)
-        string(FIND "\n${report}" "\n${line}" at)
-        if(line MATCHES "^${instance}\\.")
-            math(EXPR want "${want} + 1")
-            if(at EQUAL -1)
-                set(bad 1)
-            endif()
-        endif()
-    endforeach()
     if(NOT code EQUAL 0 OR NOT "${first}" STREQUAL "${instance}: 100 steps from 0, ${against}"
        OR NOT got EQUAL want)
         set(bad 1)
@@ -2501,7 +2636,7 @@ foreach(checked IN ITEMS "p:${inexact}:M q" "h:${inexact}:k s M C G w q"
         endif()
     endforeach()
     if(bad)
-        message(SEND_ERROR "check_hessian_${instance}: exit ${code}\n${report}--- where each of ${terms} is to be within 0, and ${parted} as given")
+        message(SEND_ERROR "check_hessian_${instance}: exit ${code}\n${report}--- where each of ${terms} is to be within 0")
     endif()
 endforeach()
 

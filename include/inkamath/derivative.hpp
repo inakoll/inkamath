@@ -874,6 +874,13 @@ private:
         if (indexed || arguments.size() != 1 || !stack_.compiled) return {};
         const Jet&             x     = arguments[0].second;
         const std::optional<T> value = stack_.compiled(f, *x[0]);
+        const T                one   = numeric_interface<T>::inexact(T(typename T::value_type(1)));
+        // At an exact point the walk's own nodes would give the slope, an ulp
+        // from forward mode's walk and the header's: reverse mode gives way
+        // (C382).
+        if (!value && tape_ && Moves(x) && x[1]->node && x[0]->IsScalar() &&
+            numeric_interface<T>::exact(*x[0]) && stack_.differentiated(f, *x[0], one))
+            throw Forward();
         if (!value) return {};
         if (!Moves(x)) return Constant(*value);
         // The walk's guards read the double that moves (C271).
@@ -881,8 +888,7 @@ private:
         if (&f == stack_.stepwise) return Constant(*value);
         if (x.size() == 2 && x[1]->node) {
             // Its slope, as the part a part of ~1 has.
-            const std::optional<T> slope = stack_.differentiated(
-                f, *x[0], numeric_interface<T>::inexact(T(typename T::value_type(1))));
+            const std::optional<T> slope = stack_.differentiated(f, *x[0], one);
             if (!slope) return {};
             return Jet{Part(*value), *slope * *x[1]};
         }
