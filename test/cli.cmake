@@ -66,7 +66,8 @@ set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
 # Specified, not yet built (DESIGN.md, an inner instance's optional input
 # compiled): compile/inner.ink's headers, the file compiled whole, a
-# lagged sibling refused, and the reports of robot, fwd and sib. Skipped while e.z is refused as today, and only then.
+# lagged sibling refused, and the reports of robot, fwd, sib, dp, ow, gp
+# and hs. Skipped while e.z is refused as today, and only then.
 if(PART STREQUAL "spec")
     file(MAKE_DIRECTORY "${OUT}")
     set(story "${CMAKE_CURRENT_LIST_DIR}/compile/inner.ink")
@@ -182,6 +183,9 @@ if(PART STREQUAL "spec")
         string(APPEND last
                "@.${i}.d: where z is absent, 'd_n | z_n - z_(n-3) > 0 = z_n - z_(n-3)' falls to 'd_n = 0'\n"
                "@.${i}.x: where z is absent, 'x_n | z_n >= 0 = z_n' falls to 'x_n = x_(n-1)'\n")
+        if(i STREQUAL "e")
+            set(one "${last}")
+        endif()
     endforeach()
     string(REPLACE "@" "fwd" guards "${last}")
     reported(fwd 100 0 "against exact values" "${guards}" "e\\.z: within 0" "e\\.x: within 0"
@@ -191,6 +195,22 @@ if(PART STREQUAL "spec")
     reported(sib 100 1 "against exact values until 20 and inexact ones from there" "${guards}"
              "s\\.z: ${nan}" "e\\.z: ${nan}" "k\\.z: ${nan}" "e\\.x: within 0" "e\\.d: within 0"
              "k\\.x: within 0" "k\\.d: within 0")
+    string(REPLACE "@" "dp.a" guards "${last}")
+    set(terms "")
+    foreach(s z w e.z e.x e.d k.z k.x k.d y)
+        string(REPLACE "." "\\." s "a.${s}")
+        list(APPEND terms "${s}: within 0")
+    endforeach()
+    reported(dp 100 0 "against exact values" "${guards}" ${terms})
+    string(REPLACE "@" "ow" guards "${one}")
+    reported(ow 100 0 "against exact values" "${guards}" "q: within 0" "e\\.z: within 0"
+             "e\\.x: within 0" "e\\.d: within 0")
+    string(REPLACE "@" "gp" guards "${one}")
+    reported(gp 100 0 "against exact values" "${guards}" "s\\.z: within 0" "e\\.z: within 0"
+             "e\\.x: within 0" "e\\.d: within 0")
+    reported(hs 100 0 "against exact values"
+             "hs.e.d: where z is absent, 'd_n | z_n - z_(n-3) > 0 = z_n - z_(n-3)' falls to 'd_n = -1'\n"
+             "q: within 0" "e\\.z: within 0" "e\\.d: within 0")
     return()
 endif()
 

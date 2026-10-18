@@ -12354,8 +12354,11 @@ the clause for a limit that does not converge as done, the order from here:
   design is compiled: `test/compile/inner.ink` and `test/cli.cmake`'s spec
   part, `cli_spec`: the headers of `fw` and `loop`, strict C; the file
   compiled whole with nothing to list, `r` among it; the lagged sibling
-  refused; and the reports of `robot`, `fwd` and `sib`. Skipped while e.z is
-  refused as today, and only then.
+  refused; and the reports of `robot`, `fwd` and `sib`, and of the
+  review's `dp`, two levels deep, `ow`, the model's own guarded closed
+  form, `gp`, a sibling's guard NaN, and `hs`, a history on the inner
+  input, their values by hand. Skipped while e.z is refused as today, and
+  only then.
 - **A definition the host implements**, as the C-hook study sketched:
   `--compile nav.ink nav --host qp` names it, with no syntax; the header
   declares `int nav_qp(const double H[4], const double f[2], double

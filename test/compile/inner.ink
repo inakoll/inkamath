@@ -149,3 +149,60 @@ pair() = {
     k = last(z_n = 2*s.z_n)
 }
 sib = pair()
+
+# 'dp', two levels: a's z is deep's own optional input, a.e's a's, so
+# a.e's flag is a's, forwarded twice. Every term is fwd's, a.e.x_9 6.25,
+# a.e.d_18 3, a.k.d_2 0, a.y_99 102.25, and a.e.z_9 absent. Checked:
+#
+#     dp: 100 steps from 0, against exact values
+#     dp.<s>: within 0
+#
+# for a.z, a.w, a.e.z, a.e.x, a.e.d, a.k.z, a.k.x, a.k.d and a.y, then
+# fwd's guards under dp.a.
+deep(z_n?) = {
+    a = fw(z_n = z_n, w_n = n + 1/4)
+}
+dp = deep(z_n = zd_n)
+
+# 'ow', the model's own guarded closed form as the argument: e's z is
+# absent where no clause of q gives it, at e.z_1, though q reads no
+# optional input. e.x_1 is 0, e.x_3 and e.x_5 13/4, e.d_0 0, e.d_3 3 and
+# e.d_4 0. Checked, q, e.z, e.x and e.d within 0, the guards as fwd's e's.
+own(w_n) = {
+    q_n | mod(n, 3) == 0 = w_n
+    e = last(z_n = q_n)
+}
+ow = own(w_n = n + 1/4)
+
+# 'gp', a sibling's chain whose guard is NaN at 21: the interpreter
+# refuses s.z_21, so e's z is there and refused, not absent: e.x is
+# refused from 21 to 23, where taking it for absence would hold 73/4, and
+# e.d at 21 and 24, where it would be 0, each reading z_21 beside a term
+# present, so C380 is not reached; e.d_20 is 0, z_20 absent. Checked, s.z,
+# e.z, e.x and e.d within 0 against the interpreter's refusals, the
+# guards as fwd's e's.
+gsrc() = {
+    z_n | n == 21 and 0/(n - 21 + ~0) > 0 = 1
+    z_n | mod(n, 3) == 0 = n + 1/4
+}
+gpair() = {
+    s = gsrc()
+    e = last(z_n = s.z_n)
+}
+gp = gpair()
+
+# 'hs', a history on the inner input: before the stream e's z is 0, not
+# absent, so e.d_0 is 1/4 where clearing every flag would give -1; e.d_1
+# is -1, e.d_3 3. Checked, q, e.z and e.d within 0, and
+#
+#     hs.e.d: where z is absent, 'd_n | z_n - z_(n-3) > 0 = z_n - z_(n-3)' falls to 'd_n = -1'
+lh(z_n?) = {
+    z_n | n < 0 = 0
+    d_n | z_n - z_(n-3) > 0 = z_n - z_(n-3)
+    d_n = -1
+}
+hist(w_n) = {
+    q_n | mod(n, 3) == 0 = w_n
+    e = lh(z_n = q_n)
+}
+hs = hist(w_n = n + 1/4)
