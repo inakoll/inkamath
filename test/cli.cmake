@@ -1542,6 +1542,30 @@ set(args --compile c347.ink -o c347.h)
 set(stderr "inkamath: cannot compile NAN: NAN is a word C keeps for itself\n")
 set(exit 1)
 check(compile_c347)
+# C400: and a word C++ keeps, the headers building as C++ too (C393), in each
+# place a name reaches one; a model's own name reaches none.
+file(WRITE "${OUT}/c400.ink" "par(x_n, new = 1) = { y_n = new*x_n }\n"
+     "seq(x_n) = { class_n = 2*x_n }\ninp(this_n) = { y_n = this_n }\n"
+     "template(x_n) = { y_n = 2*x_n }\nof(x_n) = { friend = template(x_n = x_n) }\n")
+foreach(case "par:new:new" "seq:class:class" "of:friend:friend.x")
+    string(REPLACE ":" ";" case "${case}")
+    list(POP_FRONT case model word term)
+    set(args --compile c400.ink ${model} -o c400.h)
+    set(stderr "inkamath: cannot compile ${term}: ${word} is a word C++ keeps for itself\n")
+    set(exit 1)
+    check(compile_c400_${model})
+endforeach()
+set(args --compile c400.ink inp -o c400.h)
+set(stderr "inkamath: this is a word C++ keeps for itself\n")
+set(exit 1)
+check(compile_c400_inp)
+set(args --compile c400.ink template -o c400.h)
+check(compile_c400)
+strict(compile_c400 c400.h)
+set(args --compile c400.ink template -o template.h)
+set(stderr "inkamath: 'template' is a name C++ keeps, and the header is named after it\n")
+set(exit 2)
+check(compile_c400_named)
 
 # grad compiled (DESIGN.md, compile/grad.ink): the gradient written out, each
 # function of the prelude called on a value that moves with one for its part,
