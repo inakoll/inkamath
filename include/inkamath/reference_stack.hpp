@@ -225,6 +225,9 @@ public:
     // 1 where a double was read as the rational it is, 2 where one was
     // approximated past a thousand digits, else 0.
     std::function<int(const Reference<T>&, T&)> checked;
+    // Told of each global Eval reads: grad checks the ones evaluation
+    // reaches (C313).
+    std::function<void(const Reference<T>&)> globals;
 
     [[nodiscard]] Scope<T>&       Target() const { return *target_; }
     [[nodiscard]] Scope<T>&       Builtins() { return builtins_; }
@@ -340,6 +343,7 @@ public:
         if(!definition) {
             throw std::runtime_error(scope_->Qualified(ai_reference_name) + " is not defined");
         }
+        if (globals) globals(*definition);
         return Evaluate(*definition, ai_parameters);
     }
 

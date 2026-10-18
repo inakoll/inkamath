@@ -38,8 +38,10 @@ public:
     }
 
     // What grad refuses by the names its body reads, before any value: the
-    // compiler asks it too (DESIGN.md, grad compiled).
-    void Names(const GradExpression<T>& grad) {
+    // compiler asks it too (DESIGN.md, grad compiled), and refuses a local
+    // there, reached or not, as it compiles none (C313).
+    void Names(const GradExpression<T>& grad, bool compiled = false) {
+        const Setting<bool> refusing(compile_, compiled);
         for (const std::string& name : grad.Variables()) {
             Unreached(grad.Body(), name);
             if (!Mentions(*grad.Body(), name))
@@ -680,7 +682,9 @@ private:
         if (Lookup(call.Name()) || !Reads(call)) return Constant(call.accept(ordinary_));
         const std::optional<int> index = Index(call.Call());
         if (stack_.Binds(call.Name())) return Constant(call.accept(ordinary_));
-        return Call(call, stack_.Global(call.Name()), call, index);
+        const auto global = stack_.Global(call.Name());
+        if (global && stack_.globals) stack_.globals(*global);
+        return Call(call, global, call, index);
     }
 
     // 'written' is the call as the expression has it, 'sq.f(t)' for f in a file.
@@ -1364,6 +1368,15 @@ private:
                 bound.emplace_back(stack_, names[v]);
                 stack_.BindValue(names[v], *points[v][0], "grad's variable");
             }
+            // A global read where evaluation reaches it, which the search
+            // before any value cannot know (C313).
+            std::vector<std::set<const Reference<T>*>> seen(names.size());
+            const auto check = [&, outer = stack_.globals](const Reference<T>& global) {
+                if (outer) outer(global);
+                for (std::size_t v = 0; v < names.size(); ++v)
+                    Definition(global, names[v], seen[v]);
+            };
+            const Setting<decltype(stack_.globals)> reading(stack_.globals, check);
             // One pass's locals are not the next's, in either frame.
             const bool binds = ParametersDefinition<T>::Binds(*grad.Body());
             // A single value's gradient with respect to real matrices, or to
@@ -1542,6 +1555,7 @@ private:
             return;
         }
         if (const auto* local = dynamic_cast<const EqualExpression<T>*>(e.get())) {
+            if (compile_) throw std::runtime_error("a local definition");
             Scan(local->m_e2(), name, bound, within, seen);
             bound.insert(local->Name());
             return;
@@ -1767,6 +1781,7 @@ private:
     bool                                                  filling_ = false;
     bool                                                  chosen_  = false;
     bool                                                  rounded_ = false;
+    bool                                                  compile_ = false;
     std::size_t                                           stepped_ = 0;
     std::size_t                                           complex_ = 0;  // grads at a complex point
     const Guarded*                                        guarded_ = nullptr;
