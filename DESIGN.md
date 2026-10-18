@@ -12336,14 +12336,20 @@ the clause for a limit that does not converge as done, the order from here:
   section 5's "An inner instance's optional input is refused, for now",
   for the flag's rule. No golden or other report.
 
-  About 45 lines: the interpreter's none; the compiler's 40, the refusal
-  gone, the inner input's window and flags as the model's own, filled at
-  each step from the statuses its argument asks, the end of a sibling's
-  chain as a status;
+  About 45 lines, the interpreter's none. The compiler's 40: the refusal
+  gone and `Optional` taking an inner input, so that its struct fields,
+  window shift, NaN cells and flags cleared in init, and history folds
+  come as the model's own, 6; its flag filled at each step from the
+  argument's reads, forwarded, another instance's, a chain's status or 1,
+  15; a chain's status, its end, every guard false and NaN not false, 8;
+  `Flag` asking an inner input's status, under the name the guard
+  writes, 4; an inner input left out of `Recomputed`, so that a read
+  before the stream is NaN and falls rather than computing the argument
+  again there, `k.d_0` 3 where it is 0, 3; the lagged sibling refused, 4.
   `--check`'s 5, the audit's name as written, its replay as it is since
   the step takes no new input. 20,129 lines at ab4d0de by `wc -l
-  include/inkamath/*.hpp src/*`; past 68 the implementation stops and
-  reports.
+  include/inkamath/*.hpp src/*`; past 68, one and a half times 45, the
+  implementation stops and reports.
 
   Specified in `test/data/spec/inner.ink`, 28 entries, each passing today
   since the interpreter gives it: the forwarded and plain inputs before
