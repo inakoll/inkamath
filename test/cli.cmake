@@ -465,10 +465,12 @@ file(WRITE "${OUT}/apart.ink" "c_n = [n, 1] < [2, 2]\nd_n = [n, 1] == 0\n"
      "f_n = [n, 1] == [n; 1]\ng_n = n*([1, 1] == [1; 1])\nh_n = n*([1, 1] == 1)\n")
 set(args --compile apart.ink)
 string(CONCAT stdout "cannot compile c: a comparison needs single values, not a 1x2 matrix\n"
-       "cannot compile d: a 1x2 matrix compared with a single value, never equal\n"
+       "cannot compile d: a 1x2 matrix compared with a single value, never equal; "
+       "compare with 0*M, M's zero matrix, or a cell, M[j,k]\n"
        "cannot compile f: a 1x2 matrix compared with a 2x1 matrix, never equal\n"
        "cannot compile g: a 1x2 matrix compared with a 2x1 matrix, never equal\n"
-       "cannot compile h: a 1x2 matrix compared with a single value, never equal\n")
+       "cannot compile h: a 1x2 matrix compared with a single value, never equal; "
+       "compare with 0*M, M's zero matrix, or a cell, M[j,k]\n")
 set(exit 1)
 check(compile_mateq_refused)
 
@@ -1059,6 +1061,29 @@ set(args --compile c286.ink -o c286.h)
 check(compile_c286)
 holds(compile_c286 c286.h "(isnan(t0_) ? NAN : INFINITY);\n")
 
+# C395: a constant folded from a number approximated past a thousand digits,
+# which the interpreter marks, is named in the header: 2^4000 > 2^3999 is 0
+# there, and 3^3000/3^2999 NaN.
+file(WRITE "${OUT}/c395.ink" "y_n = n + (2^4000 > 2^3999)\nz_n = n*(3^3000/3^2999)\nw_n = n\n")
+set(args --compile c395.ink -o c395.h)
+check(compile_c395)
+holds(compile_c395 c395.h [[ * sequence: w, y and z. A value folded for y and z from a number approximated
+ * past a thousand digits, as the interpreter marks it, may be far from exact.
+]])
+
+# C396: with --float, a constant folded in double from inexact numbers, a
+# machine epsilon by halving, is named in the header: 2^-52, where a float's
+# halving gives 2^-23. A number made inexact, ~(17/4), is not.
+file(WRITE "${OUT}/c396.ink" "ep(x) | 1 + x/2 > 1 = ep(x/2)\nep(x) = x\n"
+     "y_n = n*ep(~1)\nz_n = n*~(17/4)\n")
+set(args --compile c396.ink --float -o c396.h)
+check(compile_float_c396)
+holds(compile_float_c396 c396.h [[ * sequence: y and z. Every value is a float, and every operation rounds to
+ * one. A value folded for y from inexact numbers was computed at the
+ * interpreter's precision, not a float's, and a float step may compute
+ * another.
+]])
+
 # C161: a float's inverse starts from the identity in floats, which MSVC's
 # /W4 asks of an int converted to one.
 file(WRITE "${OUT}/c161.ink" "z_n = [2 1; 1 n]^-1*[1; 1]\n")
@@ -1517,6 +1542,30 @@ set(args --compile c347.ink -o c347.h)
 set(stderr "inkamath: cannot compile NAN: NAN is a word C keeps for itself\n")
 set(exit 1)
 check(compile_c347)
+# C400: and a word C++ keeps, the headers building as C++ too (C393), in each
+# place a name reaches one; a model's own name reaches none.
+file(WRITE "${OUT}/c400.ink" "par(x_n, new = 1) = { y_n = new*x_n }\n"
+     "seq(x_n) = { class_n = 2*x_n }\ninp(this_n) = { y_n = this_n }\n"
+     "template(x_n) = { y_n = 2*x_n }\nof(x_n) = { friend = template(x_n = x_n) }\n")
+foreach(case "par:new:new" "seq:class:class" "of:friend:friend.x")
+    string(REPLACE ":" ";" case "${case}")
+    list(POP_FRONT case model word term)
+    set(args --compile c400.ink ${model} -o c400.h)
+    set(stderr "inkamath: cannot compile ${term}: ${word} is a word C++ keeps for itself\n")
+    set(exit 1)
+    check(compile_c400_${model})
+endforeach()
+set(args --compile c400.ink inp -o c400.h)
+set(stderr "inkamath: this is a word C++ keeps for itself\n")
+set(exit 1)
+check(compile_c400_inp)
+set(args --compile c400.ink template -o c400.h)
+check(compile_c400)
+strict(compile_c400 c400.h)
+set(args --compile c400.ink template -o template.h)
+set(stderr "inkamath: 'template' is a name C++ keeps, and the header is named after it\n")
+set(exit 2)
+check(compile_c400_named)
 
 # grad compiled (DESIGN.md, compile/grad.ink): the gradient written out, each
 # function of the prelude called on a value that moves with one for its part,
@@ -2451,7 +2500,7 @@ strict(compile_optional track.h)
 
 # An inner instance's optional input (DESIGN.md): compile/inner.ink's headers,
 # the file compiled whole, a lagged sibling refused, and the reports of
-# fwd, sib, dp, ow, gp, hs, gb and lt; test/CMakeLists.txt checks its robot.
+# fwd, sib, dp, ow, gp, hs, gb, lt and lo; test/CMakeLists.txt checks its robot.
 set(story "${CMAKE_CURRENT_LIST_DIR}/compile/inner.ink")
 set(args --compile ${story} fw -o fw.h)
 check(compile_inner)
@@ -2464,6 +2513,10 @@ check(compile_inner_loop)
 holds(compile_inner_loop loop.h "static inline void loop_step(loop* m_) {\n"
       "        int z_present[1];\n")
 strict(compile_inner_loop loop.h)
+set(args --compile ${story} alone -o alone.h)
+check(compile_inner_alone)
+holds(compile_inner_alone alone.h "    m_->f.e.z_present[0] = m_->f.z_present[0];\n")
+strict(compile_inner_alone alone.h)
 set(args --compile ${story})
 check(compile_inner_file)
 file(WRITE "${OUT}/lag.ink" "held(z_n?) = {\n    x_0 = 0\n    x_n | z_n >= 0 = z_n\n"
@@ -2591,6 +2644,18 @@ if(CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
     reported(lt 100 0 "against exact values" "${guards}" "s\\.y: within 0"
              "s\\.z: within 0, from 1" "e\\.z: within 0" "e\\.x: within 0" "e\\.d: within 0"
              "b\\.z: within 0" "b\\.x: within 0" "b\\.d: within 0")
+    string(REPLACE "@" "lo.f" guards "${last}")
+    string(APPEND guards "lo.p.c: where z is absent, 'c_n | [1 0]*z_(n-3) < 0 = [1 0]*z_(n-3)' falls to 'c_n = 1'\n")
+    set(terms "")
+    foreach(s f.w f.e.x f.e.d f.k.z f.k.x f.k.d f.y p.c y)
+        string(REPLACE "." "\\." s "${s}")
+        list(APPEND terms "${s}: within 0")
+    endforeach()
+    foreach(s f.z f.e.z p.z)
+        string(REPLACE "." "\\." s "${s}")
+        list(APPEND terms "${s}: no value compared, the step NaN where the interpreter gives none, as at 0: lo\\.${s}_0 is absent")
+    endforeach()
+    reported(lo 100 0 "against exact values" "${guards}" ${terms})
 endif()
 
 # grad's order compiled (DESIGN.md): compile/hessian.ink's instances each

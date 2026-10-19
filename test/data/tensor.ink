@@ -40,13 +40,14 @@ I2 = [1 0; 0 1]
  0, 2]
 
 # A tensor of one slice is not its slice, as a batch of one is still a batch:
-# it prints with its separator, and is not equal to the matrix.
+# it prints with its separator, and is compared with the matrix as another
+# shape is, refused (C398).
 >> [1 2; 3 4;;]
 [1, 2;
  3, 4;;]
 
 >> [1 2; 3 4;;] == [1 2; 3 4]
-0
+error: a 1x2x2 tensor compared with a 2x2 matrix, never equal
 
 >> [7;;]
 [7;;]
@@ -242,7 +243,7 @@ error: a 2x2x2 tensor and a 3x2x2 tensor have different numbers of slices
 error: a 2x2x2 tensor and a 1x1x1 tensor have different numbers of slices
 
 >> T == U
-0
+error: a 2x2x2 tensor compared with a 3x2x2 tensor, never equal
 
 >> I2 - T
 [ 0, -2;

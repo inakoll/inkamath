@@ -224,7 +224,7 @@ add_test(NAME prelude_header
 # Each as file:instance, or file:instance:n with --steps n.
 foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brink drift:ledge
                          drift:rift drift:naught drift:zeroed drift:mirrored drift:nests drift:latch drift:tripped drift:toil
-                         drift:late drift:radix
+                         drift:late drift:radix drift:gone
                          delay:fir newton:stiff newton:halves newton:evens newton:evened newton:twonames newton:weighed logistic:gate sized:sized softmax:cls steady:mark
                          rnn:rnn attention:head momentum:ball adam:fit lqr:gain
                          rates:pairs rates:odd seeded:warm cascade:servo decimate:boxcar
@@ -438,7 +438,7 @@ set_tests_properties(check_twirl_20_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^twirl: 20 steps from 0, against exact values\ntwirl\\.R: within 3\\.8e-15\ntwirl\\.o: within 1\\.6e-28\ntwirl\\.q: within 1\\.1e-15\ntwirl\\.u: within 2\\.4e-15\n$")
 set(walk "21 steps from 0, against exact values until 1 and inexact ones from there")
 set_tests_properties(check_walk_21_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^walk: ${walk}\nwalk\\.Pp: within 1\\.5e-15, from 1${about}\nwalk\\.Rp: within 1\\.2e-15, from 1${about}\nwalk\\.Nb: within 2\\.3e-19, from 1${about}\nwalk\\.S: within 4\\.1e-18, from 1${about}\nwalk\\.K: within 2\\.6e-13, from 1${about}\nwalk\\.P: within 1\\.5e-15${about}\nwalk\\.Y: within 0\nwalk\\.pp: within 1\\.6e-15, from 1${about}\nwalk\\.vp: within 9\\.9e-15, from 1${about}\nwalk\\.Xp: within 9\\.9e-15, from 1${about}\nwalk\\.X: within 9\\.8e-15${about}\nwalk\\.R: within 1\\.2e-15${about}\nwalk\\.d: within 6\\.1e-16${about}\nwalk\\.p: within 1\\.5e-15${about}\nwalk\\.v: within 9\\.8e-15${about}\n$")
+    "^walk: ${walk}\nwalk\\.Pp: within 1\\.5e-15, [0-9.e+]+ units of a double in Pp\\[1,10\\] at step 1, from 1${about}\nwalk\\.Rp: within 1\\.2e-15, from 1${about}\nwalk\\.Nb: within 2\\.3e-19, [0-9.e+]+ units of a double in Nb\\[2,1\\] at step 20, from 1${about}\nwalk\\.S: within 4\\.1e-18, from 1${about}\nwalk\\.K: within 2\\.6e-13, from 1${about}\nwalk\\.P: within 1\\.5e-15${about}\nwalk\\.Y: within 0\nwalk\\.pp: within 1\\.6e-15, from 1${about}\nwalk\\.vp: within 9\\.9e-15, from 1${about}\nwalk\\.Xp: within 9\\.9e-15, from 1${about}\nwalk\\.X: within 9\\.8e-15${about}\nwalk\\.R: within 1\\.2e-15${about}\nwalk\\.d: within 6\\.1e-16${about}\nwalk\\.p: within 1\\.5e-15${about}\nwalk\\.v: within 9\\.8e-15${about}\n$")
 # Its 1.1 MB of C takes GCC 10 s at -O2 and 2 at -O0, its report the same.
 target_compile_options(check_walk_21 PRIVATE $<$<C_COMPILER_ID:GNU,Clang,AppleClang>:-O0>)
 # Recursion from the tip (DESIGN.md): the sequence read ahead held to the
@@ -640,7 +640,7 @@ set_tests_properties(check_year_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_needled_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^needled: 100 steps from 0${inexact0}\nneedled\\.heron: 8\\.0466270446777376e-07 at 0, where the interpreter gives 6\\.9685834354698204e-07\\; the interpreter's term about [0-9.e+-]+ from the exact one\nneedled\\.kahan: within 0${about}\n$")
 set_tests_properties(check_big_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^big: 100 steps from 0, against exact values\nbig\\.s: within 2e-30\nbig\\.t: within 0\nbig\\.w: 0 at 0, where the interpreter gives 1\n$")
+    "^big: 100 steps from 0, against exact values\nbig\\.s: within 2e-30, 1\\.1e\\+16 units of a double at step 0\nbig\\.t: within 0\nbig\\.w: 0 at 0, where the interpreter gives 1\n$")
 set_tests_properties(check_seven_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^seven: 100 steps from 0, against exact values\nseven\\.t: within 0\nseven\\.u: within 1\\.4e-14\n$")
 # Doyle (1978): his LQG loop closed, its rounding damped, and its unstable
@@ -745,7 +745,7 @@ add_test(NAME compile_signatures_header
 set_tests_properties(check_poly_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^poly: 100 steps from 0, against exact values\npoly\\.A: within 0\npoly\\.c: within 0\npoly\\.d: within 0\npoly\\.g: within [1-9](\\.[0-9])?e-1[2-9]\n$")
 set_tests_properties(check_thirds_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^thirds: 100 steps from 0${inexact0}\nthirds\\.A: within 0${about}\nthirds\\.c: within 0${about}\nthirds\\.d: within 0${about}\nthirds\\.g: within [1-9](\\.[0-9])?e-1[2-9]${about}\n$")
+    "^thirds: 100 steps from 0${inexact0}\nthirds\\.A: within 0${about}\nthirds\\.c: within 0${about}\nthirds\\.d: within 0${about}\nthirds\\.g: within [1-9](\\.[0-9])?e-1[2-9], [0-9.e+]+ units of a double in g\\[1,2\\] at step 0${about}\n$")
 set_tests_properties(check_plan_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^plan: 100 steps from 0, against exact values\nplan\\.y: within 0\n$")
 set_tests_properties(check_graph_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -1047,6 +1047,8 @@ set_tests_properties(check_twonames_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^twonames: 100 steps from 0, against exact values until 0 and inexact ones from there\ntwonames\\.a: within [0-9.e-]+${about}\ntwonames\\.b: within [0-9.e-]+${about}\n$")
 set_tests_properties(check_fir_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^fir: 100 steps from 0, against exact values\n(fir\\.[a-z]+: within 0\n)+$")
+set_tests_properties(check_gone_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^gone: 100 steps from 0, against exact values\ngone\\.y: within 1e-200, 6\\.9e\\+15 units of a double at step 0\n$")
 set_tests_properties(check_naught_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^naught: 100 steps from 0, against exact values until 0 and inexact ones from there\nnaught\\.y: within 0\n$")
 set_tests_properties(check_zeroed_report PROPERTIES PASS_REGULAR_EXPRESSION

@@ -260,3 +260,31 @@ lpair() = {
     b = early(z_n = s.y_(n-1))
 }
 lt = lpair()
+
+# 'lo', inner optional inputs left out (C399): absent at every step, as the
+# interpreter has them, and before the stream but where a history gives
+# them. f's z is left out and forwarded to f.e, whose x holds its base, 0,
+# and d is 0, so f.y is f.k.d, 0 to 2 and 3 from 3; p's z, a pair, is
+# [n; 1] below 0, so p.c is -3 at 0, -2 at 1 and -1 at 2, and 1 from 3, z_0
+# being absent: y is -3, -2 and -1, then 4. Checked, f.w, f.e.x, f.e.d, f.k.z,
+# f.k.x, f.k.d, f.y, p.c and y within 0, f.z, f.e.z and p.z with no value
+# to compare,
+#
+#     lo.p.z: no value compared, the step NaN where the interpreter gives none, as at 0: lo.p.z_0 is absent
+#
+# then f's guards as fwd's and p's:
+#
+#     lo.p.c: where z is absent, 'c_n | [1 0]*z_(n-3) < 0 = [1 0]*z_(n-3)' falls to 'c_n = 1'
+pre(z_n[j<=2]?) = {
+    z_n | n < 0 = [n; 1]
+    c_n | [1 0]*z_(n-3) < 0 = [1 0]*z_(n-3)
+    c_n = 1
+}
+alone(w_n) = {
+    f = fw(w_n = w_n)
+    p = pre()
+    y_n = f.y_n + p.c_n
+}
+lo = alone(w_n = n)
+# A file's instance leaving it out compiles with the file.
+el = last()
