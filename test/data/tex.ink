@@ -109,8 +109,8 @@ layer(x_n) = { ... }
 >> tex ?layer
 \operatorname{layer}(x_n):
     \operatorname{th}(z) = \frac{z}{1 + z^2}
-    W = \begin{bmatrix} \frac{1}{2} & \frac{-1}{4} \\ \frac{1}{4} & \frac{1}{2} \end{bmatrix}
-    U = \begin{bmatrix} 1 \\ \frac{-1}{2} \end{bmatrix}
+    W = \begin{bmatrix} \frac{1}{2} & -\frac{1}{4} \\ \frac{1}{4} & \frac{1}{2} \end{bmatrix}
+    U = \begin{bmatrix} 1 \\ -\frac{1}{2} \end{bmatrix}
     h_0 = \begin{bmatrix} 0 \\ 0 \end{bmatrix}
     h_{n,j} = \operatorname{th}((W\,h_{n-1} + U\,x_n)_{j}), \quad 1 \le j \le 2
 
@@ -122,6 +122,32 @@ outer(a = 1) = { ... }
 
 >> tex ?outer
 error: tex cannot show a model inside a model yet
+
+# A local as written, as Robertson's Newton iteration names its iterate.
+>> nr(x) = (z = x - 1/2)*z + z
+nr(x) = (z = x - 1/2)*z + z
+
+>> tex ?nr
+\operatorname{nr}(x) = (z = x - \frac{1}{2})\,z + z
+
+>> lc(x) = (M[j<=2] = j*x) + M
+lc(x) = (M[j<=2] = j*x) + M
+
+>> tex ?lc
+error: tex cannot show a local by cells
+
+# A definition it cannot set is a comment where it stands, and the rest of
+# the model is set.
+>> stack() = {
+..     T = [1 2;; 3 4]
+..     y_n = -1/2*n
+.. }
+stack() = { ... }
+
+>> tex ?stack
+\operatorname{stack}():
+    % T: tex cannot show ';;', which has no form on paper
+    y_n = -\frac{1}{2}\,n
 
 # A base term written after a guarded clause is tried after it (C45), so it
 # is a case in its place, not a line above the cases that would say it holds

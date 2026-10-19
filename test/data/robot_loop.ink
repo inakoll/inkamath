@@ -18,7 +18,7 @@ error: Z did not converge within 100 terms (last term [            ~1,   ~1.0000
  ~1.2676506e+27, ~0.100502506;
    ~0.100502506,  ~0.10050125;
              ~0,           ~0;
-             ~0,   ~10.050125])
+             ~0,   ~10.050125], its steps in a ratio of 1); for a fixed count, read a term, as Z_100
 
 # The loop's gain falls to a fixed one there, a clause a guard chose by an
 # inexact limit, so inexact.

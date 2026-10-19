@@ -50,7 +50,7 @@ rounded = recurrence(x0 = ~4, x1 = ~(17/4))
 #     surprise.g: within 0; the interpreter's terms about 5.4e+16 from the exact ones, past the tolerance from 0
 #     surprise.k: within 0; the interpreter's terms about 8.9e-16 from the exact ones
 #   in float:
-#     surprise.g: 1 at 0, where the interpreter gives 0; ...
+#     surprise.g: 1 at 0, where the interpreter gives ~0; ...
 smooth(x_n) = {
     T(z) = (exp(z) - 1)/z
     T(z) | z == 0 = 1

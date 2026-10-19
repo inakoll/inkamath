@@ -25,7 +25,7 @@ nw(x)_k = nw(x)_(k-1) - F(nw(x)_(k-1))/dF(nw(x)_(k-1))
 ~-1.76929235
 
 >> lim nw(0)
-error: nw did not converge within 100 terms (last term 0)
+error: nw did not converge within 100 terms (last term 0, its steps in a ratio of 1); for a fixed count, read a term, as nw_100
 
 # A guard reading the limit: the root, where Newton finds one that F takes
 # to within a millionth of 0, and otherwise the guess. The guess is inexact
@@ -67,7 +67,7 @@ loc(x) = x
 h(x) | abs(F(lim nw(x))) < 1/10^6 = lim nw(x)
 
 >> h(0)
-error: nw did not converge within 100 terms (last term 0)
+error: nw did not converge within 100 terms (last term 0, its steps in a ratio of 1); for a fixed count, read a term, as nw_100
 
 # Read as the guard reads it: on the right of 'or', only where the left
 # has not decided; on the left, the guard does not hold whatever its right
@@ -165,7 +165,7 @@ tri(x) | x > 0 = 3
 ~3
 
 >> tri(-1)
-error: sw did not converge within 100 terms (last term 0)
+error: sw did not converge within 100 terms (last term 0, its steps in a ratio of 2); for a fixed count, read a term, as sw_100
 
 # The same in a function an outer guard calls: tri(1) answers, and tri(-1)
 # is refused in the limit's words, so the outer guard does not hold.
@@ -195,7 +195,7 @@ z_n | y_n < 0 = 1
 z_n = 2
 
 >> z_0
-error: nw did not converge within 100 terms (last term 0)
+error: nw did not converge within 100 terms (last term 0, its steps in a ratio of 1); for a fixed count, read a term, as nw_100
 
 >> t(x)_0 = 0
 t(x)_0 = 0
@@ -213,7 +213,7 @@ q(x) = 2
 ~1
 
 >> q(0)
-error: nw did not converge within 100 terms (last term 0)
+error: nw did not converge within 100 terms (last term 0, its steps in a ratio of 1); for a fixed count, read a term, as nw_100
 
 # A series without an upper bound is such a limit: its partial sums 2^(k+1)
 # - 1 from 2, and 2 - 2^-k from 1/2.
@@ -336,7 +336,7 @@ o_0 = ~1e308
 o_n = o_(n-1) + o_(n-1)
 
 >> lim o
-error: o did not converge within 100 terms (last term ~inf)
+error: o did not converge within 100 terms (last term ~inf); for a fixed count, read a term, as o_100
 
 >> p(x) | lim o > 0 = 1
 p(x) | lim o > 0 = 1
@@ -409,7 +409,7 @@ m = mpc()
 bare(x0 = 5/2) = { ... }
 
 >> bare().u_2
-error: qp did not converge within 100 terms (last term ~0.5)
+error: qp did not converge within 100 terms (last term ~0.5, its steps in a ratio of 1); for a fixed count, read a term, as qp_100
 
 # Newton's method within a step, its fallback the term before: c_n is 2 at
 # odd n, where Newton cycles from 0, and 1 at even n, where it converges at

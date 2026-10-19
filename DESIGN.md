@@ -3346,9 +3346,15 @@ that exploring seven domains asked of the interpreter, by how many asked.
   blocks, `[A, x_n*A; A]`, ended by a 0 stretched over 2x2, its value
   worked out with fractions. 24 lines of sources against 25 planned, all
   in `compile.hpp`: 15,608 lines in all.
-- **`tex` of `==` and a negative fraction**: `==` is set as `=`,
+- `[done]` **`tex` of `==` and a negative fraction**: `==` is set as `=`,
   `\frac{-1}{2}` should be `-\frac{1}{2}`; and one tensor literal refuses
-  a whole model's `tex`.
+  a whole model's `tex`. A negated numerator's sign is set before the
+  fraction, and a definition of a model `tex` cannot set is a comment where
+  it stands, `% T: tex cannot show ';;', which has no form on paper`, the
+  rest set. `==` stays `=`, as a paper sets an equality in a case; where
+  it is a value, C276 brackets it, `(j = k)`. In 16 lines of `latex.hpp`,
+  2 of comment, and 5 removed; tex.ink's `stack` holds it, and only
+  `layer`'s W and U moved.
 - **A limit exact at an exact fixed point**: k-means reaches `C_3 == C_4`
   exactly, yet `lim C` is inexact and `frac lim C` refused.
 - `[done]` **Matrix `==` and `<>` compiled**, refused as "a comparison of matrices".
@@ -3834,10 +3840,15 @@ that exploring seven domains asked of the interpreter, by how many asked.
   it, or name it in the header.
 - **`--check` names the parameters the target rounds**, so a parameter no
   float holds (Goldberg's 4.53) is not read as the step's own error.
-- **`--check` quotes an inexact term with its `~`**: its reports print the
+- `[done]` **`--check` quotes an inexact term with its `~`**: its reports print the
   interpreter's terms bare, "where the interpreter gives
   0.10000000000000001", where the REPL marks them since C240. The check
-  program would carry whether each term is exact beside its value.
+  program would carry whether each term is exact beside its value. It
+  does, cell by cell, an array written only where a cell is inexact:
+  "where the interpreter gives ~0.5". That example is exact, 1/10, and
+  stays bare. In 17 lines of `check.hpp` and 9 removed. Only that word
+  moved, in eight reports: `needled`, `outside`, and in float `steep`,
+  `peak`, `rounded`, `surprise`, `needle` and `naive`.
 - **Refuse a repetition that adds nothing, in every context**: an index name
   repeated in a size (`x_n[j<=2, j<=2]` in a model's input,
   `M[j<=n, j<=n]` in a signature), a parameter or default written twice, a
@@ -4823,9 +4834,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **`--check`'s remainder of a limit assumes linear convergence**: C36's
   step*r/(1-r) reads the ratio of two steps, pessimistic for Newton's
   quadratic convergence, whose last step is far below the one before.
-- **`tex` of a local definition**, refused as "tex cannot show a local
+- `[done]` **`tex` of a local definition**, refused as "tex cannot show a local
   definition": print it as written, `(z = …)`, as Robertson's Newton
-  iteration names its iterate.
+  iteration names its iterate. A local by cells, which a paper would not
+  write inline, is refused as one, "tex cannot show a local by cells". In
+  6 lines of `latex.hpp`, 1 of comment, and 2 removed; tex.ink's `nr` and
+  `lc` hold it, and no other answer moved.
 - **The first index where a condition holds**, as a query: where the
   explicit step's stability limit -2/lam passes h, found by bisecting
   terms by hand. Minor.
@@ -9605,9 +9619,14 @@ checked: what it asked of the compiler, each with its smallest change.
   `--check` over 3 steps is within 0 but for g.G, within 1.2e-17; from
   the exact one, within 1.4e-16, the interpreter's exact products before
   the first double.
-- **"these matrices have different sizes" names neither size**, and calls a
+- `[done]` **"these matrices have different sizes" names neither size**, and calls a
   tensor a matrix: name both sizes and suggest the cell form,
-  `T[b,t,j] + c[1,j]`. Broadcasting stays refused.
+  `T[b,t,j] + c[1,j]`. Broadcasting stays refused. "a 2x2x2 tensor and a
+  1x2 matrix have different sizes; write it by its cells, as T[b,i,j] +
+  c[1,j]", `A[i,j]` without a tensor, in the interpreter, grad and the
+  compiler, in 15 lines, 2 of comment, and 4 removed. Only that message moved, in
+  matrices.ink and tensor.ink; `compile_unmet` in `test/cli.cmake` holds
+  the compiler's.
 - **Layer norm by cells, a README example**: the exploration wrote five
   definitions, row statistics split out by hand; `transformer.ink` needs
   two. Deferred with the README.
@@ -12627,8 +12646,15 @@ pendulum (`test/data/ctms.ink`, `test/compile/pendloop.ink` and
   (below).
 - **`care` and `dare` beside `hinf`**: the sign of the Hamiltonian and the
   doubling algorithm, which each test now carries in five to seven lines.
-- **`lim`'s refusal for a limit that does not converge states the ratio it
-  measured** and suggests a fixed count instead.
+- `[done]` **`lim`'s refusal for a limit that does not converge states the ratio it
+  measured** and suggests a fixed count instead: "w did not converge
+  within 100 terms (last term ~1.63508193, its steps in a ratio of 0.98);
+  for a fixed count, read a term, as w_101", the ratio of its last two
+  steps, left out where it is no number. In 20 lines of `reference.hpp`,
+  2 of comment, and 6 removed; a sum's refusal and grad's are as they
+  were. Only that message moved: README's two, in approximated.ink,
+  robot_loop.ink, sequences.ink, tolerance.ink and unconverged.ink, and
+  `crawl`'s and `blast`'s reports.
 - **README teaches the zero-order hold by Van Loan's block** with a
   fixed-count series, and the Riccati equation by doubling.
 - On hold, by the owner: **a tutorial chapter from these two series**,
@@ -13017,7 +13043,11 @@ LQR), whose defects are C376 to C379, 49 lines, 19,288 to 19,337 at
   evidence for MANIFESTO's clock question.
 - **`lim_n` is unusable**, `lim` being reserved, and a file name must be
   letters then digits, so `use e2e` is refused.
-- **"No clause of x applies" names neither the instance nor the index.**
+- `[done]` **"No clause of x applies" names neither the instance nor the index.**
+  It names the term, `no clause of bot.g.z_301 applies`, in 6 lines and 5
+  removed. Only that message moved: in approximated.ink, eig.ink,
+  history.ink, inner.ink and optinputs.ink, and in `trim`'s and `held`'s
+  reports, which name `trim.r` and `held.r`.
 - `[done]` **MANIFESTO's *Data* line on an LCG needs a qualifier**: with glibc's
   constants, the products pass 2^53 and a run in doubles parts from the
   exact one at step 2.

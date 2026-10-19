@@ -25,7 +25,7 @@ moments = stats(x_n = 4096 + mod(7*n, 11)/10)
 # from n = 63, and inf over inf is NaN, the whole of A where d's root makes
 # the header test for NaN (C350); the shifted one holds:
 #
-#     peak.A[1,1]: nan at 63, where the interpreter gives 0.5
+#     peak.A[1,1]: nan at 63, where the interpreter gives ~0.5
 scores(d = 2) = {
     Q_n = [1 0; 0 1; 1 1]*n
     K = [1 1; 0 1; 1 0]
