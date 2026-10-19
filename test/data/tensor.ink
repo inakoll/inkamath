@@ -231,7 +231,7 @@ error: a tensor has at most three indices, and F names four
  7, 9]
 
 >> T + [1 2]
-error: these matrices have different sizes
+error: a 2x2x2 tensor and a 1x2 matrix have different sizes; write it by its cells, as T[b,i,j] + c[1,j]
 
 >> U = [1 2; 3 4;; 5 6; 7 8;; 9 10; 11 12]
 U = [1 2; 3 4;; 5 6; 7 8;; 9 10; 11 12]

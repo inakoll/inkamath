@@ -68,7 +68,7 @@ error: e.z_4 is absent
 est2(z_n) = { ... }
 
 >> est2(z_n = zd_n).x_1
-error: no clause of zd applies
+error: no clause of zd_1 applies
 
 # Left out of the instance, it is absent at every step.
 >> est().x_5
@@ -84,7 +84,7 @@ error: no clause of zd applies
 zp_n = zd_n + 1
 
 >> est(z_n = zp_n).x_4
-error: no clause of zd applies
+error: no clause of zd_4 applies
 
 # Below a sequence's base clauses is a term that is not there too: z_1 reads
 # wb_(-1), absent, and z_3 reads wb_1.

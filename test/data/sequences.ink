@@ -145,7 +145,7 @@ w_0=0
 w_n=w_(n-1)+1e-11
 
 >> lim w
-error: w did not converge within 100 terms (last term 1e-09)
+error: w did not converge within 100 terms (last term 1e-09, its steps in a ratio of 1); for a fixed count, read a term, as w_100
 
 # Nor is a repeated term a limit. The binary digits of 1/3 are 0101..., and
 # at each 0 a term repeats the one before: 'lim' stopped at the first repeat,
@@ -170,7 +170,7 @@ z_1=1
 z_n=z_(n-1)+1/n^2
 
 >> lim z
-error: z did not converge within 100 terms (last term ~1.63508193)
+error: z did not converge within 100 terms (last term ~1.63508193, its steps in a ratio of 0.98); for a fixed count, read a term, as z_101
 
 # Which is a mathematical problem and not a limitation of 'lim'. What is left
 # of the series after n terms is 1/n - 1/(2n^2) + 1/(6n^3) - ..., and a clause
@@ -315,7 +315,7 @@ k_n=k_(n-1)+1
 # A divergent sequence says so rather than handing back the term the loop
 # happened to stop on -- this used to be 35, the 30th term.
 >> lim k
-error: k did not converge within 100 terms (last term 105)
+error: k did not converge within 100 terms (last term 105, its steps in a ratio of 0.99); for a fixed count, read a term, as k_100
 
 # With no base clause there is no term to compare the first one against. It
 # used to be compared with a default-constructed zero, so a sequence whose
@@ -325,7 +325,7 @@ error: k did not converge within 100 terms (last term 105)
 d_n=n-1
 
 >> lim d
-error: d did not converge within 100 terms (last term 99)
+error: d did not converge within 100 terms (last term 99, its steps in a ratio of 0.99); for a fixed count, read a term, as d_100
 
 # A difference that is NaN answers false to every comparison, so it has to be
 # tested for convergence rather than against it. The NaN is inf-inf, reached
@@ -338,7 +338,7 @@ o_0=~1e308
 o_n=o_(n-1)+o_(n-1)
 
 >> lim o
-error: o did not converge within 100 terms (last term ~inf)
+error: o did not converge within 100 terms (last term ~inf); for a fixed count, read a term, as o_100
 
 # A recurrence has no implicit value below its lowest clause. The old fallback
 # was zero -- the additive identity, right for a sum and wrong for a product

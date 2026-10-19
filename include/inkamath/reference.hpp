@@ -11,6 +11,8 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <charconv>
+#include <cmath>
 #include <exception>
 #include <memory>
 #include <numeric>
@@ -677,7 +679,7 @@ public:
     // prelude's eig, eigg, hinf, dhinf and atan2 have guards it cannot word,
     // and so have hinfy, hinfg and hinfp, whose guard asks whether a number
     // was approximated, which no double answers wrongly (DESIGN.md).
-    std::string Unapplied(bool past) const {
+    std::string Unapplied(bool past, std::optional<int> index = std::nullopt) const {
         static const std::unordered_map<std::string, std::string> needs{
             {"eig", "eig needs B symmetric positive definite"},
             {"eigg", "eig needs a matrix whose eigenvalues are all real"},
@@ -692,8 +694,9 @@ public:
         const auto worded = home && !home->parent ? needs.find(reference_name_) : needs.end();
         static const std::set<std::string> sure{"hinfy", "hinfg", "hinfp"};
         const bool doubt = past && !(worded != needs.end() && sure.contains(reference_name_));
-        return (worded != needs.end() ? worded->second
-                                      : "no clause of " + reference_name_ + " applies") +
+        const std::string term = (home ? home->Qualified(reference_name_) : reference_name_) +
+                                 (index ? "_" + std::to_string(*index) : "");
+        return (worded != needs.end() ? worded->second : "no clause of " + term + " applies") +
                (doubt ? ", by a guard approximated past a thousand digits" : "");
     }
 
@@ -1280,7 +1283,7 @@ private:
             }
             if (values.ran) throw *values.ran;
             if (values.gone) throw *values.gone;
-            if (Guarded()) throw NoTerm(Unapplied(values.past), this);
+            if (Guarded()) throw NoTerm(Unapplied(values.past, index), this);
             throw NoTerm(reference_name_ + " has no clause for index " + std::to_string(index),
                          this);
         }
@@ -1545,17 +1548,29 @@ private:
             (void)convergence.Next(evaluate(index));
         }
 
-        T evaluation;
+        T evaluation, before, earlier;
         for (size_t term = 0; term < Convergence<T>::max_terms; ++term) {
-            evaluation = evaluate(++index);
+            earlier = std::exchange(before, std::exchange(evaluation, evaluate(++index)));
             if (convergence.Next(evaluation)) {
                 return convergence.Reached(evaluation);
             }
         }
-        throw Unconverged(reference_name_ + " did not converge within " +
-                              std::to_string(Convergence<T>::max_terms) + " terms (last term " +
-                              Convergence<T>::Last(evaluation) + ")",
-                          numeric_interface<T>::approximated(evaluation));
+        // The last step against the one before: 1 or more where the terms do
+        // not settle, just under 1 where they settle too slowly to tell.
+        using N                 = numeric_interface<T>;
+        const double      ratio = N::distance(evaluation, before) / N::distance(before, earlier);
+        char              text[16];
+        const std::string measured(
+            text,
+            std::to_chars(text, text + sizeof text, ratio, std::chars_format::general, 3).ptr);
+        throw Unconverged(
+            reference_name_ + " did not converge within " +
+                std::to_string(Convergence<T>::max_terms) + " terms (last term " +
+                Convergence<T>::Last(evaluation) +
+                (std::isfinite(ratio) ? ", its steps in a ratio of " + measured : "") +
+                "); for a fixed count, read a term, as " + reference_name_ + "_" +
+                std::to_string(index),
+            numeric_interface<T>::approximated(evaluation));
     }
 
     void SetIndex(const std::string& name, int index, ReferenceStack<T>& stack) const {

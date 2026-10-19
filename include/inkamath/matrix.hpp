@@ -593,6 +593,8 @@ private:
     {
         // Nearly every value is a single number: say so before anything general.
         if (IsScalar() && other.IsScalar()) return Matrix<T>(f(scalar_, other.scalar_));
+        if (const std::string unmet = Extent::Unmet(extent_, other.extent_); !unmet.empty())
+            throw std::runtime_error(unmet);
         if (IsTensor() || other.IsTensor())
             return Sliced(*this, other, [&f](const Matrix<T>& x, const Matrix<T>& y) {
                 return x.BinaryOp(y, f);
@@ -615,7 +617,6 @@ private:
                                [&value, &f](const T& cell) {return f(cell, value);});
                 return c;
             }
-            throw std::runtime_error("these matrices have different sizes");
         }
         Matrix<T> c(extent_);
         std::transform(data(), data() + extent_.count(), other.data(), c.data(), f);

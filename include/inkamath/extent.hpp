@@ -35,6 +35,15 @@ struct Extent
                std::to_string(cols);
     }
     std::string Described() const { return toString() + (slices ? " tensor" : " matrix"); }
+    // Why arithmetic cell by cell refuses two sizes, empty where one stretches
+    // over the other: a single value over anything, a matrix over every slice.
+    static std::string Unmet(Extent a, Extent b) {
+        if ((a.rows == b.rows && a.cols == b.cols) || a.rows * a.cols == 1 || b.rows * b.cols == 1)
+            return "";
+        return "a " + a.Described() + " and a " + b.Described() +
+               " have different sizes; write it by its cells, as " +
+               (a.slices || b.slices ? "T[b,i,j]" : "A[i,j]") + " + c[1,j]";
+    }
     std::string Called() const {
         return count() == 1 && !slices ? "a single value" : "a " + Described();
     }

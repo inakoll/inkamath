@@ -159,7 +159,7 @@ bot = loop()
 
 # Where the fix is absent, the term is not there, and the filter's z with it.
 >> bot.g.z_301
-error: no clause of z applies
+error: no clause of bot.g.z_301 applies
 
 >> bot.f.z_301
 error: bot.f.z_301 is absent

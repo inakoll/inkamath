@@ -90,7 +90,7 @@ c_0 = 10^17
 c_k = c_(k-1) + 1
 
 >> lim c
-error: c did not converge within 100 terms (last term 100000000000000100)
+error: c did not converge within 100 terms (last term 100000000000000100, its steps in a ratio of 1); for a fixed count, read a term, as c_100
 
 >> sum_(k=1) 1/k^2
 error: the sum did not converge within 100 terms (last partial sum ~1.6349839)

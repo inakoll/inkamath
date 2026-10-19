@@ -72,7 +72,7 @@ late(x_n) = { ... }
 1
 
 >> late(x_n = s_n).c_0
-error: no clause of s applies
+error: no clause of s_-1 applies
 
 >> late(x_n = s_n).c_(-1)
 0
