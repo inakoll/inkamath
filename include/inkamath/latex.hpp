@@ -432,8 +432,12 @@ private:
             if (call->m_e2()) out += "_" + Braced(Of(*call->m_e2(), true).text);
             return {out};
         }
-        if (dynamic_cast<const EqualExpression<T>*>(&e))
-            throw std::runtime_error("tex cannot show a local definition");
+        // A local as written, '(z = x + 1)'.
+        if (const auto* local = dynamic_cast<const EqualExpression<T>*>(&e)) {
+            if (!local->m_e1()->Children().empty())
+                throw std::runtime_error("tex cannot show a local by cells");
+            return {"(" + Name(local->Name()) + " = " + Of(*local->m_e2()).text + ")"};
+        }
         return {Name(e.Name())};
     }
 };

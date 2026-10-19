@@ -4834,9 +4834,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **`--check`'s remainder of a limit assumes linear convergence**: C36's
   step*r/(1-r) reads the ratio of two steps, pessimistic for Newton's
   quadratic convergence, whose last step is far below the one before.
-- **`tex` of a local definition**, refused as "tex cannot show a local
+- `[done]` **`tex` of a local definition**, refused as "tex cannot show a local
   definition": print it as written, `(z = …)`, as Robertson's Newton
-  iteration names its iterate.
+  iteration names its iterate. A local by cells, which a paper would not
+  write inline, is refused as one, "tex cannot show a local by cells". In
+  6 lines of `latex.hpp`, 1 of comment, and 2 removed; tex.ink's `nr` and
+  `lc` hold it, and no other answer moved.
 - **The first index where a condition holds**, as a query: where the
   explicit step's stability limit -2/lam passes h, found by bisecting
   terms by hand. Minor.

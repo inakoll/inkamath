@@ -123,6 +123,19 @@ outer(a = 1) = { ... }
 >> tex ?outer
 error: tex cannot show a model inside a model yet
 
+# A local as written, as Robertson's Newton iteration names its iterate.
+>> nr(x) = (z = x - 1/2)*z + z
+nr(x) = (z = x - 1/2)*z + z
+
+>> tex ?nr
+\operatorname{nr}(x) = (z = x - \frac{1}{2})\,z + z
+
+>> lc(x) = (M[j<=2] = j*x) + M
+lc(x) = (M[j<=2] = j*x) + M
+
+>> tex ?lc
+error: tex cannot show a local by cells
+
 # A definition it cannot set is a comment where it stands, and the rest of
 # the model is set.
 >> stack() = {
