@@ -3598,8 +3598,133 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **A cumulative sum compiled as an accumulator**, `sum_(t=1)^n e(t)`:
   refused as "a sum whose bounds are not constants", where a regret or a
   running loss is exactly that (Reddi et al. 2018).
-- **The forward form `x_(t+1) = ...`**: refused as "t is not defined", so a
-  paper's update must be shifted to t-1 by hand, where transcriptions slip.
+- **The forward form, `x_(t+1) = f(x_t, u_t)`.** Refused as "t is not
+  defined", so a paper's update is shifted to t-1 by hand, where
+  transcriptions slip: Nesterov's momentum as Sutskever, Martens, Dahl and
+  Hinton 2013 write it (section 2, eqs. (3) and (4)), the doubling of Chu,
+  Fan, Lin and Wang 2004 that `test/compile/blocks.ink` quotes forward in
+  its comment and writes shifted below it, a Kalman filter's correction at
+  k + 1, and README's own plant, `x_n = x_(n-1) + dt*(u_(n-1) - x_(n-1))`,
+  the explicit Euler step `x_(n+1) = x_n + dt*(u_n - x_n)` moved by hand.
+  Worse, where the name has a value the line is taken without a word: with
+  `k = 3`, `x_(k+1) = A*x_k` is the base clause x_4, reading the global k.
+
+  Decided:
+  - **The form**: an index written as a name plus a whole number from 1,
+    written as one, `x_(t+1)`, `F_(n+2)`, `nw(x)_(k+1)`, makes a clause
+    for every index, as `x_t` does, whatever the name holds. That moves
+    the line above from a base clause to a recurrence; no golden, README
+    example or story defines a clause so. A base clause at a computed index
+    stays, `w_(2*t)` with t defined. Any other index that reads a name
+    nothing defines, and the name less a number whatever it holds, is
+    refused in one sentence, `a clause is written at a whole number, as
+    y_0, at its index, as y_n, or ahead of it, as y_(n+1), not at y_(n-1)`,
+    its examples taken from the line. One spelling: `y_(1+n)` says what
+    `y_(n+1)` does, `y_(n+0)` what `y_n` does, and `y_(n-1)` a step back
+    what `y_n` says, which no paper writes.
+  - **Read as its shift, once, where the clause is defined**: `x_(t+k) = E`
+    is `x_t = E` with t read as t - k in E, in the guard, and in a cell's
+    bounds and guard. Where the index is the left of a whole number written
+    as one and added or taken, or a whole number times it, `a*t`, the
+    constants fold as the shift written by hand writes them: `x_t` read in
+    `x_(t+1) = ...` is `x_(t-1)`, `v_(t+1)` is `v_t`, `x_(2*t + 1)` is
+    `x_(2*t - 1)`, `floor(t/2)` is `floor((t - 1)/2)`; anywhere else it is
+    `(t - k)`, `(t - 1)*h`. What is stored, evaluated, remembered, filled by
+    its stride, differentiated, compiled and checked is then the shifted
+    clause, and every answer is the shift's: `th_(t+1) = th_t + v_(t+1)`
+    reads the velocity the same step computes, and `u_t` in `x_(t+1) =
+    A*x_t + B*u_t` the input one step behind x, as on the page. The fold is
+    not cosmetic: the loop check follows reads at the clause's own index by
+    their shape, and the compiler reads lags, samples and holds by theirs.
+  - **At every index**, as `x_t = E` holds: a base clause wins, so with
+    `x_0` given, x_(t+1) = f(x_t) gives x_1 on, as a paper's t >= 0 does;
+    without one, `x_(t+1) = 5` is 5 at 0 too, and `c_(n+1) = x_n` in a
+    model reads x_(-1) at 0, which a history or a base clause answers.
+    Compiled, it is refused as its shift is, `cannot compile c: c_0 reads
+    x_-1, before the stream, where x has no history`.
+  - **Several clauses**: base clauses, guards, cells, parameters, `lim` and
+    inputs, optional ones among them, as for `x_t`. Written again, a clause
+    replaces itself where it stands, a guarded one named by its left side
+    as written. A definition's clauses for every index are written at one
+    offset, so that its cases have the one left side `tex` sets them
+    under: `c is written c_(n+1), so a clause cannot be written c_n; write
+    'clear c' first`, and the other way round. The one general clause
+    written again at another offset is replaced, as any clause written
+    again is. Index names may differ between clauses, as they may now.
+  - **Refused, as adding nothing a paper writes**: a clause reading its own
+    term after its left side, `r_(n+1) reads r_(n+2), a term after it`,
+    whose shift is a recursion from the tip, written on paper at its index,
+    `P_k = f(P_(k+1))`; one reading its own left side is the loop its
+    shift is, `a loop without a delay: r_(n+1) reads itself`, unguarded as
+    now. A clause binding its index again, by a sum's or a maximum's
+    index, a grad's name, a local or an argument's input, `n is the index
+    of b_(n+1), so the clause cannot bind it again`, since the shift would
+    read the bound name a step back; `x_t` with a sum over t stays
+    accepted, for *Refuse a repetition* to take. A history written forward,
+    `x is an input of held, so its history is written at its index, as
+    x_n`: it says what an input was before the stream, no recurrence. An
+    input in a signature is refused so already.
+  - **Shown as written**: `?` shows the clause as typed, as now; `tex ?x`
+    sets `x_{t+1} = ...`, its right side and guard as written; a refusal
+    quoting the clause or a read in it quotes them as written: the loop
+    check's `r_(n+1)`, the optional input's `y reads z_n, an optional
+    input of bad, ...` where the shift reads z_(n-1), and a cell of every
+    term's two. A refusal naming a term by its index, `x has no clause for
+    index 3`, `c_0 reads x_-1`, names the same term either way. `?x_(t+1)`
+    stays refused as `?x_n` is: one clause is shown by a constant index.
+  - **Compiled and checked unchanged**: a model written forward compiles to
+    the header its shift written by hand gives, byte for byte but for the
+    name and where its comments wrap, and checks to the same report. The
+    step at n computes x_n, from u_(n-1), and the header says what it says
+    now. README section 4 gains the form beside its recurrence, and nothing
+    else moves.
+
+  Rejected:
+  - **A definition in its own right**, the offset kept and the index bound
+    to the term's less k wherever a term is computed: 39 places read a
+    general clause's index name, 17 of them in the compiler, and any one
+    missed answers wrongly where the shift answers right. The shift is one
+    place.
+  - **A step computing x_(n+1) from u_n**, as the page reads: one model
+    would have two steps by how it is written, and its header and report
+    would move.
+  - **The clause holding from k on**, the paper's t >= 0: no general clause
+    has a range, so this would be a guard nobody wrote, tested at every
+    compiled step; a paper's x_0 is a base clause, which wins.
+  - **Any constant k**, `x_(t+d)`: read where the clause is defined, as a
+    base clause's index is, d would be frozen there, and a model's
+    parameter is not bound then. A paper writes the number.
+  - **The form only where the name has no value**, a base clause where it
+    has, as now: one line would be a recurrence or a term by what a global
+    holds, and t is a time step's usual name.
+  - **`tex` and refusals showing the shift**: `tex` is read against the
+    page, and a refusal quoting a clause nobody wrote sends its reader
+    looking for it.
+  - **Folding only `t + c`**: `y_(m+1) = y_m + x_(2*m)` would reach the
+    compiler as `x_(2*(m - 1))`, refused as "an index other than a whole
+    multiple of m plus a constant", false of what was written.
+
+  About 65 lines of sources, all in the interpreter, where a line is parsed
+  and a clause joins: the form read and the other indices refused, 12; the
+  shift, the index read as t - k where the parser reads a name, folded
+  where it builds a sum and a product, 18; the four refusals, 20; as
+  written, the right side and guard kept on the clause for `tex` and for
+  the optional input's check, `tex`'s left side and three messages, 16.
+  None in the compiler or the check. 20,416 lines in all at 5186f55, by
+  `wc -l include/inkamath/*.hpp src/*`; past 100 the implementation stops
+  and reports.
+
+  Specified in `test/data/spec/forward.ink`, every value by hand or by
+  Python's fractions, and each answer seen to be its shift's today: README
+  section 4's sequence, factorial, Newton's method and delay line, and
+  section 5's plant loop and optional input, written forward; Fibonacci at
+  k = 2; Smith's doubling; Nesterov's momentum; a decimating accumulator;
+  a history; the refusals and what is shown. And in
+  `test/compile/forward.ink`, held by `cli.cmake`'s spec part, skipped
+  while the form is refused: README's plant, Nesterov's momentum, a
+  difference equation at k = 2, the accumulator, a hold and `kalman.ink`'s
+  filter, each beside its shift by hand, to the same header and report,
+  and the delay refused as its shift is.
 - **`--check` says how far a term parts**, not only where it first does: the
   largest difference and where, as MANIFESTO asks of how a difference grows.
 - `[done]` **`atan`, `atan2`, `asin`, `acos` and `acosh` in the prelude.** Kahan's
