@@ -3346,9 +3346,15 @@ that exploring seven domains asked of the interpreter, by how many asked.
   blocks, `[A, x_n*A; A]`, ended by a 0 stretched over 2x2, its value
   worked out with fractions. 24 lines of sources against 25 planned, all
   in `compile.hpp`: 15,608 lines in all.
-- **`tex` of `==` and a negative fraction**: `==` is set as `=`,
+- `[done]` **`tex` of `==` and a negative fraction**: `==` is set as `=`,
   `\frac{-1}{2}` should be `-\frac{1}{2}`; and one tensor literal refuses
-  a whole model's `tex`.
+  a whole model's `tex`. A negated numerator's sign is set before the
+  fraction, and a definition of a model `tex` cannot set is a comment where
+  it stands, `% T: tex cannot show ';;', which has no form on paper`, the
+  rest set. `==` stays `=`, as a paper sets an equality in a case; where
+  it is a value, C276 brackets it, `(j = k)`. In 16 lines of `latex.hpp`,
+  2 of comment, and 5 removed; tex.ink's `stack` holds it, and only
+  `layer`'s W and U moved.
 - **A limit exact at an exact fixed point**: k-means reaches `C_3 == C_4`
   exactly, yet `lim C` is inexact and `frac lim C` refused.
 - `[done]` **Matrix `==` and `<>` compiled**, refused as "a comparison of matrices".

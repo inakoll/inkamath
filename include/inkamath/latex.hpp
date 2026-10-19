@@ -98,7 +98,13 @@ public:
             if (statement.model)
                 throw std::runtime_error("tex cannot show a model inside a model yet");
             if (!done.insert(statement.name).second) continue;
-            const std::string text = Definition(*instance.names.at(statement.name));
+            // One it cannot set says so where it stands, and the rest is set.
+            std::string text;
+            try {
+                text = Definition(*instance.names.at(statement.name));
+            } catch (const std::runtime_error& why) {
+                text = "% " + statement.name + ": " + why.what();
+            }
             for (std::size_t start = 0; start < text.size();) {
                 const std::size_t end = std::min(text.find('\n', start), text.size());
                 out += "\n    " + text.substr(start, end - start);
@@ -314,10 +320,15 @@ private:
             const bool        digit = std::isdigit(static_cast<unsigned char>(right.front()));
             return {left + (digit ? " \\cdot " : "\\,") + right, product};
         }
-        // Parenthesised under a power, a factorial or an index, as on paper.
-        if (const auto* ratio = dynamic_cast<const DivExpression<T>*>(&e))
-            return {"\\frac{" + Of(*ratio->m_e1()).text + "}{" + Of(*ratio->m_e2()).text + "}",
-                    Level::power};
+        // Parenthesised under a power, a factorial or an index, as on paper,
+        // and a negated numerator's sign set before it, '-\frac{1}{2}'.
+        if (const auto* ratio = dynamic_cast<const DivExpression<T>*>(&e)) {
+            const Text        top  = Of(*ratio->m_e1());
+            const bool        sign = top.level == unary;
+            const std::string frac =
+                "\\frac{" + top.text.substr(sign) + "}{" + Of(*ratio->m_e2()).text + "}";
+            return {(sign ? "-" : "") + frac, sign ? unary : Level::power};
+        }
         if (const auto* power = dynamic_cast<const PowExpression<T>*>(&e)) {
             return {
                 Wrapped(Of(*power->m_e1(), tight), primary) + "^" + Braced(Of(*power->m_e2()).text),
