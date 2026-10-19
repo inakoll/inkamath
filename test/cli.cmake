@@ -280,6 +280,13 @@ set(stderr "")
 set(exit 1)
 check(compile_refusals)
 
+# Two sizes neither stretches over are named, and the cell form suggested.
+file(WRITE "${OUT}/unmet.ink" "y_n = [n n] + [1 2 3]\n")
+set(args --compile unmet.ink)
+set(stdout "cannot compile y: a 1x2 matrix and a 1x3 matrix have different sizes; write it by its cells, as A[i,j] + c[1,j]\n")
+set(exit 1)
+check(compile_unmet)
+
 # A factorial of a constant is one, as a series is written.
 file(WRITE "${OUT}/series.ink" "x_n = n/4\ny_n = sum_(q=0)^4 x_n^q/!q\n")
 set(args --compile series.ink -o series.h)

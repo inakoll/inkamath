@@ -1947,7 +1947,7 @@ private:
         const std::size_t slices = Slices(left, right);
         if (!left.Scalar() && !right.Scalar() &&
             (left.size.rows != right.size.rows || left.size.cols != right.size.cols))
-            throw Mismatched(left, right, "these matrices have different sizes");
+            throw Mismatched(left, right, Extent::Unmet(left.size, right.size));
         Code code;
         code.size        = left.Scalar() ? right.size : left.size;
         code.size.slices = slices;
@@ -1958,7 +1958,7 @@ private:
 
     // The interpreter takes each slice of a tensor of single values as one
     // value over a matrix, which the compiler does not yet.
-    static Reason Mismatched(const Code& a, const Code& b, const char* words) {
+    static Reason Mismatched(const Code& a, const Code& b, const std::string& words) {
         for (const Code* c : {&a, &b})
             if (c->size.slices && c->size.count() == c->size.slices)
                 return Reason("a tensor whose slices are single values met by a matrix, for now");

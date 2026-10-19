@@ -500,7 +500,7 @@ error: a matrix cannot be an exponent
 # capitalised, punctuated, newline-terminated, and one of them misspelled
 # 'assigmentation' (DESIGN.md, D13).
 >> [1 2]+[1 2 3]
-error: these matrices have different sizes
+error: a 1x2 matrix and a 1x3 matrix have different sizes; write it by its cells, as A[i,j] + c[1,j]
 
 >> [1 2;3 4]*[1 2 3]
 error: a matrix product needs as many columns on the left as rows on the right

@@ -438,10 +438,11 @@ private:
 
     // Cell by cell, as '/' divides.
     static T Cellwise(const T& a, const T& b) {
+        if (const std::string unmet = Extent::Unmet(a.Size(), b.Size()); !unmet.empty())
+            throw std::runtime_error(unmet);
         if (a.IsTensor() || b.IsTensor())
             return T::Sliced(a, b, [](const T& x, const T& y) { return Cellwise(x, y); });
         if (a.IsScalar() || b.IsScalar()) return a * b;
-        if (a.Size() != b.Size()) throw std::runtime_error("these matrices have different sizes");
         T c(a.Size());
         for (std::size_t k = 0; k < a.Size().count(); ++k) c.data()[k] = a.data()[k] * b.data()[k];
         return c;

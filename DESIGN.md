@@ -9605,9 +9605,14 @@ checked: what it asked of the compiler, each with its smallest change.
   `--check` over 3 steps is within 0 but for g.G, within 1.2e-17; from
   the exact one, within 1.4e-16, the interpreter's exact products before
   the first double.
-- **"these matrices have different sizes" names neither size**, and calls a
+- `[done]` **"these matrices have different sizes" names neither size**, and calls a
   tensor a matrix: name both sizes and suggest the cell form,
-  `T[b,t,j] + c[1,j]`. Broadcasting stays refused.
+  `T[b,t,j] + c[1,j]`. Broadcasting stays refused. "a 2x2x2 tensor and a
+  1x2 matrix have different sizes; write it by its cells, as T[b,i,j] +
+  c[1,j]", `A[i,j]` without a tensor, in the interpreter, grad and the
+  compiler, in 15 lines, 2 of comment, and 4 removed. Only that message moved, in
+  matrices.ink and tensor.ink; `compile_unmet` in `test/cli.cmake` holds
+  the compiler's.
 - **Layer norm by cells, a README example**: the exploration wrote five
   definitions, row statistics split out by hand; `transformer.ink` needs
   two. Deferred with the README.
