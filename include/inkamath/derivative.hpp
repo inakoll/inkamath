@@ -952,7 +952,7 @@ private:
                 stack_.BindValue(general->parameters.index_name(), T(index));
                 return parts.Eval(general->expression);
             }
-            if (guarded) throw std::runtime_error(definition.Unapplied(parts.past));
+            if (guarded) throw std::runtime_error(definition.Unapplied(parts.past, index));
             throw std::runtime_error(name + " has no clause for index " + std::to_string(index));
         }
         if (plain) return parts.Eval(plain->expression);

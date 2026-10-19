@@ -61,7 +61,7 @@
 #     lap.y: within <x>
 #
 #     trim: 100 steps from 0, against exact values
-#     trim.y: no value compared, the step NaN where the interpreter gives none, as at 0: no clause of r applies
+#     trim.y: no value compared, the step NaN where the interpreter gives none, as at 0: no clause of trim.r applies
 #
 #     any: 100 steps from 0, against exact values
 #     any.y: within 0
@@ -83,7 +83,7 @@
 #     cell.p: within 0
 #
 #     held: 100 steps from 0, against exact values
-#     held.d: no value compared, the step NaN where the interpreter gives none, as at 0: no clause of r applies
+#     held.d: no value compared, the step NaN where the interpreter gives none, as at 0: no clause of held.r applies
 #
 # Each model compiles as now, nothing on stderr, and its step decides so,
 # 'inkamath --compile nan.ink <model> -o <model>.h' writing, for level,

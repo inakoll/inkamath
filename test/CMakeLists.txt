@@ -855,13 +855,13 @@ set_tests_properties(check_pair_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_lap_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^lap: 100 steps from 0, against exact values until 0 and inexact ones from there\nlap\\.y: within [0-9.e+-]+\\; the interpreter's terms about 5\\.8e-11 from the exact ones\n$")
 set_tests_properties(check_trim_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^trim: 100 steps from 0, against exact values\ntrim\\.y: no value compared, the step NaN where the interpreter gives none, as at 0: no clause of r applies\n$")
+    "^trim: 100 steps from 0, against exact values\ntrim\\.y: no value compared, the step NaN where the interpreter gives none, as at 0: no clause of trim\\.r applies\n$")
 set_tests_properties(check_any_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^any: 100 steps from 0, against exact values\nany\\.y: within 0\nany\\.o: within 0\n$")
 set_tests_properties(check_cell_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^cell: 100 steps from 0, against exact values\ncell\\.b: within 0\ncell\\.c: within 0\ncell\\.m: within 0\ncell\\.p: within 0\n$")
 set_tests_properties(check_held_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^held: 100 steps from 0, against exact values\nheld\\.d: no value compared, the step NaN where the interpreter gives none, as at 0: no clause of r applies\n$")
+    "^held: 100 steps from 0, against exact values\nheld\\.d: no value compared, the step NaN where the interpreter gives none, as at 0: no clause of held\\.r applies\n$")
 set_tests_properties(check_idle_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^idle: 100 steps from 0, against exact values\nidle\\.g: within 0\nidle\\.h: within 0\nidle\\.k: within 0\nidle\\.l: within 0\nidle\\.y: within 0\n$")
 set_tests_properties(check_imag_report PROPERTIES PASS_REGULAR_EXPRESSION

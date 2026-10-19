@@ -677,7 +677,7 @@ public:
     // prelude's eig, eigg, hinf, dhinf and atan2 have guards it cannot word,
     // and so have hinfy, hinfg and hinfp, whose guard asks whether a number
     // was approximated, which no double answers wrongly (DESIGN.md).
-    std::string Unapplied(bool past) const {
+    std::string Unapplied(bool past, std::optional<int> index = std::nullopt) const {
         static const std::unordered_map<std::string, std::string> needs{
             {"eig", "eig needs B symmetric positive definite"},
             {"eigg", "eig needs a matrix whose eigenvalues are all real"},
@@ -692,8 +692,9 @@ public:
         const auto worded = home && !home->parent ? needs.find(reference_name_) : needs.end();
         static const std::set<std::string> sure{"hinfy", "hinfg", "hinfp"};
         const bool doubt = past && !(worded != needs.end() && sure.contains(reference_name_));
-        return (worded != needs.end() ? worded->second
-                                      : "no clause of " + reference_name_ + " applies") +
+        const std::string term = (home ? home->Qualified(reference_name_) : reference_name_) +
+                                 (index ? "_" + std::to_string(*index) : "");
+        return (worded != needs.end() ? worded->second : "no clause of " + term + " applies") +
                (doubt ? ", by a guard approximated past a thousand digits" : "");
     }
 
@@ -1280,7 +1281,7 @@ private:
             }
             if (values.ran) throw *values.ran;
             if (values.gone) throw *values.gone;
-            if (Guarded()) throw NoTerm(Unapplied(values.past), this);
+            if (Guarded()) throw NoTerm(Unapplied(values.past, index), this);
             throw NoTerm(reference_name_ + " has no clause for index " + std::to_string(index),
                          this);
         }

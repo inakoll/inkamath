@@ -207,7 +207,7 @@ hs_n | rt_n > c = n
 11
 
 >> hs_20
-error: no clause of hs applies, by a guard approximated past a thousand digits
+error: no clause of hs_20 applies, by a guard approximated past a thousand digits
 
 # Cell by cell, each cell by the guards it read.
 >> M[j<=2, k<=2] = j

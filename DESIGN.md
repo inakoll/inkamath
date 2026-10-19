@@ -13017,7 +13017,11 @@ LQR), whose defects are C376 to C379, 49 lines, 19,288 to 19,337 at
   evidence for MANIFESTO's clock question.
 - **`lim_n` is unusable**, `lim` being reserved, and a file name must be
   letters then digits, so `use e2e` is refused.
-- **"No clause of x applies" names neither the instance nor the index.**
+- `[done]` **"No clause of x applies" names neither the instance nor the index.**
+  It names the term, `no clause of bot.g.z_301 applies`, in 6 lines and 5
+  removed. Only that message moved: in approximated.ink, eig.ink,
+  history.ink, inner.ink and optinputs.ink, and in `trim`'s and `held`'s
+  reports, which name `trim.r` and `held.r`.
 - `[done]` **MANIFESTO's *Data* line on an LCG needs a qualifier**: with glibc's
   constants, the products pass 2^53 and a run in doubles parts from the
   exact one at step 2.
