@@ -186,7 +186,7 @@ W_0 = 0
 W_n = W_(n-1) + rt_20
 
 >> lim W
-error: W did not converge within 100 terms (last term ~141.421356, approximated past a thousand digits)
+error: W did not converge within 100 terms (last term ~141.421356, approximated past a thousand digits, its steps in a ratio of 0.99); for a fixed count, read a term, as W_100
 
 >> sum_(k=1) rt_20
 error: the sum did not converge within 100 terms (last partial sum ~141.421356, approximated past a thousand digits)

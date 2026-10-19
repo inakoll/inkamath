@@ -1136,7 +1136,7 @@ and reports non-convergence rather than handing back the term it stopped on:
 u_n=2*n
 
 >> lim u
-error: u did not converge within 100 terms (last term 200)
+error: u did not converge within 100 terms (last term 200, its steps in a ratio of 0.99); for a fixed count, read a term, as u_100
 ```
 
 Below 1 the 1e-10 is absolute, so for a cell far below 1, where it settles
@@ -1158,7 +1158,7 @@ w_1=1
 w_n=w_(n-1)+1/n^2
 
 >> lim w
-error: w did not converge within 100 terms (last term ~1.63508193)
+error: w did not converge within 100 terms (last term ~1.63508193, its steps in a ratio of 0.98); for a fixed count, read a term, as w_101
 ```
 
 That is a mathematical problem, not a limitation of `lim`, and the language is

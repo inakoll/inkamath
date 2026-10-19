@@ -11,6 +11,8 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <charconv>
+#include <cmath>
 #include <exception>
 #include <memory>
 #include <numeric>
@@ -1546,17 +1548,29 @@ private:
             (void)convergence.Next(evaluate(index));
         }
 
-        T evaluation;
+        T evaluation, before, earlier;
         for (size_t term = 0; term < Convergence<T>::max_terms; ++term) {
-            evaluation = evaluate(++index);
+            earlier = std::exchange(before, std::exchange(evaluation, evaluate(++index)));
             if (convergence.Next(evaluation)) {
                 return convergence.Reached(evaluation);
             }
         }
-        throw Unconverged(reference_name_ + " did not converge within " +
-                              std::to_string(Convergence<T>::max_terms) + " terms (last term " +
-                              Convergence<T>::Last(evaluation) + ")",
-                          numeric_interface<T>::approximated(evaluation));
+        // The last step against the one before: 1 or more where the terms do
+        // not settle, just under 1 where they settle too slowly to tell.
+        using N                 = numeric_interface<T>;
+        const double      ratio = N::distance(evaluation, before) / N::distance(before, earlier);
+        char              text[16];
+        const std::string measured(
+            text,
+            std::to_chars(text, text + sizeof text, ratio, std::chars_format::general, 3).ptr);
+        throw Unconverged(
+            reference_name_ + " did not converge within " +
+                std::to_string(Convergence<T>::max_terms) + " terms (last term " +
+                Convergence<T>::Last(evaluation) +
+                (std::isfinite(ratio) ? ", its steps in a ratio of " + measured : "") +
+                "); for a fixed count, read a term, as " + reference_name_ + "_" +
+                std::to_string(index),
+            numeric_interface<T>::approximated(evaluation));
     }
 
     void SetIndex(const std::string& name, int index, ReferenceStack<T>& stack) const {

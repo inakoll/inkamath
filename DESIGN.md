@@ -12632,8 +12632,15 @@ pendulum (`test/data/ctms.ink`, `test/compile/pendloop.ink` and
   (below).
 - **`care` and `dare` beside `hinf`**: the sign of the Hamiltonian and the
   doubling algorithm, which each test now carries in five to seven lines.
-- **`lim`'s refusal for a limit that does not converge states the ratio it
-  measured** and suggests a fixed count instead.
+- `[done]` **`lim`'s refusal for a limit that does not converge states the ratio it
+  measured** and suggests a fixed count instead: "w did not converge
+  within 100 terms (last term ~1.63508193, its steps in a ratio of 0.98);
+  for a fixed count, read a term, as w_101", the ratio of its last two
+  steps, left out where it is no number. In 20 lines of `reference.hpp`,
+  2 of comment, and 6 removed; a sum's refusal and grad's are as they
+  were. Only that message moved: README's two, in approximated.ink,
+  robot_loop.ink, sequences.ink, tolerance.ink and unconverged.ink, and
+  `crawl`'s and `blast`'s reports.
 - **README teaches the zero-order hold by Van Loan's block** with a
   fixed-count series, and the Riccati equation by doubling.
 - On hold, by the owner: **a tutorial chapter from these two series**,

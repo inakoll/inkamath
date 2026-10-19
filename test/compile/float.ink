@@ -76,7 +76,7 @@
 #
 #     crawl: 100 steps from 0 in float, against exact values
 #     crawl.s: within 0, 0 units of a float
-#     crawl.y: 100000016 at 0, where the interpreter gives none: s did not converge within 100 terms (last term 100000800)
+#     crawl.y: 100000016 at 0, where the interpreter gives none: s did not converge within 100 terms (last term 100000800, its steps in a ratio of 1); for a fixed count, read a term, as s_100
 #
 # 'fan' of inputs.ink, its input a pointer to floats:
 #
@@ -154,8 +154,8 @@
 # every step, as the interpreter does not converge and a double header says:
 #
 #     blast: 100 steps from 0 in float, against exact values
-#     blast.y: no value compared, the step NaN where the interpreter gives none, as at 0: p did not converge within 100 terms (last term <x>)
-#     blast.z: no value compared, the step NaN where the interpreter gives none, as at 0: v did not converge within 100 terms (last term <v>)
+#     blast.y: no value compared, the step NaN where the interpreter gives none, as at 0: p did not converge within 100 terms (last term <x>, its steps in a ratio of 1); for a fixed count, read a term, as p_100
+#     blast.z: no value compared, the step NaN where the interpreter gives none, as at 0: v did not converge within 100 terms (last term <v>, its steps in a ratio of 1); for a fixed count, read a term, as v_100
 #
 # The header changes only its words for numbers. 'dot' of inputs.ink, by
 # name:
