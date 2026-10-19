@@ -68,6 +68,74 @@ endfunction()
 # Read by cases in every part.
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
+# Specified, not yet built (DESIGN.md, the forward form): each model of
+# compile/forward.ink compiled to its shift's header but for the name, an
+# instance of each checked to its shift's report, and the delay refused as
+# its shift is. Skipped while the forward form is refused as today, and
+# only then.
+if(PART STREQUAL "spec")
+    file(MAKE_DIRECTORY "${OUT}")
+    set(story "${CMAKE_CURRENT_LIST_DIR}/compile/forward.ink")
+    execute_process(COMMAND "${EXE}" --compile "${story}" plant -o plant.h
+                    WORKING_DIRECTORY "${OUT}" OUTPUT_VARIABLE out ERROR_VARIABLE err
+                    RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
+    if("${out}${code}" STREQUAL "1" AND "${err}" STREQUAL "inkamath: n is not defined\n")
+        message("compile_forward: the forward form refused, as today")
+        return()
+    endif()
+    foreach(model IN ITEMS plant nesterov second acc held tracker)
+        foreach(written IN ITEMS ${model} shifted${model})
+            set(args --compile ${story} ${written} -o ${written}.h)
+            check(compile_forward_${written})
+        endforeach()
+        strict(compile_forward_${model} ${model}.h)
+        file(READ "${OUT}/${model}.h" forward)
+        file(READ "${OUT}/shifted${model}.h" shifted)
+        string(TOUPPER "${model}" upper)
+        string(REPLACE "shifted${model}" "${model}" shifted "${shifted}")
+        string(REPLACE "SHIFTED${upper}" "${upper}" shifted "${shifted}")
+        # The name's length moves where a comment wraps.
+        foreach(header forward shifted)
+            string(REGEX REPLACE "\n \\*" "\n" ${header} "${${header}}")
+            string(REGEX REPLACE "[ \n]+" " " ${header} "${${header}}")
+        endforeach()
+        if(NOT forward STREQUAL shifted)
+            message(SEND_ERROR "compile_forward_${model}: ${model}.h is not shifted${model}.h but for the name and its spacing")
+        endif()
+    endforeach()
+
+    set(args --compile ${story} delay)
+    set(stdout "cannot compile c: c_0 reads x_-1, before the stream, where x has no history\n")
+    set(exit 1)
+    check(compile_forward_delay)
+
+    if(NOT CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
+        return()
+    endif()
+    foreach(instance IN ITEMS plt ball pair total hold track)
+        foreach(written IN ITEMS ${instance} shifted${instance})
+            set(args --check ${story} ${written} -o ${written}.c)
+            check(check_forward_${written})
+            execute_process(COMMAND "${CC}" -std=c11 -O2 ${written}.c -o ${written} -lm
+                            WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
+                            ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
+            if(failed)
+                message(SEND_ERROR "check_forward_${written}: ${written}.c does not build\n${errors}")
+            endif()
+            execute_process(COMMAND "${OUT}/${written}" WORKING_DIRECTORY "${OUT}"
+                            OUTPUT_VARIABLE report_${written} RESULT_VARIABLE code_${written}
+                            TIMEOUT ${CASE_TIMEOUT})
+        endforeach()
+        string(REPLACE "shifted${instance}" "${instance}" shifted "${report_shifted${instance}}")
+        if(NOT code_${instance} EQUAL 0 OR NOT code_shifted${instance} EQUAL 0 OR
+           NOT "${report_${instance}}" STREQUAL "${shifted}" OR
+           NOT "${shifted}" MATCHES "^${instance}: 100 steps from 0, against exact values\n")
+            message(SEND_ERROR "check_forward_${instance}: exit ${code_${instance}}\n${report_${instance}}--- where shifted${instance}'s, exit ${code_shifted${instance}}, is\n${report_shifted${instance}}")
+        endif()
+    endforeach()
+    return()
+endif()
+
 # The cases run as four tests of about equal time under the sanitizers: PART
 # 1 up to charpoly's refusal, 2 from it, 3 from eig's, 4 from the frequency
 # response's, and all where PART is not given.
