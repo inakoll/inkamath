@@ -176,7 +176,7 @@ public:
             const auto&              sequence = compiled.sequences[k];
             const std::size_t        cells    = sequence.size.count();
             const std::string        id = std::to_string(k), size = std::to_string(steps * cells);
-            std::vector<std::string> want, known, why;
+            std::vector<std::string> want, known, why, marks;
             std::vector<double>      about(steps * cells);
             for (int n = first; n < first + steps; ++n) {
                 // Before its start the step has no term, and the interpreter
@@ -185,8 +185,8 @@ public:
                 const std::string name   = instance + "." + sequence.name;
                 const int         index  = Floor(n - sequence.phase, sequence.period);
                 now                      = {&sequence, n};
-                const Term        term   = before && sequence.period > 1
-                                               ? Term{{}, true, "not asked", {}, {}, {}, false}
+                const Term term          = before && sequence.period > 1
+                                               ? Term{{}, true, "not asked", {}, {}, {}, false, {}}
                                                : ask(sequence, index);
                 if (!term.exact && (!inexact || n < *inexact)) inexact = n;
                 const bool given = term.error.empty();
@@ -210,6 +210,7 @@ public:
                                   : kind == '4' ? Quoted(term.odd[c])
                                                 : "0");
                     want.push_back(kind == '1' || kind == '3' ? term.cells[c] : "0.0");
+                    marks.push_back(kind == '1' || kind == '3' ? term.marks[c] : "0");
                     known.push_back(std::string(1, kind));
                     if (kind == '4') at[c] = 0;
                 }
@@ -224,6 +225,8 @@ public:
                 for (const double e : about) written.push_back(Double(e));
                 data += Array("const double", "about_" + id, steps * cells, written);
             }
+            const bool marked = std::count(marks.begin(), marks.end(), "1") > 0;
+            if (marked) data += Array("const unsigned char", "inexact_" + id, steps * cells, marks);
             data += Array("const double", "want_" + id, steps * cells, want);
             data += Array("const unsigned char", "known_" + id, steps * cells, known);
             data += "static " + CompileC::Real() + " got_" + id + "[" + size + "];\n";
@@ -236,7 +239,8 @@ public:
                     std::to_string(cells) + ", " + std::to_string(sequence.start) + ", got_" + id +
                     ", want_" + id + ", known_" + id + ", " +
                     (told ? "why_" + id : std::string("0")) + ", " +
-                    (estimated ? "about_" + id : std::string("0")) + ");\n";
+                    (estimated ? "about_" + id : std::string("0")) + ", " +
+                    (marked ? "inexact_" + id : std::string("0")) + ");\n";
         }
         std::string arguments;
         for (std::size_t k = 0; k < compiled.inputs.size(); ++k)
@@ -480,7 +484,7 @@ public:
         out += "static int hold_(const char* name, int cols, " + rows + "int cells, int from,\n";
         out += "                 const " + CompileC::Real() + "* got, const double* want,\n";
         out += "                 const unsigned char* known, const char* const* why,\n";
-        out += "                 const double* about) {\n";
+        out += "                 const double* about, const unsigned char* inexact) {\n";
         out += "    double worst = 0.0, most = 0.0, units = 0.0;\n";
         out += "    int    past  = -1, compared = 0, spent = -1, more = 0, most_k = 0" +
                std::string(floats ? ", measured = 0" : "") + ";\n";
@@ -509,10 +513,11 @@ public:
         out += "            if (e > most) most = e;\n";
         out += "            if (past < 0 && e > " + tol + " * (1.0 + fabs(want[k]))) past = n;\n";
         out += "            continue;\n        }\n";
+        out += "        const char* const mark = inexact && inexact[k] ? \"~\" : \"\";\n";
         out += "        cell_(\"\", name, " + place;
         out += "        if (known[k] == 3)\n";
-        out += "            printf(\": none at %d, where the interpreter gives %.17g\", n,\n";
-        out += "                   want[k]);\n";
+        out += "            printf(\": none at %d, where the interpreter gives %s%.17g\", n,\n";
+        out += "                   mark, want[k]);\n";
         out += "        else if (known[k] == 2)\n";
         out +=
             "            printf(\": " + form + " at %d, where the interpreter gives none: %s\",\n";
@@ -521,8 +526,9 @@ public:
         out += "            printf(\": " + form + " at %d, where the interpreter's term is %s\",\n";
         out += "                   " + got + ", n, why[k]);\n";
         out += "        else\n";
-        out += "            printf(\": " + form + " at %d, where the interpreter gives %.17g\",\n";
-        out += "                   " + got + ", n, want[k]);\n";
+        out +=
+            "            printf(\": " + form + " at %d, where the interpreter gives %s%.17g\",\n";
+        out += "                   " + got + ", n, mark, want[k]);\n";
         out += "        if (e > 0.0)\n";
         out +=
             "            printf(\"; the interpreter's term about %.2g from the exact one\", e);\n";
@@ -712,6 +718,7 @@ private:
         Value                    value;
         std::vector<double>      reals;          // the cells, as doubles
         bool                     spent = false;  // the interpreter ran out of steps
+        std::vector<std::string> marks;          // "1" for each inexact cell, else "0"
     };
 
     // How its model would state the size of an input given a matrix (C83).
@@ -757,6 +764,7 @@ private:
                                  : cell.exact()            ? "too large for a double"
                                                            : "not a finite number");
             answer.exact = answer.exact && cell.exact();
+            answer.marks.push_back(cell.exact() ? "0" : "1");
             answer.cells.push_back(Double(z.real()));
             answer.reals.push_back(z.real());
         }

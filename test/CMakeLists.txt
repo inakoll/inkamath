@@ -386,7 +386,7 @@ set(euler40 "2000 steps from 0, against exact values until 6 and inexact ones fr
 set_tests_properties(check_inside_2000_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^inside: ${euler40}\ninside\\.y: within 1\\.1e-16${about}\n$")
 set_tests_properties(check_outside_2000_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^outside: ${euler40}\noutside\\.y\\[3,1\\]: 0\\.28588530803419726 at 1113, where the interpreter gives 0\\.28588530674176821\\; the interpreter's term about [0-9.e+-]+ from the exact one\n$")
+    "^outside: ${euler40}\noutside\\.y\\[3,1\\]: 0\\.28588530803419726 at 1113, where the interpreter gives ~0\\.28588530674176821\\; the interpreter's term about [0-9.e+-]+ from the exact one\n$")
 set_tests_properties(check_rober_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^rober: 100 steps from 0, against exact values until 1 and inexact ones from there\nrober\\.y: within 0${about}\n$")
 # Temporaries in a limit's function (DESIGN.md), as compile/implicit.ink
@@ -638,7 +638,7 @@ set_tests_properties(check_first_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_year_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^year: 100 steps from 0${inexact0}\nyear\\.naive: within 0${about}\nyear\\.thm4: within 0${about}\n$")
 set_tests_properties(check_needled_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^needled: 100 steps from 0${inexact0}\nneedled\\.heron: 8\\.0466270446777376e-07 at 0, where the interpreter gives 6\\.9685834354698204e-07\\; the interpreter's term about [0-9.e+-]+ from the exact one\nneedled\\.kahan: within 0${about}\n$")
+    "^needled: 100 steps from 0${inexact0}\nneedled\\.heron: 8\\.0466270446777376e-07 at 0, where the interpreter gives ~6\\.9685834354698204e-07\\; the interpreter's term about [0-9.e+-]+ from the exact one\nneedled\\.kahan: within 0${about}\n$")
 set_tests_properties(check_big_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^big: 100 steps from 0, against exact values\nbig\\.s: within 2e-30, 1\\.1e\\+16 units of a double at step 0\nbig\\.t: within 0\nbig\\.w: 0 at 0, where the interpreter gives 1\n$")
 set_tests_properties(check_seven_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -1237,7 +1237,7 @@ foreach(report IN ITEMS
         "far:^far: 100 steps from 0${in_float}\nfar\\.x: within 0\\.99, 16 units of a float\nfar\\.d: 0 at 1, where the interpreter gives 0\\.01\n$"
         "tally:^tally: 100 steps from 0${in_float}\ntally\\.c: within 50, 25 units of a float\n$"
         "tiny:^tiny: 100 steps from 0${in_float}\ntiny\\.y: within 1e-08, 1\\.1e\\+07 units of a float at step 0\ntiny\\.z: within 1e-08\n$"
-        "steep:^steep: 100 steps from 0${inexact}\nsteep\\.e: inf at 67, where the interpreter gives [0-9.e+-]+\; the interpreter's term about [0-9.e+-]+ from the exact one\n$"
+        "steep:^steep: 100 steps from 0${inexact}\nsteep\\.e: inf at 67, where the interpreter gives ~[0-9.e+-]+\; the interpreter's term about [0-9.e+-]+ from the exact one\n$"
         "blast:^blast: 100 steps from 0${in_float}\nblast\\.y: no value compared, the step NaN where the interpreter gives none, as at 0: p did not converge within 100 terms \\(last term [^)]+, its steps in a ratio of 1\\); for a fixed count, read a term, as p_100\nblast\\.z: no value compared, the step NaN where the interpreter gives none, as at 0: v did not converge within 100 terms \\(last term [^)]+, its steps in a ratio of 1\\); for a fixed count, read a term, as v_100\n$"
         "mark:^mark: 100 steps from 0${inexact}\nmark\\.d: within ${units}\nmark\\.s: within ${units}\n$"
         "line:^line: 100 steps from 0${in_float}\nline\\.w: within 2\\.7e-07, 3\\.7 units of a float\n$"
@@ -1247,19 +1247,19 @@ foreach(report IN ITEMS
         "tfit:^tfit: 100 steps from 0${in_float}\ntfit\\.W: ${exact}\ntfit\\.H: ${exact}\ntfit\\.L: ${exact}\n$"
         "dies:^dies: 100 steps from 0${in_float}\ndies\\.alive: at 3 the compiled step takes 'alive_n \\| b_n > 0 = 1' and the interpreter 'alive_n = 0'\\; the guard of the first is exactly on its threshold\ndies\\.b: -0\\.0728999898 at 4, where the interpreter gives 0\ndies\\.alive: 1 at 3, where the interpreter gives 0\n$"
         "beat:^beat: 100 steps from 0${in_float}\nbeat\\.locked: at 2 the compiled step takes 'locked_n = 0' and the interpreter 'locked_n \\| e_n\\[1\\] == 0 and e_n\\[2\\] == 0 = 1'\\; the guard of the second is exactly on its threshold\n(beat\\.(x|xh|e): within [0-9.e+-]+, [0-9.e+-]+ units of a float\n)+beat\\.locked: 0 at 2, where the interpreter gives 1\n$"
-        "peak:^peak: 100 steps from 0${inexact}\npeak\\.Q: ${exact}\npeak\\.S: within ${units}\npeak\\.A\\[1,1\\]: [-a-z()]+ at 63, where the interpreter gives 0\\.5\\; the interpreter's term about [0-9.e+-]+ from the exact one\npeak\\.B: within ${units}\n$"
+        "peak:^peak: 100 steps from 0${inexact}\npeak\\.Q: ${exact}\npeak\\.S: within ${units}\npeak\\.A\\[1,1\\]: [-a-z()]+ at 63, where the interpreter gives ~0\\.5\\; the interpreter's term about [0-9.e+-]+ from the exact one\npeak\\.B: within ${units}\n$"
         "thm1:^thm1: 100 steps from 0 in float${until2}\nthm1\\.h: within 1\\.2e-07, 9\\.7 units of a float, from 2${about}\nthm1\\.x: within 6\\.8e-08, 9\\.7 units of a float, from 1${about}\nthm1\\.R: within 9\\.3e-06, 2\\.4 units of a float${about}\nthm1\\.g: ${exact}, from 1\nthm1\\.m: ${exact}\nthm1\\.v: within 1e-06, 1\\.7 units of a float\n$"
         "fixed:^fixed: 100 steps from 0 in float${until2}\nfixed\\.x: within 1\\.3e-07, 3\\.6e\\+02 units of a float, from 1${about}\nfixed\\.R: within 4\\.3e-06, 2\\.2 units of a float${about}\nfixed\\.g: ${exact}, from 1\nfixed\\.v: within 1e-06, 1\\.7 units of a float\nfixed\\.w: within 1e-06, 1\\.1 units of a float\n$"
         "gen:^gen: 100 steps from 0 in float${until2}\ngen\\.h: within 1\\.8e-07, 3\\.2e\\+02 units of a float, from 2${about}\ngen\\.x: within 1\\.6e-07, 3\\.2e\\+02 units of a float, from 1${about}\ngen\\.R: within 2e-06, 59 units of a float${about}\ngen\\.g: ${exact}, from 1\ngen\\.m: within 4\\.8e-07, 2 units of a float\ngen\\.v: within 7\\.2e-06, 0\\.47 units of a float\n$"
         "sums:^sums: 100 steps from 0${in_float}\nsums\\.c: within 0\\.00048, 8\\.1e\\+03 units of a float, from 1\nsums\\.o: within 0\\.0029, 2\\.9 units of a float\nsums\\.plain: within 0\\.0028, 2\\.8 units of a float\nsums\\.s: within 0\\.00047, 0\\.48 units of a float\nsums\\.comp: within 0\\.00048\nsums\\.total: within 0\\.00051, 0\\.52 units of a float\n$"
         "muller:^muller: 100 steps from 0${in_float}\nmuller\\.x: 4\\.98312378 at 6, where the interpreter gives 4\\.9108474990827933\n$"
-        "rounded:^rounded: 100 steps from 0${inexact}\nrounded\\.x: 4\\.98312378 at 6, where the interpreter gives 4\\.9108474986606296\; the interpreter's term about [0-9.e+-]+ from the exact one\n$"
-        "surprise:^surprise: 100 steps from 0${inexact}\n${smooth_k}surprise\\.g: 1 at 0, where the interpreter gives 0\; the interpreter's term about [0-9.e+-]+ from the exact one\nsurprise\\.k: ${exact}${about}\n$"
+        "rounded:^rounded: 100 steps from 0${inexact}\nrounded\\.x: 4\\.98312378 at 6, where the interpreter gives ~4\\.9108474986606296\; the interpreter's term about [0-9.e+-]+ from the exact one\n$"
+        "surprise:^surprise: 100 steps from 0${inexact}\n${smooth_k}surprise\\.g: 1 at 0, where the interpreter gives ~0\; the interpreter's term about [0-9.e+-]+ from the exact one\nsurprise\\.k: ${exact}${about}\n$"
         "solveur:^solveur: 100 steps from 0${in_float}\nsolveur\\.d: 0 at 0, where the interpreter gives -1\nsolveur\\.z\\[1,1\\]: [-a-z()]+ at 0, where the interpreter gives 12582909\n$"
         "rump:^rump: 100 steps from 0${in_float}\nrump\\.g: 1\\.17260396 at 0, where the interpreter gives -0\\.82739605994682142\n$"
         "lcgs:^lcgs: 100 steps from 0${in_float}\nlcgs\\.q: 338690048 at 3, where the interpreter gives 226205932\nlcgs\\.r: 0 at 2, where the interpreter gives 325238575\n$"
         "year:^year: 100 steps from 0${inexact}\nyear\\.naive: within [0-9.]+, [1-9](\\.[0-9])?e\\+02 units of a float${about}\nyear\\.thm4: within [0-9.e-]+, [1-9](\\.[0-9])? units of a float${about}\n$"
-        "needle:^needle: 100 steps from 0${inexact}\nneedle\\.heron: 0\\.0186444204 at 0, where the interpreter gives 0\\.016146540115034271\; the interpreter's term about [0-9.e+-]+ from the exact one\nneedle\\.kahan: within 5\\.3e-10, 0\\.28 units of a float${about}\n$"
+        "needle:^needle: 100 steps from 0${inexact}\nneedle\\.heron: 0\\.0186444204 at 0, where the interpreter gives ~0\\.016146540115034271\; the interpreter's term about [0-9.e+-]+ from the exact one\nneedle\\.kahan: within 5\\.3e-10, 0\\.28 units of a float${about}\n$"
         "big:^big: 100 steps from 0${in_float}\nbig\\.s: within 2e-30, 2\\.1e\\+07 units of a float at step 0\nbig\\.t: ${exact}\nbig\\.w: 0 at 0, where the interpreter gives 1\n$"
         "seven:^seven: 100 steps from 0${in_float}\nseven\\.t: within 0\nseven\\.u: within 3\\.8e-06\n$"
         "poly:^poly: 100 steps from 0${in_float}\npoly\\.A: ${exact}\npoly\\.c: ${exact}\npoly\\.d: ${exact}\npoly\\.g: within 0\\.00[0-9]+, [0-9.e+-]+ units of a float\n$"
@@ -1281,7 +1281,7 @@ foreach(report IN ITEMS
         "factored:^factored: 100 steps from 0 in float, ${until1f}\n(factored\\.(Sp|K|N): within ${floats}( in N\\[[12],[1-3]\\] at step [0-9]+)?, from 1${about}\n)+factored\\.S: within ${floats}${about}\nfactored\\.x: within [0-9.e+-]+, [1-9](\\.[0-9])? units of a float${about}\n$"
         "tune:^tune: 100 steps from 0${in_float}\ntune\\.G: ${exact}\ntune\\.c: ${exact}\ntune\\.d: ${exact}\ntune\\.Z: within 0\ntune\\.g: ${exact}\ntune\\.w: ${exact}\ntune\\.y: ${exact}\n$"
         "shove:^shove: 100 steps from 0${in_float}\nshove\\.s: within 5\\.9e-08, 1\\.4e\\+07 units of a float at step 5\nshove\\.y: within 5\\.9e-08, 1\\.4e\\+07 units of a float in y\\[2,1,1\\] at step 7\n$"
-        "naive:^naive: 100 steps from 0 in float, ${until1f}\n(naive\\.(Pp|K|P): within [^\n]+\n)+naive\\.L\\[1,1\\]: [-a-z()]+ at 1, where the interpreter gives 0\\.00099999999750012493\\; the interpreter's term about [0-9.e+-]+ from the exact one\nnaive\\.x: within [^\n]+\n$"
+        "naive:^naive: 100 steps from 0 in float, ${until1f}\n(naive\\.(Pp|K|P): within [^\n]+\n)+naive\\.L\\[1,1\\]: [-a-z()]+ at 1, where the interpreter gives ~0\\.00099999999750012493\\; the interpreter's term about [0-9.e+-]+ from the exact one\nnaive\\.x: within [^\n]+\n$"
         "sole:^sole: 100 steps from 0${inexact}\n(sole\\.[gy]: within [0-9.e+-]+, 0\\.[0-9]+ units of a float${about}\n)+$"
         "cls:^cls: 100 steps from 0${inexact}\ncls\\.z: within 2\\.4e-08, 0\\.49 units of a float\ncls\\.q: within 1\\.9e-06, 1\\.5 units of a float${about}\ncls\\.s: within 6\\.3e-08, 2\\.1 units of a float${about}\ncls\\.loss: within 4\\.1e-07, 3\\.8 units of a float${about}\n$")
     string(FIND "${report}" ":" colon)

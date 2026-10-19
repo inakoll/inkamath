@@ -147,7 +147,7 @@
 # float, the halves of its 2^k rounding once into a subnormal:
 #
 #     steep: 100 steps from 0 in float, against exact values until 0 and inexact ones from there
-#     steep.e: inf at 67, where the interpreter gives <x>; the interpreter's term about <e> from the exact one
+#     steep.e: inf at 67, where the interpreter gives ~<x>; the interpreter's term about <e> from the exact one
 #
 # A walk past a float's range has not closed on anything: 'blast', powers
 # of -5/2 that leave it at their 97th term, a value and a vector, is NaN at

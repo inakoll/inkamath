@@ -21,7 +21,7 @@
 # factor is the root of that fraction, the double 0.00099999999750012493:
 #
 #     naive: 100 steps from 0 in float, against exact values until 1 and inexact ones from there
-#     naive.L[1,1]: nan at 1, where the interpreter gives 0.00099999999750012493; the interpreter's term about <x> from the exact one
+#     naive.L[1,1]: nan at 1, where the interpreter gives ~0.00099999999750012493; the interpreter's term about <x> from the exact one
 #
 # and its program fails. factored's square keeps K r's part of P_1, so
 # every one of its terms stays within the float tolerance: thousands of
