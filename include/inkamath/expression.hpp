@@ -138,6 +138,12 @@ public:
     // 'g() = 1', a list that adds nothing, refused (C314, C321).
     [[nodiscard]] bool Listed() const { return listed_; }
 
+    // Of a clause written ahead of its index, x_(t+1) = f(x_t), the clause as
+    // written, where this is its shift; of one at a computed index, its
+    // refusal where the index reads a name nothing defines (DESIGN.md).
+    PExpression<T> written;
+    std::string    unindexed;
+
     PExpression<T> accept(TransformationVisitor<T> &v) override {
         return v.visit(this);
     }

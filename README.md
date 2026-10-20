@@ -1099,6 +1099,35 @@ s_n=s_(n-1)/2
 ~9.53674316e-07
 ```
 
+A recurrence may be written ahead of its index, as papers write
+`x_(t+1) = f(x_t)`: the clause is read as its shift, the index read as one
+step back wherever it appears, so `fib_(n+2) = fib_(n+1) + fib_n` says
+`fib_n = fib_(n-1) + fib_(n-2)`. The index is a name plus a whole number
+from 1; any other index that reads a name nothing defines is refused, and
+`?` shows the clause as it was written:
+
+```
+>> fib_0 = 0
+fib_0 = 0
+
+>> fib_1 = 1
+fib_1 = 1
+
+>> fib_(n+2) = fib_(n+1) + fib_n
+fib_(n+2) = fib_(n+1) + fib_n
+
+>> fib_10
+55
+
+>> fib_(n-1) = 1
+error: a clause is written at a whole number, as fib_0, at its index, as fib_n, or ahead of it, as fib_(n+1), not at fib_(n-1)
+
+>> ?fib
+fib_0 = 0
+fib_1 = 1
+fib_(n+2) = fib_(n+1) + fib_n
+```
+
 A base case wins over the general clause, whatever the order of definition.
 Below the lowest base case the sequence is simply not defined — there is no
 implicit value:
