@@ -2811,4 +2811,19 @@ if(CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
             message(SEND_ERROR "check_forward_${instance}: exit ${code_${instance}}\n${report_${instance}}--- where shifted${instance}'s, exit ${code_shifted${instance}}, is\n${report_shifted${instance}}")
         endif()
     endforeach()
+
+    # Where an optional input is absent, the clauses quoted as written.
+    set(args --check ${story} seen -o seen.c)
+    check(check_forward_seen)
+    execute_process(COMMAND "${CC}" -std=c11 -O2 seen.c -o seen -lm WORKING_DIRECTORY "${OUT}"
+                    RESULT_VARIABLE failed ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
+    execute_process(COMMAND "${OUT}/seen" WORKING_DIRECTORY "${OUT}" OUTPUT_VARIABLE report
+                    RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
+    set(expected "seen: 100 steps from 0, against exact values
+seen.x: within 0
+seen.x: where z is absent, 'x_(n+1) | z_(n+1) >= 0 = z_(n+1)' falls to 'x_(n+1) = x_n'
+")
+    if(failed OR NOT code EQUAL 0 OR NOT "${report}" STREQUAL "${expected}")
+        message(SEND_ERROR "check_forward_seen: exit ${code}\n${errors}${report}--- expected\n${expected}")
+    endif()
 endif()

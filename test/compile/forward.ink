@@ -135,6 +135,17 @@ shiftedsampled(x_n) = {
 tally = sampled(x_n = n)
 shiftedtally = shiftedsampled(x_n = n)
 
+# README section 5's optional input, the last value seen held: where z is
+# absent, the report quotes the clauses as written, as the interpreter shows
+# them, where their shift by hand's quotes the shift.
+kept(z_n?) = {
+    x_0 = 0
+    x_(n+1) | z_(n+1) >= 0 = z_(n+1)
+    x_(n+1) = x_n
+}
+every3_n | mod(n, 3) == 0 = n/3
+seen = kept(z_n = every3_n)
+
 # At every index, as its shift: with no base clause, c_0 reads x_(-1),
 # refused as the shift is until a history or a base clause says what it is.
 delay(x_n) = {

@@ -3681,10 +3681,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
     stays refused as `?x_n` is: one clause is shown by a constant index.
   - **Compiled and checked unchanged**: a model written forward compiles to
     the header its shift written by hand gives, byte for byte but for the
-    name and where its comments wrap, and checks to the same report. The
-    step at n computes x_n, from u_(n-1), and the header says what it says
-    now. README section 4 gains the form beside its recurrence, and nothing
-    else moves.
+    name and where its comments wrap, and checks to the same report but
+    where a report quotes a clause, where an optional input is absent: it
+    quotes it as written, `'x_(n+1) | z_(n+1) >= 0 = z_(n+1)' falls to
+    'x_(n+1) = x_n'`, as `?` shows it. The step at n computes x_n, from
+    u_(n-1), and the header says what it says now. README section 4 gains
+    the form beside its recurrence, and nothing else moves.
 
   Rejected:
   - **A definition in its own right**, the offset kept and the index bound
