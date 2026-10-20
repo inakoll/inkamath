@@ -2752,8 +2752,8 @@ check(compile_hessian_refused)
 
 # The forward form (DESIGN.md): each model of compile/forward.ink compiled to
 # its shift's header but for the name and where its comments wrap, an
-# instance of each checked to its shift's report, and the delay refused as
-# its shift is.
+# instance of each checked to its shift's report, the delay refused as its
+# shift is, and a cell of every term named as written.
 set(story "${CMAKE_CURRENT_LIST_DIR}/compile/forward.ink")
 foreach(model IN ITEMS plant nesterov second acc held tracker)
     foreach(written IN ITEMS ${model} shifted${model})
@@ -2779,6 +2779,15 @@ set(args --compile ${story} delay)
 set(stdout "cannot compile c: c_0 reads x_-1, before the stream, where x has no history\n")
 set(exit 1)
 check(compile_forward_delay)
+
+set(args --compile ${story} tapped)
+set(stdout "cannot compile v: v_0 and v_(n+1)[2,1] both give a cell of v_0; write v_0[2,1] to say which\n")
+set(exit 1)
+check(compile_forward_tapped)
+set(args --compile ${story} ranked)
+set(stdout "cannot compile v: a clause for one cell of v_(n+1), a 2x2x2 tensor, names its slice, row and column\n")
+set(exit 1)
+check(compile_forward_ranked)
 
 if(CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
     foreach(instance IN ITEMS plt ball pair total hold track)

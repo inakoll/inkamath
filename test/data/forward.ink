@@ -346,6 +346,20 @@ tap_(n+1)[j<=3] | j == 1 = (n+1)^2
 \mathit{tap}_{0,j} = 0, \quad 1 \le j \le 3
 \mathit{tap}_{n+1,j} = \begin{cases} (n + 1)^2 & \text{if } j = 1 \\ \mathit{tap}_{n,j-1} & \text{otherwise} \end{cases}, \quad 1 \le j \le 3
 
+# A cell of every term beside a base term by its cells, which asks which is
+# meant, is named as written, as v_n[2,1] is for v_n[2] at its index.
+>> tp_0[j<=3] = 0
+tp_0[j<=3] = 0
+
+>> tp_(n+1)[2] = 5
+tp_(n+1)[2] = 5
+
+>> tp_(n+1)[j<=3] = tp_n[j]
+tp_(n+1)[j<=3] = tp_n[j]
+
+>> tp_1
+error: tp_0 and tp_(n+1)[2,1] both give row 2, column 1 of tp_0; write tp_0[2,1] to say which
+
 # A cell's bounds read the index as its shift does: grow_(n+1) has n + 2
 # cells, j + grow_n[1] each, so grow_1 is [2; 3] and grow_2 [3; 4; 5]; tex
 # sets them as written.

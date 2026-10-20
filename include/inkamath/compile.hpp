@@ -3123,7 +3123,7 @@ private:
             const ParametersDefinition<Value>& p = clause.parameters;
             if (p.cells() && p.row_name().empty() && fits(clause))
                 Named(p, shape.size,
-                      name + "_" + (p.general() ? p.index_name() : std::to_string(p.index())));
+                      name + "_" + (p.general() ? p.subscript() : std::to_string(p.index())));
         }
         std::vector<std::string> cells;
         for (std::size_t c = 0; c < shape.size.count(); ++c) {
@@ -3239,7 +3239,7 @@ private:
                     "[" + (every.tensor() ? std::to_string(every.slice()) + "," : "") +
                     std::to_string(every.row()) + "," + std::to_string(every.col()) + "]";
                 if (!own)
-                    throw Reason(term + " and " + name + "_" + every.index_name() + cell +
+                    throw Reason(term + " and " + name + "_" + every.subscript() + cell +
                                  " both give a cell of " + term + "; write " + term + cell +
                                  " to say which");
             }

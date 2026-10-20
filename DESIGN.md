@@ -3750,7 +3750,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   the optional input's check and the loop's label. All in the interpreter,
   `interpreter.hpp` 133, `latex.hpp` 16, `reference.hpp` 13,
   `parameters.hpp` 11, `expression_visitor.hpp` 8 and `expression.hpp` 6;
-  none in the compiler or the check. 20,492 to 20,679 lines at 9d25328 by
+  in the compiler, a cell of every term named as written in two refusals,
+  and none in the check. 20,492 to 20,679 lines at 9d25328 by
   `wc -l include/inkamath/*.hpp src/*`. The spec is the golden
   `test/data/forward.ink`, with the four fixes' entries;
   `test/compile/forward.ink` is a case of cli.cmake's part 4, and

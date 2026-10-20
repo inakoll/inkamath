@@ -127,3 +127,14 @@ shiftedtrack = shiftedtracker(z_n = n/2 + (-1)^n/4)
 delay(x_n) = {
     c_(n+1) = x_n
 }
+
+# A cell of every term beside a base term by its cells is named as written.
+tapped(x_n) = {
+    v_0[j<=3] = 0
+    v_(n+1)[2] = x_n
+    v_(n+1)[j<=3] = v_n[j]
+}
+ranked(x_n) = {
+    v_(n+1)[2, 1] = x_n
+    v_(n+1) = [1, 2; 3, 4;; 5, 6; 7, 8]
+}

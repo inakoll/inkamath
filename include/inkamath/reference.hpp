@@ -1507,7 +1507,7 @@ private:
                                                    std::to_string(r) + "," + std::to_string(c);
                             throw std::runtime_error(
                                 name + " and " + reference_name_ + "_" +
-                                every->second->parameters.index_name() + "[" + at + "] both give " +
+                                every->second->parameters.subscript() + "[" + at + "] both give " +
                                 (extent->slices ? "slice " + std::to_string(s) + ", " : "") +
                                 "row " + std::to_string(r) + ", column " + std::to_string(c) +
                                 " of " + name + "; write " + name + "[" + at + "] to say which");
