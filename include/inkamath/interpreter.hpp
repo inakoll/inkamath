@@ -1141,6 +1141,14 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
                 m_i                = signature_begin;
                 const auto shifted = std::static_pointer_cast<EqualExpression<U>>(ParseEqualExpr());
                 shifted->written   = e;
+                for (const auto& at : {place ? place->Slice() : nullptr,
+                                       place ? place->Row() : nullptr,
+                                       place ? place->Col() : nullptr}) {
+                    const auto* bound = dynamic_cast<const CompareExpression<U>*>(at.get());
+                    const auto& named =
+                        bound && bound->Op() == Comparison::LessEqual ? bound->m_e1() : at;
+                    if (named && typeid(*named) == typeid(RefExpression<U>)) Unbound(named->Name());
+                }
                 return shifted;
             }
         }

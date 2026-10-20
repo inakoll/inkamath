@@ -277,7 +277,7 @@ lp_0 = 0
 3
 
 # Binding the index again would leave the clause reading the bound name a
-# step back.
+# step back, and so would a cell named as it.
 >> b_(n+1) = sum_(n=1)^3 n
 error: n is the index of b_(n+1), so the clause cannot bind it again
 
@@ -285,6 +285,12 @@ error: n is the index of b_(n+1), so the clause cannot bind it again
 error: n is the index of b_(n+1), so the clause cannot bind it again
 
 >> b_(n+1) = (n = 2) + n
+error: n is the index of b_(n+1), so the clause cannot bind it again
+
+>> b_(n+1)[n<=3] = 1
+error: n is the index of b_(n+1), so the clause cannot bind it again
+
+>> b_(n+1)[j<=2, n] = j
 error: n is the index of b_(n+1), so the clause cannot bind it again
 
 # README section 4's Newton's method, x_(k+1) = x_k - F(x_k)/F'(x_k) as a

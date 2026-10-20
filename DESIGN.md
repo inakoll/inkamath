@@ -3735,9 +3735,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
   filter, each beside its shift by hand, to the same header and report,
   and the delay refused as its shift is.
 
-  Done in 187 lines of sources, against the 80 estimated and the stop at
-  120: past it at 165, the overrun was accepted, and 22 more fixed four
-  shortfalls the implementation reported. Each part is one the spec needs.
+  Done in 195 lines of sources, against the 80 estimated and the stop at
+  120: past it at 165, the overrun was accepted, 22 more fixed four
+  shortfalls the implementation reported, and its review's 8 refuse a
+  cell named as the index as binding it again. Each part is one the spec
+  needs.
   The form read and the other indices refused, about 35 lines: the
   sentence quotes the index as written and, where it reads a name nothing
   defines, is carried on the definition to where it is bound, so a model's
@@ -3747,11 +3749,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
   what the shift by hand compiles. The four refusals, about 35. As
   written, about 55: the clause as written kept beside its shift, and from
   it tex's left side, value, guard, cell bounds and a base term's index,
-  the optional input's check and the loop's label. All in the interpreter,
-  `interpreter.hpp` 133, `latex.hpp` 16, `reference.hpp` 13,
+  the optional input's check and the loop's label. In the interpreter,
+  `interpreter.hpp` 141, `latex.hpp` 16, `reference.hpp` 13,
   `parameters.hpp` 11, `expression_visitor.hpp` 8 and `expression.hpp` 6;
   in the compiler, a cell of every term named as written in two refusals,
-  and none in the check. 20,492 to 20,679 lines at 9d25328 by
+  and none in the check. 20,492 to 20,687 lines at 9d25328 by
   `wc -l include/inkamath/*.hpp src/*`. The spec is the golden
   `test/data/forward.ink`, with the four fixes' entries;
   `test/compile/forward.ink` is a case of cli.cmake's part 4, and
