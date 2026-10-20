@@ -3,11 +3,18 @@
 
 #include <cstddef>
 #include <limits>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>
 
 #include "inkamath/numeric_interface.hpp"
+
+// Nesting too deep, told apart from other failures because a recurrence can
+// recover from it by filling its terms from the base up.
+struct DepthExceeded : std::runtime_error {
+    using std::runtime_error::runtime_error;
+};
 
 // A walk that ran out, its values numbers that never settled, which a guard
 // reading it takes for one that does not hold (DESIGN.md, a clause for a
@@ -53,7 +60,7 @@ public:
     // value was exact and it lands on a whole number (DESIGN.md,
     // phase 13). A run of --check moves it by the remainder estimated where
     // the walk stopped, in the term's units (Number::inexact).
-    T Reached(const T& value) const { return numeric_interface<T>::inexact(value, remainder_); }
+    T Reached(const T& value) const { return numeric_interface<T>::inexact(value, near_.left); }
 
     // The last value, in a refusal, marked as an answer would be (C168).
     static std::string Last(const T& value) {
@@ -62,60 +69,75 @@ public:
                                                           : "");
     }
 
-    // The next value; true when it is the limit. The first is never: one value
-    // has nothing to be compared with.
+    // The next value; true when it is the limit, within the tolerance of
+    // each cell's own size. The first is never: one value has nothing to be
+    // compared with. Near() says whether it was within the tolerance absolute
+    // below 1; the first such is kept, the answer of a walk that never
+    // closes on its own size, as a walk to 0 does not, or that ends past it
+    // on a value refused (DESIGN.md, a tolerance floor for small limits).
     [[nodiscard]] bool Next(const T& value) {
         // A step cannot tell its NaN from a value refused, so neither is a
         // walk that runs out.
         if (T::Nan(value))
             throw std::runtime_error(what_ + " has no limit: " + value_ + " is " + Last(value));
+        bool closed = near_now_ = false;
         if (started_) {
-            const Step step = [&]() {
+            const auto step = [&](double floor) {
                 try {
-                    return numeric_interface<T>::distance(value, previous_);
+                    return numeric_interface<T>::distance(value, previous_, floor);
                 } catch (const std::exception& reason) {
                     throw std::runtime_error(what_ + " has no limit: " + reason.what());
                 }
-            }();
-            // '<=' and not '!(> tolerance)': a difference that is NaN
-            // answers false to both, and must count as not converged.
-            if (step <= tolerance && stepped_ &&
-                (remainder_ = Remainder(step, previous_step_)) <= tolerance)
-                return true;
-            previous_step_ = step;
-            stepped_       = true;
+            };
+            near_now_ = near_.Settles(step(1));
+            closed    = close_.Settles(step(0));
+            if (near_now_ && !kept_) kept_ = Reached(value);
         }
         previous_ = value;
         started_  = true;
-        return false;
+        return closed;
     }
+    [[nodiscard]] bool                    Near() const { return near_now_; }
+    [[nodiscard]] const std::optional<T>& Kept() const { return kept_; }
 
 private:
     using Step = decltype(numeric_interface<T>::distance(std::declval<const T&>(),
-                                                         std::declval<const T&>()));
+                                                         std::declval<const T&>(), 1));
 
     // A small step is not a small remainder. If the steps shrink by a factor
     // r each term, what is left of the series is about step*r/(1-r); for
     // 1/n^2, where r approaches 1, that is 1/n -- five orders of magnitude
     // above the step that would otherwise have been called convergence.
-    // One step is no evidence at all, which is why 'stepped_' is required.
+    // One step is no evidence at all, which is why 'stepped' is required.
     // After a step of 0 there is no ratio, and the last step is what is left.
     // At a step of 0 there is none either: a term may pause and move on, as
     // a binary digit of 0 does (C279), and the step before is what may be left.
-    static Step Remainder(Step step, Step previous_step) {
-        if (!(previous_step > 0)) return step;
-        if (!(step > 0)) return previous_step;
-        const Step ratio = step / previous_step;
-        if (!(ratio < 1)) return std::numeric_limits<Step>::infinity();
-        return step * ratio / (1 - ratio);
-    }
+    struct Steps {
+        Step before{}, left{};
+        bool stepped = false;
+        // '<=' and not '!(> tolerance)': a step that is NaN must not settle.
+        bool Settles(Step step) {
+            const bool settles =
+                step <= tolerance && stepped && (left = Remainder(step)) <= tolerance;
+            before  = step;
+            stepped = true;
+            return settles;
+        }
+        Step Remainder(Step step) const {
+            if (!(before > 0)) return step;
+            if (!(step > 0)) return before;
+            const Step ratio = step / before;
+            if (!(ratio < 1)) return std::numeric_limits<Step>::infinity();
+            return step * ratio / (1 - ratio);
+        }
+    };
 
     std::string what_, value_;
     T           previous_{};
-    Step        previous_step_{};
-    Step        remainder_{};
-    bool        started_ = false;
-    bool        stepped_ = false;
+    Steps            near_, close_;
+    std::optional<T> kept_;
+    bool             started_  = false;
+    bool             near_now_ = false;
 };
 
 #endif  // INKAMATH_CONVERGENCE_HPP

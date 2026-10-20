@@ -424,18 +424,20 @@ public:
     }
 
     // How far apart two terms of a limit are: their largest difference, cell
-    // by cell, each against max(1, |the cell's term|), so absolute below 1
-    // and relative above (DESIGN.md, a tolerance relative to the term). Of
+    // by cell, each against max(floor, |the cell's term|): relative, or with a
+    // floor of 1 absolute below 1 (DESIGN.md, a tolerance relative to the
+    // term, a tolerance floor for small limits). Of
     // two shapes there is no distance, where a difference would stretch a
     // single value over the other.
-    static auto distance(const Matrix<T>& a, const Matrix<T>& b) {
+    static auto distance(const Matrix<T>& a, const Matrix<T>& b, double floor) {
         if (a.extent_ != b.extent_)
             throw std::runtime_error("its terms are " + b.extent_.toString() + ", then " +
                                      a.extent_.toString());
         decltype(numeric_interface<T>::abs(a.data()[0])) largest = 0;
         for (size_t k = 0; k < a.extent_.count(); ++k) {
             const auto m = numeric_interface<T>::abs(a.data()[k]);
-            const auto d = numeric_interface<T>::abs(a.data()[k] - b.data()[k]) / (m > 1 ? m : 1);
+            const auto s = numeric_interface<T>::abs(a.data()[k] - b.data()[k]);
+            const auto d = s == 0 ? s : s / (m > floor ? m : floor);
             if (std::isnan(d) || d > largest) largest = d;  // NaN, once, stays
         }
         return largest;

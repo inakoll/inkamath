@@ -15,7 +15,10 @@
 # iteration under lim rather than read at 12, its matrix inverse written
 # as the paper writes it. y_0 is inexact, so the interpreter's terms are
 # doubles taken in the step's order, and each limit stops where the step's
-# does. The roots of z - y - h f(z), found in mpmath to 60 digits, are
+# does but where a cell, measured against itself (C401), steps by an ulp or
+# two, which the step takes for 0 (C353) and the interpreter does not: a
+# term apart there, 1.4e-17. The roots of z - y - h f(z), found in mpmath
+# to 60 digits, are
 #
 #     y_1   = [0.99615133310359166; 3.5651160504271875e-05; 0.0038130157359040646]
 #     y_100 = [0.84200607353507096; 1.6284288113351236e-05; 0.15797764217681569]
@@ -25,7 +28,7 @@
 # them, relatively, in every cell to 100, in 3 to 12 iterations a step:
 #
 #     kinetic: 100 steps from 0, against exact values until 0 and inexact ones from there
-#     kinetic.y: within 0; the interpreter's terms about <e> from the exact ones
+#     kinetic.y: within 1.4e-17; the interpreter's terms about <e> from the exact ones
 k1 = 0.04
 k2 = 3*10^7
 k3 = 10^4
@@ -47,7 +50,7 @@ kinetic = backward()
 # terms are kinetic's, the interpreter's and Python's alike:
 #
 #     jacobian: 100 steps from 0, against exact values until 0 and inexact ones from there
-#     jacobian.y: within 0; the interpreter's terms about <e> from the exact ones
+#     jacobian.y: within 1.4e-17; the interpreter's terms about <e> from the exact ones
 graded(h = 1/10, y0 = ~[1; 0; 0]) = {
     nw(yp)_0 = yp
     nw(yp)_k = nw(yp)_(k-1) - (I - h*Jg(nw(yp)_(k-1)))^-1*(nw(yp)_(k-1) - yp - h*f(nw(yp)_(k-1)))
