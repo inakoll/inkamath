@@ -278,6 +278,10 @@ root(x) = x
 >> root(0)
 ~0
 
+# A parameter named as the index is refused as it is for g(t)_t.
+>> g(t)_(t+1) = t
+error: g has a parameter and an index named t
+
 # README section 4's delay line by cells: tap_n[1] = n^2, and each cell
 # below it the one above, a step back.
 >> tap_0[j<=3] = 0

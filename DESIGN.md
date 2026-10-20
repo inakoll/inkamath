@@ -3645,16 +3645,17 @@ that exploring seven domains asked of the interpreter, by how many asked.
     Compiled, it is refused as its shift is, `cannot compile c: c_0 reads
     x_-1, before the stream, where x has no history`.
   - **Several clauses**: base clauses, guards, cells, parameters, `lim` and
-    inputs, optional ones among them, as for `x_t`. Written again, a clause
-    replaces itself where it stands, a guarded one named by its left side
-    as written. A definition's clauses for every index are written at one
-    offset, so that its cases have the one left side `tex` sets them
-    under: `c is written c_(n+1), so a clause cannot be written c_n; write
-    'clear c' first`, and the other way round. The one general clause
-    written again at another offset is refused so too, though written again
-    at its own it replaces itself: a definition's offset changes by `clear`
-    alone, so no clause is left at the old one. Index names may differ
-    between clauses, as they may now.
+    inputs, optional ones among them, as for `x_t`, and a parameter named
+    as the index refused as there, `g has a parameter and an index named
+    t`. Written again, a clause replaces itself where it stands, a guarded
+    one named by its left side as written. A definition's clauses for every
+    index are written at one offset, so that its cases have the one left
+    side `tex` sets them under: `c is written c_(n+1), so a clause cannot
+    be written c_n; write 'clear c' first`, and the other way round. The
+    one general clause written again at another offset is refused so too,
+    though written again at its own it replaces itself: a definition's
+    offset changes by `clear` alone, so no clause is left at the old one.
+    Index names may differ between clauses, as they may now.
   - **Refused, as adding nothing a paper writes**: a clause reading its own
     term after its left side, `r_(n+1) reads r_(n+2), a term after it`,
     whose shift is a recursion from the tip, written on paper at its index,
