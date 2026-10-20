@@ -31,6 +31,10 @@ s_(n+1) = s_n/2
 s_0 = 1
 s_{n+1} = \frac{s_n}{2}
 
+# One clause is shown by a constant index, as ?s_n is refused.
+>> ?s_(n+1)
+error: n is not defined
+
 # README section 4's factorial: below its lowest base case it is not
 # defined, whichever way the recurrence is written.
 >> fact_(n+1) = fact_n*(n+1)
@@ -146,6 +150,20 @@ c_(n+1) | c_n >= 3 = 1
 >> [c_3, c_4, c_5]
 [3, 1, 2]
 
+# A guard reading the index reads it as its shift does: gd_(n+1) is 10 where
+# n > 3, from gd_5 on, and counts up to gd_4.
+>> gd_0 = 0
+gd_0 = 0
+
+>> gd_(n+1) | n > 3 = 10
+gd_(n+1) | n > 3 = 10
+
+>> gd_(n+1) = gd_n + 1
+gd_(n+1) = gd_n + 1
+
+>> [gd_4, gd_5, gd_6]
+[4, 10, 10]
+
 # A definition's clauses for every index are written at one offset, so
 # that its cases have one left side.
 >> c_n | n > 100 = 7
@@ -156,6 +174,15 @@ d_n = n
 
 >> d_(n+1) | d_n > 2 = 0
 error: d is written d_n, so a clause cannot be written d_(n+1); write 'clear d' first
+
+>> clear d
+clear d
+
+>> d_(n+1) | d_n > 2 = 0
+d_(n+1) | d_n > 2 = 0
+
+>> ?d
+d_(n+1) | d_n > 2 = 0
 
 # The one general clause, written again at another offset, is replaced, as
 # any clause written again is.
@@ -209,6 +236,9 @@ error: n is the index of b_(n+1), so the clause cannot bind it again
 >> b_(n+1) = grad_(n = 2) n^2
 error: n is the index of b_(n+1), so the clause cannot bind it again
 
+>> b_(n+1) = (n = 2) + n
+error: n is the index of b_(n+1), so the clause cannot bind it again
+
 # README section 4's Newton's method, x_(k+1) = x_k - F(x_k)/F'(x_k) as a
 # text writes it, with parameters and lim. The root of x^3 - 2x + 2 near
 # -2 is -1.7692923542386314 by Python's floats; from 0 the walk cycles and
@@ -253,6 +283,19 @@ tap_(n+1)[j<=3] | j == 1 = (n+1)^2
 >> tex ?tap
 \mathit{tap}_{0,j} = 0, \quad 1 \le j \le 3
 \mathit{tap}_{n+1,j} = \begin{cases} (n + 1)^2 & \text{if } j = 1 \\ \mathit{tap}_{n,j-1} & \text{otherwise} \end{cases}, \quad 1 \le j \le 3
+
+# A cell's bounds read the index as its shift does: grow_(n+1) has n + 2
+# cells, j + grow_n[1] each, so grow_1 is [2; 3] and grow_2 [3; 4; 5].
+>> grow_0[j<=1] = 1
+grow_0[j<=1] = 1
+
+>> grow_(n+1)[j<=n+2] = j + grow_n[1]
+grow_(n+1)[j<=n+2] = j + grow_n[1]
+
+>> grow_2
+[3;
+ 4;
+ 5]
 
 # Smith's doubling for the Stein equation P = A P A' + I, as
 # test/compile/blocks.ink quotes it, A_(k+1) = A_k^2 and P_(k+1) = P_k +
@@ -310,6 +353,17 @@ th_(t+1) = th_t + v_(t+1)
 [  33/64;
  193/256]
 
+# grad through a forward sequence: pw(a)_3 is a^3, its derivative 3a^2, 12
+# at 2.
+>> pw(a)_0 = 1
+pw(a)_0 = 1
+
+>> pw(a)_(n+1) = pw(a)_n*a
+pw(a)_(n+1) = pw(a)_n*a
+
+>> grad_(a = 2) pw(a)_3
+12
+
 # README section 5's loop, the plant's explicit Euler step written as the
 # method writes it: the plant reads the controller's output at its own
 # step, one behind its left side, which is the delay that lets the loop
@@ -353,6 +407,9 @@ acc(x_n) = { ... }
 
 >> acc(x_n = n).y_3
 15
+
+>> b_(n+1) = acc(x_n = n).y_3
+error: n is the index of b_(n+1), so the clause cannot bind it again
 
 # A history is written at the input's index; a forward clause reads it
 # where its shift does, c_0 reading x_(-1).
