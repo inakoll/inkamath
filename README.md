@@ -1125,8 +1125,8 @@ error: s is a sequence; index it (s_0) or take its limit (lim s)
 ```
 
 `lim` iterates the general clause until two successive terms agree to within
-1e-10, relative to the term above 1, every cell of a matrix against its own,
-and reports non-convergence rather than handing back the term it stopped on:
+1e-10 of their own size, every cell of a matrix against its own, and reports
+non-convergence rather than handing back the term it stopped on:
 
 ```
 >> lim s
@@ -1139,11 +1139,16 @@ u_n=2*n
 error: u did not converge within 100 terms (last term 200, its steps in a ratio of 0.99); for a fixed count, read a term, as u_100
 ```
 
-Below 1 the 1e-10 is absolute, so for a cell far below 1, where it settles
-few of the cell's own digits, a read at a count known to suffice, `f(x)_K`,
-gives the exact discrete value instead. So for a geometric integrator: solved by
-`lim`, the implicit midpoint rule drifts a free rigid body's invariants by
-about 4e-13 a step, and a fixed count holds them.
+A limit of 0 has no size to agree within: a walk that does not within 100
+terms answers the first term that agreed to within 1e-10 absolute below 1,
+as `lim s` does, halving to 0, and so does one that meets a term refused or
+NaN past that one. A limit far below 1 reached from far, `10^-30 + 2^-k`,
+is such a walk within 100 terms, and so is every cell of a matrix beside a
+cell walking to 0; there a read at a count known to suffice, `f(x)_K`, gives
+the exact discrete value instead. So for a geometric integrator, where the
+tolerance is a drift: solved by `lim` with the 1e-10 absolute below 1, the
+implicit midpoint rule drifted a free rigid body's invariants by about 4e-13
+a step, and a fixed count holds them.
 
 `lim` stops when the last step is under the tolerance *and* the remainder the
 steps imply is too. A series can converge too slowly to be summed this way —
@@ -1220,7 +1225,8 @@ The fallback is inexact: whether a walk settles is read from its steps as
 doubles. A guard that cannot be read whole does not hold, so `lim nw(x) < 0
 or x < 1` does not hold at 0; a term the guard reads, and a limit's own
 terms, refuse as they always did, and where no clause comes after, the
-limit's refusal stands. A term that is NaN refuses the limit outright.
+limit's refusal stands. A term that is NaN refuses the limit outright,
+unless a term before it was kept, as above.
 
 A sum or a product over an index is written as on paper, with `_` for the
 index and its first value and `^` for its last. The body is a term — it runs

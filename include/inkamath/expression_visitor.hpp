@@ -548,9 +548,17 @@ public:
         for (int n = 0; n < static_cast<int>(Convergence<T>::max_terms); ++n) {
             if (first > std::numeric_limits<int>::max() - n)
                 throw std::runtime_error("an index must be at most 2147483647");
-            total = n == 0 ? term(first) : combine(total, term(first + n));
-            if (convergence.Next(total)) return convergence.Reached(total);
+            try {
+                total = n == 0 ? term(first) : combine(total, term(first + n));
+                if (convergence.Next(total)) return convergence.Reached(total);
+            } catch (const DepthExceeded&) {
+                throw;
+            } catch (const std::runtime_error&) {
+                if (!convergence.Kept()) throw;
+                return *convergence.Kept();
+            }
         }
+        if (convergence.Kept()) return *convergence.Kept();
         throw Unconverged("the " + what + " did not converge within " +
                               std::to_string(Convergence<T>::max_terms) + " terms (last partial " +
                               what + " " + Convergence<T>::Last(total) + ")",

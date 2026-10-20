@@ -225,7 +225,7 @@ add_test(NAME prelude_header
 foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brink drift:ledge
                          drift:rift drift:naught drift:zeroed drift:mirrored drift:nests drift:latch drift:tripped drift:toil
                          drift:late drift:radix drift:gone
-                         delay:fir newton:stiff newton:halves newton:evens newton:evened newton:twonames newton:weighed logistic:gate sized:sized softmax:cls steady:mark
+                         delay:fir newton:stiff newton:halves newton:evens newton:evened newton:twonames newton:weighed newton:minute logistic:gate sized:sized softmax:cls steady:mark
                          rnn:rnn attention:head momentum:ball adam:fit lqr:gain
                          rates:pairs rates:odd seeded:warm cascade:servo decimate:boxcar
                          decimate:stride decimate:frame decimate:lead
@@ -322,7 +322,7 @@ set(about "\\; the interpreter's terms about [0-9.e+-]+ from the exact ones")
 set_tests_properties(check_c_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^c: 100 steps from 0, against exact values\nc\\.a: no value compared, the step NaN where the interpreter gives none, as at 0: a comparison jumps at x = 0\\.1\nc\\.d: within 0\nc\\.f: within 0\nc\\.g: within 0\nc\\.y: within 0\n$")
 set_tests_properties(check_tie_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^tie: 100 steps from 0, against exact values until 0 and inexact ones from there\ntie\\.g: at 0 a disturbed run takes 'g_n \\| y_n >= 1/2 - w = 1' and the interpreter 'g_n = 0'\\; the guard of the first is 4\\.8e-11 from its threshold\ntie\\.y: within 0\\; the interpreter's terms about 5\\.8e-11 from the exact ones\ntie\\.g: within 0\\; the interpreter's terms about 1 from the exact ones, past the tolerance from 0\n$")
+    "^tie: 100 steps from 0, against exact values until 0 and inexact ones from there\ntie\\.g: at 0 a disturbed run takes 'g_n \\| y_n >= 1/2 - w = 1' and the interpreter 'g_n = 0'\\; the guard of the first is 1\\.9e-11 from its threshold\ntie\\.y: within 0\\; the interpreter's terms about 2\\.9e-11 from the exact ones\ntie\\.g: within 0\\; the interpreter's terms about 1 from the exact ones, past the tolerance from 0\n$")
 set_tests_properties(check_chaos_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^chaos: 100 steps from 0, against exact values until 0 and inexact ones from there\nchaos\\.x: within 0${about}, past the tolerance from [0-9]+\n$")
 set_tests_properties(check_dyad_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -340,33 +340,33 @@ set_tests_properties(check_giant_report PROPERTIES PASS_REGULAR_EXPRESSION
 # A guard the disturbed runs straddle (DESIGN.md), as compile/straddle.ink
 # gives it: crease's step is the seeds'. A straddle fails no check.
 set(straddled "100 steps from 0, against exact values until 0 and inexact ones from there")
-set(knee_r "knee\\.r: at 0 a disturbed run takes 'r_n = 0' and the interpreter 'r_n \\| y_n > c = y_n - c'\\; the guard of the second is 4\\.2e-11 from its threshold\n")
+set(knee_r "knee\\.r: at 0 a disturbed run takes 'r_n = 0' and the interpreter 'r_n \\| y_n > c = y_n - c'\\; the guard of the second is 2\\.1e-11 from its threshold\n")
 set_tests_properties(check_knee_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^knee: ${straddled}\n${knee_r}knee\\.y: within 0\\; the interpreter's terms about 5\\.8e-11 from the exact ones\nknee\\.r: within 0\\; the interpreter's terms about 5\\.8e-11 from the exact ones\n$")
+    "^knee: ${straddled}\n${knee_r}knee\\.y: within 0\\; the interpreter's terms about 2\\.9e-11 from the exact ones\nknee\\.r: within 0\\; the interpreter's terms about 2\\.9e-11 from the exact ones\n$")
 set_tests_properties(check_crease_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^crease: ${straddled}\ncrease\\.r: at [0-9]+ a disturbed run takes 'r_n = 0' and the interpreter 'r_n \\| s_n > c = s_n - c'\\; the guard of the second is 5\\.6e-17 from its threshold\ncrease\\.s: within 0${about}\ncrease\\.r: within 0${about}\n$")
 set_tests_properties(check_plain_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^plain: ${straddled}\nplain\\.s: within 0${about}\nplain\\.r: within 0${about}\n$")
 set_tests_properties(check_both_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^both: ${straddled}\nboth\\.g: at 3 a disturbed run takes 'g_n \\| n\\*y_n >= 3/2 = 1' and the interpreter 'g_n = 0'\\; the guard of the first is 1\\.7e-10 from its threshold\nboth\\.h: at 1 the compiled step takes 'h_n \\| d_n < c = 1' and the interpreter 'h_n = 0'\\; the guard of the first is exactly on its threshold\nboth\\.d: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\nboth\\.h: 1 at 1, where the interpreter gives 0\nboth\\.y: within 0\\; the interpreter's terms about 5\\.8e-11 from the exact ones\nboth\\.g: within 0\\; the interpreter's terms about 1 from the exact ones, past the tolerance from 3\n$")
+    "^both: ${straddled}\nboth\\.g: at 3 a disturbed run takes 'g_n \\| n\\*y_n >= 3/2 = 1' and the interpreter 'g_n = 0'\\; the guard of the first is 8\\.7e-11 from its threshold\nboth\\.h: at 1 the compiled step takes 'h_n \\| d_n < c = 1' and the interpreter 'h_n = 0'\\; the guard of the first is exactly on its threshold\nboth\\.d: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\nboth\\.h: 1 at 1, where the interpreter gives 0\nboth\\.y: within 0\\; the interpreter's terms about 2\\.9e-11 from the exact ones\nboth\\.g: within 0\\; the interpreter's terms about 1 from the exact ones, past the tolerance from 3\n$")
 set_tests_properties(check_acc_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^acc: ${straddled}\nacc\\.x: at 1 a disturbed run takes 'H\\(x\\) \\| x >= 0 = 1' and the interpreter 'H\\(x\\) = 0'\\; the guard of the first is 4\\.8e-11 from its threshold\nacc\\.y: within 0\\; the interpreter's terms about 5\\.8e-11 from the exact ones\nacc\\.x: within 0\\; the interpreter's terms about 99 from the exact ones, past the tolerance from 1\n$")
+    "^acc: ${straddled}\nacc\\.x: at 1 a disturbed run takes 'H\\(x\\) \\| x >= 0 = 1' and the interpreter 'H\\(x\\) = 0'\\; the guard of the first is 1\\.9e-11 from its threshold\nacc\\.y: within 0\\; the interpreter's terms about 2\\.9e-11 from the exact ones\nacc\\.x: within 0\\; the interpreter's terms about 99 from the exact ones, past the tolerance from 1\n$")
 set_tests_properties(check_given_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^given: 100 steps from 0, against exact values\ngiven\\.x: within 0\n$")
 set_tests_properties(check_parted_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^parted: 100 steps from 0, against exact values until 0 and inexact ones from there\nparted\\.x: at 0 a disturbed run takes 's\\(c\\)_k \\| lim half\\(1\\) >= c = H\\(1\\)' and the interpreter 's\\(c\\)_k = 0'\\; the guard of the first is 4\\.8e-11 from its threshold\nparted\\.x: within 0\\; the interpreter's terms about 1 from the exact ones, past the tolerance from 0\n$")
+    "^parted: 100 steps from 0, against exact values until 0 and inexact ones from there\nparted\\.x: at 0 a disturbed run takes 's\\(c\\)_k \\| lim half\\(1\\) >= c = H\\(1\\)' and the interpreter 's\\(c\\)_k = 0'\\; the guard of the first is 1\\.9e-11 from its threshold\nparted\\.x: within 0\\; the interpreter's terms about 1 from the exact ones, past the tolerance from 0\n$")
 set_tests_properties(check_unasked_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^unasked: ${straddled}\nunasked\\.y: within 0\\; the interpreter's terms about 5\\.8e-11 from the exact ones\nunasked\\.g: within 0\\; the interpreter's terms about inf from the exact ones, past the tolerance from 0\n$")
+    "^unasked: ${straddled}\nunasked\\.y: within 0\\; the interpreter's terms about 2\\.9e-11 from the exact ones\nunasked\\.g: within 0\\; the interpreter's terms about inf from the exact ones, past the tolerance from 0\n$")
 set_tests_properties(check_recalled_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^recalled: ${straddled}\nrecalled\\.y: within 0${about}\nrecalled\\.z: within 0${about}\nrecalled\\.x: within 0\n$")
 set_tests_properties(check_founded_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^founded: 100 steps from 0, against exact values until 0 and inexact ones from there\nfounded\\.x: at 0 a disturbed run takes 's\\(c\\)_k \\| lim half\\(1\\) >= c = 1' and the interpreter 's\\(c\\)_k = 0'\\; the guard of the first is 4\\.8e-11 from its threshold\nfounded\\.x: within 0\\; the interpreter's terms about 1 from the exact ones, past the tolerance from 0\n$")
+    "^founded: 100 steps from 0, against exact values until 0 and inexact ones from there\nfounded\\.x: at 0 a disturbed run takes 's\\(c\\)_k \\| lim half\\(1\\) >= c = 1' and the interpreter 's\\(c\\)_k = 0'\\; the guard of the first is 1\\.9e-11 from its threshold\nfounded\\.x: within 0\\; the interpreter's terms about 1 from the exact ones, past the tolerance from 0\n$")
 set_tests_properties(check_reread_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^reread: ${straddled}\nreread\\.y: within 0\nreread\\.g: within 0\n$")
 set_tests_properties(check_equal_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^equal: ${straddled}\nequal\\.y: within 1\\.1e-16${about}\nequal\\.y: where lim h runs out, 'y_n \\| lim h\\(u_n\\) == lim h\\(u_n\\) = lim h\\(u_n\\)' falls to 'y_n = 0'\n$")
+    "^equal: ${straddled}\nequal\\.y: within 5\\.6e-17${about}\nequal\\.y: where lim h runs out, 'y_n \\| lim h\\(u_n\\) == lim h\\(u_n\\) = lim h\\(u_n\\)' falls to 'y_n = 0'\n$")
 set_tests_properties(check_folded_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^folded: ${straddled}\nfolded\\.g: at 0 a disturbed run takes 'g_n \\| lim half\\(1\\) >= 1/2 - 1/10\\^11 = 1' and the interpreter 'g_n = 0'\\; the guard of the first is 4\\.8e-11 from its threshold\nfolded\\.g: within 0\\; the interpreter's terms about 1 from the exact ones, past the tolerance from 0\n$")
+    "^folded: ${straddled}\nfolded\\.g: at 0 a disturbed run takes 'g_n \\| lim half\\(1\\) >= 1/2 - 1/10\\^11 = 1' and the interpreter 'g_n = 0'\\; the guard of the first is 1\\.9e-11 from its threshold\nfolded\\.g: within 0\\; the interpreter's terms about 1 from the exact ones, past the tolerance from 0\n$")
 # compile/steps.ink, each over its --steps n: runaway at 1000 fails as wild does.
 set(coast "coast\\.v: within 0\ncoast\\.y: within 0\n$")
 set_tests_properties(check_coast_1001_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -393,9 +393,9 @@ set_tests_properties(check_rober_report PROPERTIES PASS_REGULAR_EXPRESSION
 # gives them: each limit's terms the interpreter's.
 set(implicit "100 steps from 0, against exact values until 0 and inexact ones from there")
 set_tests_properties(check_kinetic_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^kinetic: ${implicit}\nkinetic\\.y: within 0${about}\n$")
+    "^kinetic: ${implicit}\nkinetic\\.y: within 1\\.4e-17${about}\n$")
 set_tests_properties(check_jacobian_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^jacobian: ${implicit}\njacobian\\.y: within 0${about}\n$")
+    "^jacobian: ${implicit}\njacobian\\.y: within 1\\.4e-17${about}\n$")
 set_tests_properties(check_doubling_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^doubling: ${implicit}\ndoubling\\.X: within 0${about}\ndoubling\\.F: within 0${about}\n$")
 set_tests_properties(check_inset_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -463,7 +463,7 @@ set_tests_properties(check_later_report PROPERTIES PASS_REGULAR_EXPRESSION
 # limits' are a recurrence (1.2e-15, 1.1e-12 and 3e-14 on the baseline).
 # halving's factorials are whole and at most !11, exact in doubles.
 set_tests_properties(check_summed_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^summed: ${series}\nsummed\\.J: within 1\\.1e-15${about}\nsummed\\.R: within 4\\.4e-15${about}\nsummed\\.p: within 8\\.9e-16${about}\nsummed\\.u: within 9\\.1e-13${about}\nsummed\\.y: within 9\\.1e-13${about}\nsummed\\.z: within 4e-14${about}\n$")
+    "^summed: ${series}\nsummed\\.J: within 1\\.1e-15${about}\nsummed\\.R: within 4\\.3e-15${about}\nsummed\\.p: within 8\\.9e-16${about}\nsummed\\.u: within 9\\.1e-13${about}\nsummed\\.y: within 9\\.1e-13${about}\nsummed\\.z: within 4e-14${about}\n$")
 set_tests_properties(check_halving_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^halving: 100 steps from 0, against exact values\nhalving\\.f: within 0\n$")
 set_tests_properties(check_cancelled_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -978,6 +978,8 @@ set_tests_properties(check_stiff_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^stiff: 100 steps from 0, against exact values until 0 and inexact ones from there\nstiff\\.h: within 0\n(stiff\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 set_tests_properties(check_halves_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^halves: 100 steps from 0, against exact values until 0 and inexact ones from there\nhalves\\.y: within 0${about}\n$")
+set_tests_properties(check_minute_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^minute: 100 steps from 0, against exact values until 0 and inexact ones from there\nminute\\.y: within 0\\; the interpreter's terms about 6\\.2e-25 from the exact ones\nminute\\.z: within 0\\; the interpreter's terms about 5\\.8e-11 from the exact ones\n$")
 set_tests_properties(check_evens_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^evens: 100 steps from 0, against exact values until 0 and inexact ones from there\nevens\\.y: within [0-9.e-]+${about}\n$")
 set_tests_properties(check_evened_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -1168,7 +1170,7 @@ foreach(model IN ITEMS pid adc)
 endforeach()
 
 foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentum:ball newton:stiff
-                         newton:halves
+                         newton:halves newton:minute
                          drift:radix inputs:fan float:hum float:drone float:far float:tally float:crawl
                          float:steep float:blast float:tiny
                          steady:mark softmax:cls grad:line tensor:whirl tensor:batch
@@ -1229,6 +1231,7 @@ foreach(report IN ITEMS
         "ball:^ball: 100 steps from 0${inexact}\n(ball\\.[a-z]+: within [0-9.e+-]+, [0-9.e+-]+ units of a float${about}\n)+$"
         "stiff:^stiff: 100 steps from 0${inexact}\nstiff\\.h: within 6e-08, 0\\.5 units of a float\nstiff\\.x: within ${units}\nstiff\\.y: within ${units}\n$"
         "halves:^halves: 100 steps from 0${inexact}\nhalves\\.y: within ${units}\n$"
+        "minute:^minute: 100 steps from 0${inexact}\nminute\\.y: within ${floats}\\; the interpreter's terms about 6\\.2e-25 from the exact ones\nminute\\.z: ${exact}\\; the interpreter's terms about 5\\.8e-11 from the exact ones\n$"
         "crawl:^crawl: 100 steps from 0${in_float}\ncrawl\\.s: within 0, 0 units of a float\ncrawl\\.y: 100000016 at 0, where the interpreter gives none: s did not converge within 100 terms \\(last term 100000800, its steps in a ratio of 1\\); for a fixed count, read a term, as s_100\n$"
         "fan:^fan: 100 steps from 0${in_float}\nfan\\.y: within 0, 0 units of a float\n$"
         "radix:^radix: 100 steps from 0${inexact}\nradix\\.y: ${exact}\n$"
@@ -1265,7 +1268,7 @@ foreach(report IN ITEMS
         "poly:^poly: 100 steps from 0${in_float}\npoly\\.A: ${exact}\npoly\\.c: ${exact}\npoly\\.d: ${exact}\npoly\\.g: within 0\\.00[0-9]+, [0-9.e+-]+ units of a float\n$"
         "nested:^nested: 100 steps from 0${in_float}\nnested\\.S: ${exact}\nnested\\.w: ${exact}\nnested\\.M: ${exact}\nnested\\.T: ${exact}\nnested\\.y: ${exact}\n$"
         "see:^see: 100 steps from 0${in_float}\nsee\\.Xp: ${exact}\nsee\\.Z: ${exact}\nsee\\.M: ${exact}\nsee\\.s: ${exact}\n$"
-        "knee:^knee: 100 steps from 0${inexact}\n${knee_r}knee\\.r: at 0 the compiled step takes 'r_n = 0' and the interpreter 'r_n \\| y_n > c = y_n - c'\\; the guard of the second is 4\\.2e-11 from its threshold\nknee\\.y: within [0-9.e+-]+, [0-9.e+-]+ units of a float\\; the interpreter's terms about 5\\.8e-11 from the exact ones\nknee\\.r: within 4\\.2e-11, 1\\.2e\\+07 units of a float at step 0\\; the interpreter's terms about 5\\.8e-11 from the exact ones\n$"
+        "knee:^knee: 100 steps from 0${inexact}\n${knee_r}knee\\.r: at 0 the compiled step takes 'r_n = 0' and the interpreter 'r_n \\| y_n > c = y_n - c'\\; the guard of the second is 2\\.1e-11 from its threshold\nknee\\.y: within [0-9.e+-]+, [0-9.e+-]+ units of a float\\; the interpreter's terms about 2\\.9e-11 from the exact ones\nknee\\.r: within 2\\.1e-11, 1\\.2e\\+07 units of a float at step 0\\; the interpreter's terms about 2\\.9e-11 from the exact ones\n$"
         "whole:^whole: 100 steps from 0${inexact}\n(whole\\.k[1-4]: within [1-9](\\.[0-9])?e-0[67], [1-9](\\.[0-9])?e\\+0[2-5] units of a float, from 1${about}\n)+whole\\.y: within 0\\.[0-9]+, [1-9](\\.[0-9])?e\\+0[2-5] units of a float${about}\n$"
         "nm:^nm: 100 steps from 0 in float, against exact values until 35 and inexact ones from there\nnm\\.a\\[[0-9],1\\]: [-0-9.e+]+ at [0-9]+, where the interpreter gives [-0-9.e+]+(\\; the interpreter's term about [0-9.e+-]+ from the exact one)?\n(nm\\.[a-z]+: within [0-9.e+-]+, [0-9.e+-]+ units of a float${about}\n)+$"
         "coast_1001:^coast: 1001 steps from 0${in_float}\ncoast\\.v: ${exact}\ncoast\\.y: ${exact}\n$"
