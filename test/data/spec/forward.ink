@@ -93,6 +93,23 @@ error: a clause is written at a whole number, as y_0, at its index, as y_n, or a
 >> y_(n+k) = 1
 error: a clause is written at a whole number, as y_0, at its index, as y_n, or ahead of it, as y_(n+1), not at y_(n+k)
 
+# So in a model's body, where the index is read as an instance is made; one
+# reading a parameter is a base clause, as before.
+>> mz(N = 2) = {
+..     y_(N) = 1
+..     z_(n+k) = 2
+.. }
+mz(N = 2) = { ... }
+
+>> mz().z_3
+error: a clause is written at a whole number, as z_0, at its index, as z_n, or ahead of it, as z_(n+1), not at z_(n+k)
+
+>> my(N = 2) = { y_(N) = 1 }
+my(N = 2) = { ... }
+
+>> my().y_2
+1
+
 # The form whatever the name holds, as x_t is the general clause whatever
 # t holds. Before, with t = 3, x_(t+1) = 5 was the base clause x_4. It
 # holds at every index no base clause takes, 0 among them, as x_t = 5 does.

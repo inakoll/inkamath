@@ -215,12 +215,11 @@ private:
         bool        on    = false;
     };
     std::optional<Shift> shift_;
-    // An index refused where it reads a name nothing defines, and its tokens.
-    std::tuple<std::string, size_t, size_t> unindexed_;
 
     // How far ahead of its index a clause is written, or 0 at its index or a
-    // computed one; t-1, t+0 and 1+t are refused whatever t holds.
-    int Ahead(const std::string& name, size_t from, size_t to) {
+    // computed one; t-1, t+0 and 1+t are refused whatever t holds, and a
+    // computed one where it reads a name nothing defines.
+    int Ahead(const std::string& name, size_t from, size_t to, std::string& refusal) {
         std::string index;
         for (size_t k = from; k < to && index.empty(); ++k)
             if (m_tokens[k].type == Func) index = m_tokens[k].text;
@@ -231,13 +230,12 @@ private:
         const T    k    = five ? m_tokens[from + 3].value : T(0);
         const int  by   = numeric_interface<T>::toInt(k);
         if (sum && by >= 1 && k == T(by)) return by;
-        unindexed_ = {"a clause is written at a whole number, as " + name +
-                          "_0, at its index, as " + name + "_" + index + ", or ahead of it, as " +
-                          name + "_(" + index + "+1), not at " + name + "_" + Spelled(from, to),
-                      from, to};
+        refusal = "a clause is written at a whole number, as " + name + "_0, at its index, as " +
+                  name + "_" + index + ", or ahead of it, as " + name + "_(" + index +
+                  "+1), not at " + name + "_" + Spelled(from, to);
         if (sum || (five && ((type(1) == Func && type(2) == Min && type(3) == Val) ||
                              (type(1) == Val && type(2) == Add && type(3) == Func))))
-            Fail(std::get<0>(unindexed_));
+            Fail(refusal);
         return 0;
     }
 
@@ -827,7 +825,6 @@ void Interpreter<T,U>::ResetInterpreter()
     m_tokens.clear();
     m_i = 0;
     ended_.clear();
-    unindexed_ = {};
 }
 
 template <Parsable T, Numeric U>
@@ -1115,9 +1112,10 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
                 signature += m_tokens[token].text;
             }
             const bool listed = m_i > signature_begin + 1;  // 'g()', nothing else
-            const int  ahead  = shift_ || signature_begin ? 0
+            std::string unindexed;
+            const int   ahead = shift_ || signature_begin ? 0
                                                           : Ahead(Spelled(signature_begin, index_at),
-                                                                  index_at + 1, index_end);
+                                                                  index_at + 1, index_end, unindexed);
             if (signature_begin != (shift_ ? shift_->begin : 0)) {
                 if (!listed_) Unbound(name);
                 if (index_end == index_at + 2) Unbound(m_tokens[index_at + 1].text);
@@ -1134,6 +1132,7 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
             } else {
                 e.reset(new EqualExpression<U>(ref, expr, listed));
             }
+            std::static_pointer_cast<EqualExpression<U>>(e)->unindexed = unindexed;
             if (ahead) {
                 const std::string                   index = m_tokens[index_at + 2].text;
                 const Setting<std::optional<Shift>> shifting(
@@ -1873,9 +1872,6 @@ typename Interpreter<T, U>::Result Interpreter<T, U>::Eval(const std::string& s)
                             [&](const Token<T>& t) { return t.type == Func && t.text == index; }))
                 what = index + " is bound in the " + word + "'s body alone, which ended at the '" +
                        m_tokens[at].text + "'";
-        for (auto [refusal, k, to] = unindexed_; k < to && !refusal.empty(); ++k)
-            if (m_tokens[k].type == Func && what == m_tokens[k].text + " is not defined")
-                what = refusal;
         result = Diagnostic{what};
     }
     ResetInterpreter();  // reset whatever happens and forgive the user

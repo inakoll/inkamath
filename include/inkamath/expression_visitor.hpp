@@ -273,9 +273,17 @@ public:
     ParametersDefinition<T> Parameters(EqualExpression<T>* expr) {
         const std::vector<PExpression<T>>& signature = expr->m_e1()->Children();
         if (signature.empty()) return ParametersDefinition<T>();
-        return ParametersDefinition<T>(signature[0], signature[1], *this, signature[2],
-                                       expr->m_e1()->Signature(), signature[3], signature[4],
-                                       signature[5], expr->written);
+        try {
+            return ParametersDefinition<T>(signature[0], signature[1], *this, signature[2],
+                                           expr->m_e1()->Signature(), signature[3], signature[4],
+                                           signature[5], expr->written);
+        } catch (const std::runtime_error& why) {
+            std::string_view name = why.what();  // 'n', or an instance's 'm(...).n'
+            if (expr->unindexed.empty() || !name.ends_with(" is not defined")) throw;
+            name.remove_suffix(std::string_view(" is not defined").size());
+            if (!Mentions(*signature[1], std::string(name.substr(name.rfind('.') + 1)))) throw;
+            throw std::runtime_error(expr->unindexed);
+        }
     }
 
     // A local: bound in the scope that can still see the parameters, to the
