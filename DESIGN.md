@@ -3709,15 +3709,17 @@ that exploring seven domains asked of the interpreter, by how many asked.
     compiler as `x_(2*(m - 1))`, refused as "an index other than a whole
     multiple of m plus a constant", false of what was written.
 
-  About 65 lines of sources, all in the interpreter, where a line is parsed
-  and a clause joins: the form read and the other indices refused, 12; the
+  About 80 lines of sources, all in the interpreter, where a line is parsed
+  and a clause joins: the form read and the other indices refused, 14; the
   shift, the index read as t - k where the parser reads a name, folded
-  where it builds a sum and a product, 18; the four refusals, 20; as
-  written, the right side and guard kept on the clause for `tex` and for
-  the optional input's check, `tex`'s left side and three messages, 16.
-  None in the compiler or the check. 20,416 lines in all at 5186f55, by
-  `wc -l include/inkamath/*.hpp src/*`; past 100 the implementation stops
-  and reports.
+  where it builds a sum and a product to the very shapes the compiler
+  reads, which refuses `2*m - 2 + 1` and `(m - 1)*2`, 24; the four
+  refusals, 20; as written, the right side and guard parsed a second time
+  and kept on the clause for `tex` and for the optional input's check,
+  `tex`'s left side and three messages, 22. None in the compiler or the
+  check. 20,416 lines in all at 5186f55, by `wc -l include/inkamath/*.hpp
+  src/*`; past 120, one and a half times the estimate, the implementation
+  stops and reports.
 
   Specified in `test/data/spec/forward.ink`, every value by hand or by
   Python's fractions, and each answer seen to be its shift's today: README
