@@ -221,11 +221,9 @@ private:
     // How far ahead of its index a clause is written, or 0 at its index or a
     // computed one; t-1, t+0 and 1+t are refused whatever t holds.
     int Ahead(const std::string& name, size_t from, size_t to) {
-        std::string written, index;
-        for (size_t k = from; k < to; ++k) {
-            written += (k > from && m_tokens[k].spaced ? " " : "") + m_tokens[k].text;
-            if (index.empty() && m_tokens[k].type == Func) index = m_tokens[k].text;
-        }
+        std::string index;
+        for (size_t k = from; k < to && index.empty(); ++k)
+            if (m_tokens[k].type == Func) index = m_tokens[k].text;
         if (to <= from + 1 || index.empty()) return 0;
         const auto type = [&](size_t k) { return m_tokens[from + k].type; };
         const bool five = to - from == 5 && type(0) == LPar && type(4) == RPar;
@@ -235,7 +233,7 @@ private:
         if (sum && by >= 1 && k == T(by)) return by;
         unindexed_ = {"a clause is written at a whole number, as " + name +
                           "_0, at its index, as " + name + "_" + index + ", or ahead of it, as " +
-                          name + "_(" + index + "+1), not at " + name + "_" + written,
+                          name + "_(" + index + "+1), not at " + name + "_" + Spelled(from, to),
                       from, to};
         if (sum || (five && ((type(1) == Func && type(2) == Min && type(3) == Val) ||
                              (type(1) == Val && type(2) == Add && type(3) == Func))))
@@ -289,14 +287,21 @@ private:
 
     // Its own term after it, r_(n+1) reading r_(n+2), is a recursion from the
     // tip, which a paper writes at its index.
-    void After(const std::string& name, const PExpression<U>& sub) const {
+    void After(const std::string& name, const PExpression<U>& sub, size_t from) const {
         if (!shift_ || !shift_->on || name != shift_->name || !sub) return;
         const auto* sum = dynamic_cast<const AddExpression<U>*>(sub.get());
         const auto* by  = sum ? dynamic_cast<const ValExpression<U>*>(sum->m_e2().get()) : nullptr;
         if (by && sum->m_e1()->Name() == shift_->index &&
             numeric_interface<U>::toInt(by->value) > 0)
-            Fail(shift_->left, " reads ", name, "_(", shift_->index, "+",
-                 numeric_interface<U>::toInt(by->value) + shift_->ahead, "), a term after it");
+            Fail(shift_->left, " reads ", Spelled(from, m_i), ", a term after it");
+    }
+
+    // Tokens as written, a space where one was.
+    std::string Spelled(size_t from, size_t to) const {
+        std::string text;
+        for (size_t k = from; k < to; ++k)
+            text += (k > from && m_tokens[k].spaced ? " " : "") + m_tokens[k].text;
+        return text;
     }
 
     // One line cannot be allowed to exhaust the C++ stack. What a line
@@ -1078,7 +1083,7 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
             shift_->on = true;
             sub        = std::make_shared<RefExpression<U>>(shift_->index);
         }
-        After(name, sub);
+        After(name, sub, signature_begin);
         if (!AtEnd() && Peek().type == Dot) {
             PExpression<U> member = ParseMembers(
                 params || sub ? std::make_shared<FuncExpression<U>>(ref, params, sub) : ref);
@@ -1110,7 +1115,9 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
                 signature += m_tokens[token].text;
             }
             const bool listed = m_i > signature_begin + 1;  // 'g()', nothing else
-            const int  ahead = shift_ || signature_begin ? 0 : Ahead(name, index_at + 1, index_end);
+            const int  ahead  = shift_ || signature_begin ? 0
+                                                          : Ahead(Spelled(signature_begin, index_at),
+                                                                  index_at + 1, index_end);
             if (signature_begin != (shift_ ? shift_->begin : 0)) {
                 if (!listed_) Unbound(name);
                 if (index_end == index_at + 2) Unbound(m_tokens[index_at + 1].text);
@@ -1130,9 +1137,8 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
             if (ahead) {
                 const std::string                   index = m_tokens[index_at + 2].text;
                 const Setting<std::optional<Shift>> shifting(
-                    shift_,
-                    Shift{name, index, name + "_(" + index + "+" + std::to_string(ahead) + ")",
-                          ahead, signature_begin});
+                    shift_, Shift{name, index, Spelled(signature_begin, index_end), ahead,
+                                  signature_begin});
                 m_i                = signature_begin;
                 const auto shifted = std::static_pointer_cast<EqualExpression<U>>(ParseEqualExpr());
                 shifted->written   = e;
@@ -1364,6 +1370,7 @@ PExpression<U> Interpreter<T, U>::ParseSimpleExpr(bool postfix) {
     } nested(nesting_);
     PExpression<U> e,ref,param,sub;
     bool           indexable = false;  // a name, a call or a bracketed value, not a number
+    const size_t   from      = m_i;
     std::string name;
     if (!AtEnd())
     {
@@ -1394,7 +1401,7 @@ PExpression<U> Interpreter<T, U>::ParseSimpleExpr(bool postfix) {
             ref.reset(new RefExpression<U>(m_tokens[m_i++].text));
             param = ParseParameters();
             sub = ParseSubExpr();
-            After(ref->Name(), sub);
+            After(ref->Name(), sub, from);
             if(param || sub) {
                 e.reset(new FuncExpression<U>(ref,param,sub));
             }

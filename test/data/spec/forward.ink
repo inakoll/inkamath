@@ -295,6 +295,16 @@ root(x) = x
 >> root(0)
 ~0
 
+# The refusals quote a left side and a read with parameters as written.
+>> nw(x)_(k+1) = nw(x)_(k+2)
+error: nw(x)_(k+1) reads nw(x)_(k+2), a term after it
+
+>> bw(x)_(k+1) = sum_(k=1)^3 x
+error: k is the index of bw(x)_(k+1), so the clause cannot bind it again
+
+>> bw(x)_(k-1) = x
+error: a clause is written at a whole number, as bw(x)_0, at its index, as bw(x)_k, or ahead of it, as bw(x)_(k+1), not at bw(x)_(k-1)
+
 # A parameter named as the index is refused as it is for g(t)_t.
 >> g(t)_(t+1) = t
 error: g has a parameter and an index named t
