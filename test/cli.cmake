@@ -2755,7 +2755,7 @@ check(compile_hessian_refused)
 # instance of each checked to its shift's report, the delay refused as its
 # shift is, and a cell of every term named as written.
 set(story "${CMAKE_CURRENT_LIST_DIR}/compile/forward.ink")
-foreach(model IN ITEMS plant nesterov second acc held tracker)
+foreach(model IN ITEMS plant nesterov second acc sampled held tracker)
     foreach(written IN ITEMS ${model} shifted${model})
         set(args --compile ${story} ${written} -o ${written}.h)
         check(compile_forward_${written})
@@ -2790,7 +2790,7 @@ set(exit 1)
 check(compile_forward_ranked)
 
 if(CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
-    foreach(instance IN ITEMS plt ball pair total hold track)
+    foreach(instance IN ITEMS plt ball pair total tally hold track)
         foreach(written IN ITEMS ${instance} shifted${instance})
             set(args --check ${story} ${written} -o ${written}.c)
             check(check_forward_${written})

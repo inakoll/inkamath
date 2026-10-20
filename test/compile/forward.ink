@@ -122,6 +122,19 @@ shiftedtracker(z_n) = {
 track = tracker(z_n = n/2 + (-1)^n/4)
 shiftedtrack = shiftedtracker(z_n = n/2 + (-1)^n/4)
 
+# The accumulator's samples written m*2, folded as 2*m is: x_(m*2 - 2)
+# and x_(m*2 - 1) once shifted, as the compiler reads them.
+sampled(x_n) = {
+    y_0 = 0
+    y_(m+1) = y_m + x_(m*2) + x_(m*2+1)
+}
+shiftedsampled(x_n) = {
+    y_0 = 0
+    y_m = y_(m-1) + x_(m*2 - 2) + x_(m*2 - 1)
+}
+tally = sampled(x_n = n)
+shiftedtally = shiftedsampled(x_n = n)
+
 # At every index, as its shift: with no base clause, c_0 reads x_(-1),
 # refused as the shift is until a history or a base clause says what it is.
 delay(x_n) = {

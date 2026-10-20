@@ -3629,8 +3629,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   - **Read as its shift, once, where the clause is defined**: `x_(t+k) = E`
     is `x_t = E` with t read as t - k in E, in the guard, and in a cell's
     bounds and guard. Where the index is the left of a whole number written
-    as one and added or taken, or a whole number times it, `a*t`, the
-    constants fold as the shift written by hand writes them: `x_t` read in
+    as one and added or taken, or a whole number times it, `a*t` or
+    `t*a`, the constants fold as the shift written by hand writes them: `x_t` read in
     `x_(t+1) = ...` is `x_(t-1)`, `v_(t+1)` is `v_t`, `x_(2*t + 1)` is
     `x_(2*t - 1)`, `floor(t/2)` is `floor((t - 1)/2)`; anywhere else it is
     `(t - k)`, `(t - 1)*h`. What is stored, evaluated, remembered, filled by
@@ -3735,25 +3735,25 @@ that exploring seven domains asked of the interpreter, by how many asked.
   filter, each beside its shift by hand, to the same header and report,
   and the delay refused as its shift is.
 
-  Done in 195 lines of sources, against the 80 estimated and the stop at
+  Done in 202 lines of sources, against the 80 estimated and the stop at
   120: past it at 165, the overrun was accepted, 22 more fixed four
-  shortfalls the implementation reported, and its review's 8 refuse a
-  cell named as the index as binding it again. Each part is one the spec
-  needs.
+  shortfalls the implementation reported, and its review's 15 refuse a
+  cell named as the index as binding it again and fold `(t - 1)*2` as
+  `2*(t - 1)` is. Each part is one the spec needs.
   The form read and the other indices refused, about 35 lines: the
   sentence quotes the index as written and, where it reads a name nothing
   defines, is carried on the definition to where it is bound, so a model's
   body says it as the session does. The shift, about 60: its state, the
   second parse, and the fold to the compiler's shapes, `2*m - 1` for `2*(m
-  - 1) + 1` and `t` for `t - 1 + 1`, without which the compiler refuses
+  - 1) + 1`, `m*2 - 2` for `(m - 1)*2` and `t` for `t - 1 + 1`, without which the compiler refuses
   what the shift by hand compiles. The four refusals, about 35. As
   written, about 55: the clause as written kept beside its shift, and from
   it tex's left side, value, guard, cell bounds and a base term's index,
   the optional input's check and the loop's label. In the interpreter,
-  `interpreter.hpp` 141, `latex.hpp` 16, `reference.hpp` 13,
+  `interpreter.hpp` 148, `latex.hpp` 16, `reference.hpp` 13,
   `parameters.hpp` 11, `expression_visitor.hpp` 8 and `expression.hpp` 6;
   in the compiler, a cell of every term named as written in two refusals,
-  and none in the check. 20,492 to 20,687 lines at 9d25328 by
+  and none in the check. 20,492 to 20,694 lines at 9d25328 by
   `wc -l include/inkamath/*.hpp src/*`. The spec is the golden
   `test/data/forward.ink`, with the four fixes' entries;
   `test/compile/forward.ink` is a case of cli.cmake's part 4, and

@@ -248,8 +248,8 @@ private:
         return std::make_shared<ValExpression<U>>(value);
     }
 
-    // The shift folded as it is written by hand, t - 1 + 1 as t and 2*(t - 1)
-    // as 2*t - 2: the shapes the compiler reads.
+    // The shift folded as it is written by hand, t - 1 + 1 as t, 2*(t - 1)
+    // as 2*t - 2 and (t - 1)*2 as t*2 - 2: the shapes the compiler reads.
     PExpression<U> Folded(PExpression<U> e) const {
         if (!shift_ || !shift_->on) return e;
         const auto constant = [](const PExpression<U>& x) {
@@ -261,18 +261,25 @@ private:
         };
         const auto& l = e->Children()[0];
         const auto& r = e->Children()[1];
-        if (typeid(*e) == typeid(MultExpression<U>) && constant(l) &&
-            typeid(*r) == typeid(AddExpression<U>) && named(r->Children()[0]) &&
-            constant(r->Children()[1]))
+        const bool  first = constant(l) != nullptr;  // a*(t - k), else (t - k)*a
+        const auto& a     = first ? l : r;
+        const auto& sum   = first ? r : l;
+        if (typeid(*e) == typeid(MultExpression<U>) && constant(a) &&
+            typeid(*sum) == typeid(AddExpression<U>) && named(sum->Children()[0]) &&
+            constant(sum->Children()[1])) {
+            const auto& t = sum->Children()[0];
+            const U&    k = constant(sum->Children()[1])->value;
             return std::make_shared<AddExpression<U>>(
-                std::make_shared<MultExpression<U>>(l, r->Children()[0]),
-                Value(constant(l)->value * constant(r->Children()[1])->value));
+                std::make_shared<MultExpression<U>>(first ? a : t, first ? t : a),
+                Value(first ? constant(a)->value * k : k * constant(a)->value));
+        }
         if (typeid(*e) != typeid(AddExpression<U>) || typeid(*l) != typeid(AddExpression<U>) ||
             !constant(r) || !constant(l->Children()[1]))
             return e;
-        const auto& t = l->Children()[0];  // t, or a whole number times it
-        if (!named(t) && !(typeid(*t) == typeid(MultExpression<U>) && constant(t->Children()[0]) &&
-                           named(t->Children()[1])))
+        const auto& t = l->Children()[0];  // t, or t times a whole number, either way
+        if (!named(t) && !(typeid(*t) == typeid(MultExpression<U>) &&
+                           ((constant(t->Children()[0]) && named(t->Children()[1])) ||
+                            (named(t->Children()[0]) && constant(t->Children()[1])))))
             return e;
         const U by = constant(l->Children()[1])->value + constant(r)->value;
         return by == U(T(0)) ? t : std::make_shared<AddExpression<U>>(t, Value(by));
