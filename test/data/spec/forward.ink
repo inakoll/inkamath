@@ -106,7 +106,8 @@ x_(t+1) = 5
 [5, 5]
 
 # A computed index that reads only what is defined is a base clause, as
-# before; the index less a number is refused whatever the name holds.
+# before; the index less a number, plus 0 or after a number, is refused
+# whatever the name holds, so that no spelling of x_(t+1) is a base clause.
 >> w_(2*t) = 7
 w_(2*t) = 7
 
@@ -115,6 +116,12 @@ w_(2*t) = 7
 
 >> w_(t-1) = 2
 error: a clause is written at a whole number, as w_0, at its index, as w_t, or ahead of it, as w_(t+1), not at w_(t-1)
+
+>> w_(1+t) = 2
+error: a clause is written at a whole number, as w_0, at its index, as w_t, or ahead of it, as w_(t+1), not at w_(1+t)
+
+>> w_(t+0) = 2
+error: a clause is written at a whole number, as w_0, at its index, as w_t, or ahead of it, as w_(t+1), not at w_(t+0)
 
 >> clear t
 clear t

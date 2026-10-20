@@ -3616,12 +3616,14 @@ that exploring seven domains asked of the interpreter, by how many asked.
     the line above from a base clause to a recurrence; no golden, README
     example or story defines a clause so. A base clause at a computed index
     stays, `w_(2*t)` with t defined. Any other index that reads a name
-    nothing defines, and the name less a number whatever it holds, is
-    refused in one sentence, `a clause is written at a whole number, as
-    y_0, at its index, as y_n, or ahead of it, as y_(n+1), not at y_(n-1)`,
-    its examples taken from the line. One spelling: `y_(1+n)` says what
-    `y_(n+1)` does, `y_(n+0)` what `y_n` does, and `y_(n-1)` a step back
-    what `y_n` says, which no paper writes.
+    nothing defines, and whatever the name holds the name less a number,
+    plus 0 or after a number, `t-1`, `t+0`, `1+t`, is refused in one
+    sentence, `a clause is written at a whole number, as y_0, at its index,
+    as y_n, or ahead of it, as y_(n+1), not at y_(n-1)`, its examples taken
+    from the line. One spelling: `y_(1+n)` says what `y_(n+1)` does,
+    `y_(n+0)` what `y_n` does, and `y_(n-1)` a step back what `y_n` says,
+    which no paper writes; with n defined, the first two would otherwise be
+    base clauses beside a recurrence spelled the same.
   - **Read as its shift, once, where the clause is defined**: `x_(t+k) = E`
     is `x_t = E` with t read as t - k in E, in the guard, and in a cell's
     bounds and guard. Where the index is the left of a whole number written
