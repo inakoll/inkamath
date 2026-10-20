@@ -1184,12 +1184,14 @@ private:
             settled.assign(size, false);
         }
         bool Next(const Jet& jet) {
-            bool all = true;
+            bool all = true, near = true;
             for (std::size_t s = 0; s < jet.size(); ++s) {
                 if (jet[s] && jet[s]->node) throw Forward();
-                settled[s] = parts[s].Next(jet[s] ? jet[s]->Value() : Zero(jet[0]->Size()));
-                all        = all && settled[s];
+                all        = parts[s].Next(jet[s] ? jet[s]->Value() : Zero(jet[0]->Size())) && all;
+                settled[s] = parts[s].Near();
+                near       = near && settled[s];
             }
+            if (near && !all && !kept) kept = Limit(jet);
             return all;
         }
         // Each part moved, in a run of --check, by what its own walk left.
@@ -1213,6 +1215,7 @@ private:
         }
         std::vector<Convergence<T>> parts;
         std::vector<bool>           settled;
+        std::optional<Jet>          kept;  // as Convergence keeps a value
     };
 
     // As Reference::Converge walks a limit, and further while its derivatives
@@ -1239,9 +1242,17 @@ private:
         if (highest) (void)walk.Next(at(index));
         Jet term;
         for (std::size_t n = 0; n < Convergence<T>::max_terms; ++n) {
-            term = at(++index);
-            if (walk.Next(term)) return walk.Limit(term);
+            try {
+                term = at(++index);
+                if (walk.Next(term)) return walk.Limit(term);
+            } catch (const DepthExceeded&) {
+                throw;
+            } catch (const std::runtime_error&) {
+                if (!walk.kept) throw;
+                return *walk.kept;
+            }
         }
+        if (walk.kept) return *walk.kept;
         walk.Fail(name, "last term", term);
     }
 
@@ -1317,9 +1328,17 @@ private:
         Walk              walk("the " + what, Size(), "a partial " + what);
         Jet               total;
         for (int n = 0; n < static_cast<int>(Convergence<T>::max_terms); ++n) {
-            total = n == 0 ? term(first) : combine(total, term(first + n));
-            if (walk.Next(total)) return walk.Limit(total);
+            try {
+                total = n == 0 ? term(first) : combine(total, term(first + n));
+                if (walk.Next(total)) return walk.Limit(total);
+            } catch (const DepthExceeded&) {
+                throw;
+            } catch (const std::runtime_error&) {
+                if (!walk.kept) throw;
+                return *walk.kept;
+            }
         }
+        if (walk.kept) return *walk.kept;
         walk.Fail("the " + what, "last partial " + what, total);
     }
 
