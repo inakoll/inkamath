@@ -275,7 +275,7 @@ public:
         if (signature.empty()) return ParametersDefinition<T>();
         return ParametersDefinition<T>(signature[0], signature[1], *this, signature[2],
                                        expr->m_e1()->Signature(), signature[3], signature[4],
-                                       signature[5]);
+                                       signature[5], expr->written);
     }
 
     // A local: bound in the scope that can still see the parameters, to the

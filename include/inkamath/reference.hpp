@@ -299,6 +299,16 @@ public:
                                      " has a guarded clause for all of it, so it cannot be "
                                      "defined by its cells; guard its cells");
         }
+        // Its clauses for every index are written at one offset, so that its
+        // cases have one left side, changed by 'clear' alone (DESIGN.md).
+        if (const Clause<T>* other = FirstThat([&](const Clause<T>& c) {
+                return ai_parameters.general() && c.parameters.general() &&
+                       c.parameters.ahead() != ai_parameters.ahead();
+            }))
+            throw std::runtime_error(reference_name_ + " is written " + reference_name_ + "_" +
+                                     other->parameters.subscript() +
+                                     ", so a clause cannot be written " + reference_name_ + "_" +
+                                     ai_parameters.subscript() + Advice());
         // Writing a clause again replaces it where it stands. Position is what
         // dispatch follows, so a clause that moved would answer differently
         // (DESIGN.md, C45); a guarded clause is named by its left-hand
@@ -1725,14 +1735,17 @@ public:
         std::vector<std::pair<std::string, Clauses>> definitions;
         for (const auto& s : model_.body) {
             if (!s.definition) continue;
-            const auto& left  = s.definition->Children()[0]->Children();
-            const auto  guard = left.size() > 2 ? left[2] : nullptr;
-            const auto* index = left.size() > 1 ? left[1].get() : nullptr;
+            // A forward clause's reads as written, as its refusal quotes them.
+            const auto& written = static_cast<const EqualExpression<T>&>(*s.definition).written;
+            const auto& shown   = written ? written : s.definition;
+            const auto& left    = s.definition->Children()[0]->Children();
+            const auto  guard   = left.size() > 2 ? shown->Children()[0]->Children()[2] : nullptr;
+            const auto* index   = left.size() > 1 ? left[1].get() : nullptr;
             auto        at    = std::find_if(definitions.begin(), definitions.end(),
                                              [&](const auto& d) { return d.first == s.name; });
             if (at == definitions.end()) at = definitions.insert(at, {s.name, {}});
             at->second.emplace_back(
-                guard, s.definition->Children()[1],
+                guard, shown->Children()[1],
                 !guard && !(index && !dynamic_cast<const RefExpression<T>*>(index)));
         }
         for (const auto& [name, clauses] : definitions)

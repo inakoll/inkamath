@@ -98,11 +98,16 @@ public:
 
     ParametersDefinition(PExpression<T> params, PExpression<T> subexpr,
                          EvaluationVisitor<T>& evaluator, PExpression<T> guard = PExpression<T>(),
-                         std::string    signature = std::string(),
-                         PExpression<T> row       = PExpression<T>(),
-                         PExpression<T> col       = PExpression<T>(),
-                         PExpression<T> slice     = PExpression<T>())
+                         std::string    signature  = std::string(),
+                         PExpression<T> row        = PExpression<T>(),
+                         PExpression<T> col        = PExpression<T>(),
+                         PExpression<T> slice      = PExpression<T>(),
+                         PExpression<T> as_written = PExpression<T>())
         : guard_(guard), signature_(std::move(signature)), binds_(guard && Binds(*guard)) {
+        written_ = std::move(as_written);
+        if (written_)  // its index as written, 't+1'
+            ahead_ = AsIndex<T>(
+                written_->Children()[0]->Children()[1]->Children()[1]->accept(evaluator));
         if (params)
             for (const PExpression<T>& written : params->Children()) Parameter(written, evaluator);
         if(subexpr) {
@@ -305,13 +310,19 @@ public:
     const std::vector<Size>&        sizes() const { return sizes_; }
     bool indexed() const {return indexed_;}
     bool general() const {return indexed_ && !index_name_.empty();}
-
+    // Written ahead of its index, 'n+1', and as written (DESIGN.md).
+    int                   ahead() const { return ahead_; }
+    const PExpression<T>& written() const { return written_; }
+    std::string at() const { return index_name_ + (ahead_ ? "+" + std::to_string(ahead_) : ""); }
+    std::string subscript() const { return ahead_ ? "(" + at() + ")" : at(); }
 
 protected:
     std::vector<Size>        sizes_;  // as this clause states them
     PExpression<T> guard_;
     std::string signature_;
     bool                     binds_ = false;
+    int                      ahead_ = 0;
+    PExpression<T>           written_;
     std::vector<std::string> parameters_names_;
     ExprDict<T> parameters_dict_;
     std::string index_name_;
