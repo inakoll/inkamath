@@ -3651,8 +3651,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
     offset, so that its cases have the one left side `tex` sets them
     under: `c is written c_(n+1), so a clause cannot be written c_n; write
     'clear c' first`, and the other way round. The one general clause
-    written again at another offset is replaced, as any clause written
-    again is. Index names may differ between clauses, as they may now.
+    written again at another offset is refused so too, though written again
+    at its own it replaces itself: a definition's offset changes by `clear`
+    alone, so no clause is left at the old one. Index names may differ
+    between clauses, as they may now.
   - **Refused, as adding nothing a paper writes**: a clause reading its own
     term after its left side, `r_(n+1) reads r_(n+2), a term after it`,
     whose shift is a recursion from the tip, written on paper at its index,

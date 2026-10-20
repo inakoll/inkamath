@@ -172,8 +172,13 @@ gd_(n+1) = gd_n + 1
 [4, 10, 10]
 
 # A definition's clauses for every index are written at one offset, so
-# that its cases have one left side.
+# that its cases have one left side, and the offset changes by 'clear'
+# alone: the general clause written at another, which would leave c's
+# guarded case at the first, is refused too.
 >> c_n | n > 100 = 7
+error: c is written c_(n+1), so a clause cannot be written c_n; write 'clear c' first
+
+>> c_n = 7
 error: c is written c_(n+1), so a clause cannot be written c_n; write 'clear c' first
 
 >> d_n = n
@@ -191,15 +196,17 @@ d_(n+1) | d_n > 2 = 0
 >> ?d
 d_(n+1) | d_n > 2 = 0
 
-# The one general clause, written again at another offset, is replaced, as
-# any clause written again is.
+# So is the one general clause, written again at another offset.
 >> h_(n+1) = h_n + 1
 h_(n+1) = h_n + 1
 
 >> h_n = 2*n
-h_n = 2*n
+error: h is written h_(n+1), so a clause cannot be written h_n; write 'clear h' first
 
->> ?h
+>> clear h
+clear h
+
+>> h_n = 2*n
 h_n = 2*n
 
 >> h_3
