@@ -162,10 +162,13 @@ private:
     static std::string Cases(const std::vector<const Clause<T>*>& cases) {
         if (cases.size() == 1 && !cases.front()->parameters.guarded())
             return Right(Value(*cases.front()));
-        // A term among the cases is named by the index the others take.
+        // A term among the cases is named by the index the others take, as
+        // they take it: x_3 beside x_{n+1} is n = 2.
         std::string index;
+        int         ahead = 0;
         for (const Clause<T>* clause : cases)
-            if (clause->parameters.general()) index = clause->parameters.index_name();
+            if (clause->parameters.general())
+                index = clause->parameters.index_name(), ahead = clause->parameters.ahead();
         const auto term = [](const ParametersDefinition<T>& p) {
             return p.indexed() && !p.general() && !p.cells();
         };
@@ -174,9 +177,9 @@ private:
             for (const Clause<T>* clause : cases) {
                 const ParametersDefinition<T>& p = clause->parameters;
                 if ((p.guarded() || term(p)) != guarded) continue;
-                const std::string condition = p.guarded()
-                                                  ? Of(Value(*clause, true)).text
-                                                  : index + " = " + std::to_string(p.index());
+                const std::string condition =
+                    p.guarded() ? Of(Value(*clause, true)).text
+                                : index + " = " + std::to_string(p.index() - ahead);
                 lines.push_back(Of(Value(*clause)).text + " & \\text{" +
                                 (guarded ? "if } " + condition : std::string("otherwise}")));
             }

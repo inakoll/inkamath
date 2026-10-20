@@ -171,6 +171,23 @@ gd_(n+1) = gd_n + 1
 >> [gd_4, gd_5, gd_6]
 [4, 10, 10]
 
+# A term among the cases is named by the index of the forward reading:
+# bt_3 is the case n = 2 of bt_(n+1). bt_6 is 2, and bt_7 1, where n = 6.
+>> bt_(n+1) | n > 5 = 1
+bt_(n+1) | n > 5 = 1
+
+>> bt_3 = 7
+bt_3 = 7
+
+>> bt_(n+1) = 2
+bt_(n+1) = 2
+
+>> [bt_3, bt_6, bt_7]
+[7, 2, 1]
+
+>> tex ?bt
+\mathit{bt}_{n+1} = \begin{cases} 1 & \text{if } n > 5 \\ 7 & \text{if } n = 2 \\ 2 & \text{otherwise} \end{cases}
+
 # A definition's clauses for every index are written at one offset, so
 # that its cases have one left side, and the offset changes by 'clear'
 # alone: the general clause written at another, which would leave c's
