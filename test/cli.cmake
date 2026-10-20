@@ -2749,3 +2749,81 @@ cannot compile g: grad's expression does not read v
 ")
 set(exit 1)
 check(compile_hessian_refused)
+
+# The forward form (DESIGN.md): each model of compile/forward.ink compiled to
+# its shift's header but for the name and where its comments wrap, an
+# instance of each checked to its shift's report, the delay refused as its
+# shift is, and a cell of every term named as written.
+set(story "${CMAKE_CURRENT_LIST_DIR}/compile/forward.ink")
+foreach(model IN ITEMS plant nesterov second acc sampled held tracker)
+    foreach(written IN ITEMS ${model} shifted${model})
+        set(args --compile ${story} ${written} -o ${written}.h)
+        check(compile_forward_${written})
+    endforeach()
+    strict(compile_forward_${model} ${model}.h)
+    file(READ "${OUT}/${model}.h" forward)
+    file(READ "${OUT}/shifted${model}.h" shifted)
+    string(TOUPPER "${model}" upper)
+    string(REPLACE "shifted${model}" "${model}" shifted "${shifted}")
+    string(REPLACE "SHIFTED${upper}" "${upper}" shifted "${shifted}")
+    foreach(header forward shifted)
+        string(REGEX REPLACE "\n \\*" "\n" ${header} "${${header}}")
+        string(REGEX REPLACE "[ \n]+" " " ${header} "${${header}}")
+    endforeach()
+    if(NOT forward STREQUAL shifted)
+        message(SEND_ERROR "compile_forward_${model}: ${model}.h is not shifted${model}.h but for the name and its spacing")
+    endif()
+endforeach()
+
+set(args --compile ${story} delay)
+set(stdout "cannot compile c: c_0 reads x_-1, before the stream, where x has no history\n")
+set(exit 1)
+check(compile_forward_delay)
+
+set(args --compile ${story} tapped)
+set(stdout "cannot compile v: v_0 and v_(n+1)[2,1] both give a cell of v_0; write v_0[2,1] to say which\n")
+set(exit 1)
+check(compile_forward_tapped)
+set(args --compile ${story} ranked)
+set(stdout "cannot compile v: a clause for one cell of v_(n+1), a 2x2x2 tensor, names its slice, row and column\n")
+set(exit 1)
+check(compile_forward_ranked)
+
+if(CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
+    foreach(instance IN ITEMS plt ball pair total tally hold track)
+        foreach(written IN ITEMS ${instance} shifted${instance})
+            set(args --check ${story} ${written} -o ${written}.c)
+            check(check_forward_${written})
+            execute_process(COMMAND "${CC}" -std=c11 -O2 ${written}.c -o ${written} -lm
+                            WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
+                            ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
+            if(failed)
+                message(SEND_ERROR "check_forward_${written}: ${written}.c does not build\n${errors}")
+            endif()
+            execute_process(COMMAND "${OUT}/${written}" WORKING_DIRECTORY "${OUT}"
+                            OUTPUT_VARIABLE report_${written} RESULT_VARIABLE code_${written}
+                            TIMEOUT ${CASE_TIMEOUT})
+        endforeach()
+        string(REPLACE "shifted${instance}" "${instance}" shifted "${report_shifted${instance}}")
+        if(NOT code_${instance} EQUAL 0 OR NOT code_shifted${instance} EQUAL 0 OR
+           NOT "${report_${instance}}" STREQUAL "${shifted}" OR
+           NOT "${shifted}" MATCHES "^${instance}: 100 steps from 0, against exact values\n")
+            message(SEND_ERROR "check_forward_${instance}: exit ${code_${instance}}\n${report_${instance}}--- where shifted${instance}'s, exit ${code_shifted${instance}}, is\n${report_shifted${instance}}")
+        endif()
+    endforeach()
+
+    # Where an optional input is absent, the clauses quoted as written.
+    set(args --check ${story} seen -o seen.c)
+    check(check_forward_seen)
+    execute_process(COMMAND "${CC}" -std=c11 -O2 seen.c -o seen -lm WORKING_DIRECTORY "${OUT}"
+                    RESULT_VARIABLE failed ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
+    execute_process(COMMAND "${OUT}/seen" WORKING_DIRECTORY "${OUT}" OUTPUT_VARIABLE report
+                    RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
+    set(expected "seen: 100 steps from 0, against exact values
+seen.x: within 0
+seen.x: where z is absent, 'x_(n+1) | z_(n+1) >= 0 = z_(n+1)' falls to 'x_(n+1) = x_n'
+")
+    if(failed OR NOT code EQUAL 0 OR NOT "${report}" STREQUAL "${expected}")
+        message(SEND_ERROR "check_forward_seen: exit ${code}\n${errors}${report}--- expected\n${expected}")
+    endif()
+endif()

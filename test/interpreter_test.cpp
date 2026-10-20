@@ -133,6 +133,9 @@ TEST_CASE("hessian") {
 TEST_CASE("inner") {
     check_transcript("inner.ink");
 }
+TEST_CASE("forward") {
+    check_transcript("forward.ink");
+}
 TEST_CASE("tolerance") {
     check_transcript("tolerance.ink");
 }

@@ -66,7 +66,7 @@ public:
         for (const auto& line : lines) {
             const ParametersDefinition<T>& p = line.front()->parameters;
             if (!p.cells())
-                out += Left(name, p, p.sizes()) + " = " + Right(*line.front()->expression) + "\n";
+                out += Left(name, p, p.sizes()) + " = " + Right(Value(*line.front())) + "\n";
             else
                 out += Entry(name, p, definition.Sizes()) + " = " + Cases(line) + Bounds(p) + "\n";
         }
@@ -161,11 +161,14 @@ private:
     // they are tried.
     static std::string Cases(const std::vector<const Clause<T>*>& cases) {
         if (cases.size() == 1 && !cases.front()->parameters.guarded())
-            return Right(*cases.front()->expression);
-        // A term among the cases is named by the index the others take.
+            return Right(Value(*cases.front()));
+        // A term among the cases is named by the index the others take, as
+        // they take it: x_3 beside x_{n+1} is n = 2.
         std::string index;
+        int         ahead = 0;
         for (const Clause<T>* clause : cases)
-            if (clause->parameters.general()) index = clause->parameters.index_name();
+            if (clause->parameters.general())
+                index = clause->parameters.index_name(), ahead = clause->parameters.ahead();
         const auto term = [](const ParametersDefinition<T>& p) {
             return p.indexed() && !p.general() && !p.cells();
         };
@@ -175,8 +178,9 @@ private:
                 const ParametersDefinition<T>& p = clause->parameters;
                 if ((p.guarded() || term(p)) != guarded) continue;
                 const std::string condition =
-                    p.guarded() ? Of(*p.guard()).text : index + " = " + std::to_string(p.index());
-                lines.push_back(Of(*clause->expression).text + " & \\text{" +
+                    p.guarded() ? Of(Value(*clause, true)).text
+                                : index + " = " + std::to_string(p.index() - ahead);
+                lines.push_back(Of(Value(*clause)).text + " & \\text{" +
                                 (guarded ? "if } " + condition : std::string("otherwise}")));
             }
         std::string right = "\\begin{cases} ";
@@ -189,8 +193,7 @@ private:
     static std::string Entry(const std::string& name, const ParametersDefinition<T>& p,
                              const Sizes& sizes) {
         std::string subscript;
-        if (p.indexed())
-            subscript = (p.general() ? p.index_name() : std::to_string(p.index())) + ",";
+        if (p.indexed()) subscript = (p.general() ? p.at() : std::to_string(p.index())) + ",";
         if (p.tensor())
             subscript +=
                 (p.slice_name().empty() ? std::to_string(p.slice()) : p.slice_name()) + ",";
@@ -201,15 +204,21 @@ private:
     }
 
     // Where the names of a clause for every cell range, those bounded as
-    // written: a size inferred is a call's, not the definition's.
+    // written: a size inferred is a call's, not the definition's. A forward
+    // clause's bounds are its left side's, x_(n+1)[j<=n+2].
     static std::string Bounds(const ParametersDefinition<T>& p) {
         std::string out;
-        for (const auto& [name, bound] : {std::pair(&p.slice_name(), &p.slices()),
-                                          {&p.row_name(), &p.rows()},
-                                          {&p.col_name(), p.column() ? nullptr : &p.cols()}})
-            if (bound && *bound)
+        for (const auto& [name, bound, place] :
+             {std::tuple(&p.slice_name(), &p.slices(), 5),
+              {&p.row_name(), &p.rows(), 3},
+              {&p.col_name(), p.column() ? nullptr : &p.cols(), 4}})
+            if (bound && *bound) {
+                const PExpression<T>& w = p.written();
+                const Expression<T>&  at =
+                    w ? *w->Children()[0]->Children()[place]->Children()[1] : **bound;
                 out += (out.empty() ? ", \\quad " : ",\\ ") + std::string("1 \\le ") + Name(*name) +
-                       " \\le " + Of(**bound).text;
+                       " \\le " + Of(at).text;
+            }
         return out;
     }
 
@@ -239,7 +248,14 @@ private:
                             const Sizes& sizes) {
         if (!p.indexed()) return Head(name, p, sizes);
         return Head(name, p, sizes) + "_" +
-               Braced(p.general() ? p.index_name() : std::to_string(p.index()));
+               Braced(p.general() ? p.at() : std::to_string(p.index()));
+    }
+
+    // A clause's value, or its guard, as written (DESIGN.md, the forward form).
+    static const Expression<T>& Value(const Clause<T>& c, bool guard = false) {
+        const PExpression<T>& w = c.parameters.written();
+        if (!w) return guard ? *c.parameters.guard() : *c.expression;
+        return guard ? *w->Children()[0]->Children()[2] : *w->Children()[1];
     }
 
     static std::string Wrapped(const Text& text, int level) {

@@ -206,6 +206,109 @@ private:
     bool   DefinesReserved() const;
     Result Digits(const std::string& s);
 
+    // The forward form, x_(t+1) = f(x_t) (DESIGN.md): parsed as written, then
+    // again from its index on as its shift, t read as t - 1.
+    struct Shift {
+        std::string name, index, left;  // 'x', 't', 'x_(t+1)'
+        int         ahead = 0;
+        size_t      begin = 0;
+        bool        on    = false;
+    };
+    std::optional<Shift> shift_;
+
+    // How far ahead of its index a clause is written, or 0 at its index or a
+    // computed one; t-1, t+0 and 1+t are refused whatever t holds, and a
+    // computed one where it reads a name nothing defines.
+    int Ahead(const std::string& name, size_t from, size_t to, std::string& refusal) {
+        std::string index;
+        for (size_t k = from; k < to && index.empty(); ++k)
+            if (m_tokens[k].type == Func) index = m_tokens[k].text;
+        if (to <= from + 1 || index.empty()) return 0;
+        const auto type = [&](size_t k) { return m_tokens[from + k].type; };
+        const bool five = to - from == 5 && type(0) == LPar && type(4) == RPar;
+        const bool sum  = five && type(1) == Func && type(2) == Add && type(3) == Val;
+        const T    k    = five ? m_tokens[from + 3].value : T(0);
+        const int  by   = numeric_interface<T>::toInt(k);
+        if (sum && by >= 1 && k == T(by)) return by;
+        refusal = "a clause is written at a whole number, as " + name + "_0, at its index, as " +
+                  name + "_" + index + ", or ahead of it, as " + name + "_(" + index +
+                  "+1), not at " + name + "_" + Spelled(from, to);
+        if (sum || (five && ((type(1) == Func && type(2) == Min && type(3) == Val) ||
+                             (type(1) == Val && type(2) == Add && type(3) == Func))))
+            Fail(refusal);
+        return 0;
+    }
+
+    PExpression<U> Reading(const std::string& name) const {
+        const auto ref = std::make_shared<RefExpression<U>>(name);
+        if (!shift_ || !shift_->on || name != shift_->index) return ref;
+        return std::make_shared<AddExpression<U>>(ref, Value(U(T(-shift_->ahead))));
+    }
+    static PExpression<U> Value(const U& value) {
+        return std::make_shared<ValExpression<U>>(value);
+    }
+
+    // The shift folded as it is written by hand, t - 1 + 1 as t, 2*(t - 1)
+    // as 2*t - 2 and (t - 1)*2 as t*2 - 2: the shapes the compiler reads.
+    PExpression<U> Folded(PExpression<U> e) const {
+        if (!shift_ || !shift_->on) return e;
+        const auto constant = [](const PExpression<U>& x) {
+            const auto* v = dynamic_cast<const ValExpression<U>*>(x.get());
+            return v && numeric_interface<U>::exact(v->value) ? v : nullptr;
+        };
+        const auto named = [&](const PExpression<U>& x) {
+            return typeid(*x) == typeid(RefExpression<U>) && x->Name() == shift_->index;
+        };
+        const auto& l = e->Children()[0];
+        const auto& r = e->Children()[1];
+        const bool  first = constant(l) != nullptr;  // a*(t - k), else (t - k)*a
+        const auto& a     = first ? l : r;
+        const auto& sum   = first ? r : l;
+        if (typeid(*e) == typeid(MultExpression<U>) && constant(a) &&
+            typeid(*sum) == typeid(AddExpression<U>) && named(sum->Children()[0]) &&
+            constant(sum->Children()[1])) {
+            const auto& t = sum->Children()[0];
+            const U&    k = constant(sum->Children()[1])->value;
+            return std::make_shared<AddExpression<U>>(
+                std::make_shared<MultExpression<U>>(first ? a : t, first ? t : a),
+                Value(first ? constant(a)->value * k : k * constant(a)->value));
+        }
+        if (typeid(*e) != typeid(AddExpression<U>) || typeid(*l) != typeid(AddExpression<U>) ||
+            !constant(r) || !constant(l->Children()[1]))
+            return e;
+        const auto& t = l->Children()[0];  // t, or t times a whole number, either way
+        if (!named(t) && !(typeid(*t) == typeid(MultExpression<U>) &&
+                           ((constant(t->Children()[0]) && named(t->Children()[1])) ||
+                            (named(t->Children()[0]) && constant(t->Children()[1])))))
+            return e;
+        const U by = constant(l->Children()[1])->value + constant(r)->value;
+        return by == U(T(0)) ? t : std::make_shared<AddExpression<U>>(t, Value(by));
+    }
+
+    void Unbound(const std::string& name) const {
+        if (shift_ && shift_->on && name == shift_->index)
+            Fail(name, " is the index of ", shift_->left, ", so the clause cannot bind it again");
+    }
+
+    // Its own term after it, r_(n+1) reading r_(n+2), is a recursion from the
+    // tip, which a paper writes at its index.
+    void After(const std::string& name, const PExpression<U>& sub, size_t from) const {
+        if (!shift_ || !shift_->on || name != shift_->name || !sub) return;
+        const auto* sum = dynamic_cast<const AddExpression<U>*>(sub.get());
+        const auto* by  = sum ? dynamic_cast<const ValExpression<U>*>(sum->m_e2().get()) : nullptr;
+        if (by && sum->m_e1()->Name() == shift_->index &&
+            numeric_interface<U>::toInt(by->value) > 0)
+            Fail(shift_->left, " reads ", Spelled(from, m_i), ", a term after it");
+    }
+
+    // Tokens as written, a space where one was.
+    std::string Spelled(size_t from, size_t to) const {
+        std::string text;
+        for (size_t k = from; k < to; ++k)
+            text += (k > from && m_tokens[k].spaced ? " " : "") + m_tokens[k].text;
+        return text;
+    }
+
     // One line cannot be allowed to exhaust the C++ stack. What a line
     // provokes is bounded by its depth, not its length: the parser's
     // recursion by its nesting, below, and every walk of the tree by the
@@ -977,7 +1080,14 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
         std::string name = m_tokens[m_i++].text;
         ref = PExpression<U>(new RefExpression<U>(name));
         params = ParseParameters();
+        const size_t index_at        = m_i;
         sub = ParseSubExpr();
+        const size_t index_end       = m_i;
+        if (shift_ && !shift_->on && signature_begin == shift_->begin) {
+            shift_->on = true;
+            sub        = std::make_shared<RefExpression<U>>(shift_->index);
+        }
+        After(name, sub, signature_begin);
         if (!AtEnd() && Peek().type == Dot) {
             PExpression<U> member = ParseMembers(
                 params || sub ? std::make_shared<FuncExpression<U>>(ref, params, sub) : ref);
@@ -1009,6 +1119,14 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
                 signature += m_tokens[token].text;
             }
             const bool listed = m_i > signature_begin + 1;  // 'g()', nothing else
+            std::string unindexed;
+            const int   ahead = shift_ || signature_begin ? 0
+                                                          : Ahead(Spelled(signature_begin, index_at),
+                                                                  index_at + 1, index_end, unindexed);
+            if (signature_begin != (shift_ ? shift_->begin : 0)) {
+                if (!listed_) Unbound(name);
+                if (index_end == index_at + 2) Unbound(m_tokens[index_at + 1].text);
+            }
             ++m_i;
             expr = Parse();
             if (params || sub || guard || place) {
@@ -1021,6 +1139,25 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
             } else {
                 e.reset(new EqualExpression<U>(ref, expr, listed));
             }
+            std::static_pointer_cast<EqualExpression<U>>(e)->unindexed = unindexed;
+            if (ahead) {
+                const std::string                   index = m_tokens[index_at + 2].text;
+                const Setting<std::optional<Shift>> shifting(
+                    shift_, Shift{name, index, Spelled(signature_begin, index_end), ahead,
+                                  signature_begin});
+                m_i                = signature_begin;
+                const auto shifted = std::static_pointer_cast<EqualExpression<U>>(ParseEqualExpr());
+                shifted->written   = e;
+                for (const auto& at : {place ? place->Slice() : nullptr,
+                                       place ? place->Row() : nullptr,
+                                       place ? place->Col() : nullptr}) {
+                    const auto* bound = dynamic_cast<const CompareExpression<U>*>(at.get());
+                    const auto& named =
+                        bound && bound->Op() == Comparison::LessEqual ? bound->m_e1() : at;
+                    if (named && typeid(*named) == typeid(RefExpression<U>)) Unbound(named->Name());
+                }
+                return shifted;
+            }
         }
         else {
             if(guard) {
@@ -1031,6 +1168,8 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
             // rewind re-parsed the parameters, and nesting squared the cost.
             if(params || sub) {
                 ref.reset(new FuncExpression<U>(ref, params, sub));
+            } else {
+                ref = Reading(name);
             }
             // A name at the head of a line is parsed here, not in
             // ParseSimpleExpr, so the cell brackets and quotes are read here too.
@@ -1112,13 +1251,13 @@ PExpression<U> Interpreter<T,U>::ParseAddExpr(PExpression<U> lead)
         }
         if (m_tokens[m_i++].type == Add)
         {
-            e.reset(new AddExpression<U>(e,ParseMultExpr()));
+            e = Folded(std::make_shared<AddExpression<U>>(e, ParseMultExpr()));
         }
         else
         {
             PExpression<U> tmp =
                 Unary<NegExpression<U>>(ParseMultExpr(), [](const U& value) { return -value; });
-            e.reset(new AddExpression<U>(e,tmp));
+            e = Folded(std::make_shared<AddExpression<U>>(e, tmp));
         }
     }
     return e;
@@ -1132,7 +1271,7 @@ PExpression<U> Interpreter<T,U>::ParseMultExpr(PExpression<U> lead)
     {
         if (m_tokens[m_i++].type == Mult)
         {
-            e.reset(new MultExpression<U>(e,ParsePowExpr()));
+            e = Folded(std::make_shared<MultExpression<U>>(e, ParsePowExpr()));
         }
         else
         {
@@ -1245,6 +1384,7 @@ PExpression<U> Interpreter<T, U>::ParseSimpleExpr(bool postfix) {
     } nested(nesting_);
     PExpression<U> e,ref,param,sub;
     bool           indexable = false;  // a name, a call or a bracketed value, not a number
+    const size_t   from      = m_i;
     std::string name;
     if (!AtEnd())
     {
@@ -1275,11 +1415,12 @@ PExpression<U> Interpreter<T, U>::ParseSimpleExpr(bool postfix) {
             ref.reset(new RefExpression<U>(m_tokens[m_i++].text));
             param = ParseParameters();
             sub = ParseSubExpr();
+            After(ref->Name(), sub, from);
             if(param || sub) {
                 e.reset(new FuncExpression<U>(ref,param,sub));
             }
             else {
-                e = ref;
+                e = Reading(ref->Name());
             }
             if (postfix) e = ParseMembers(e);
             indexable = true;
@@ -1562,6 +1703,7 @@ PExpression<U> Interpreter<T, U>::ParseSeries() {
     expect(Sub);
     expect(LPar);
     const std::string index = expect(Func);
+    Unbound(index);
     expect(Equal);
     const PExpression<U> lower = [&] {
         const Setting<bool> bound(listed_, false);
@@ -1579,7 +1721,7 @@ PExpression<U> Interpreter<T, U>::ParseSeries() {
         if (Peek().type == Val) {
             upper = std::make_shared<ValExpression<U>>(U(m_tokens[m_i++].value));
         } else if (Peek().type == Func && !IsLimit(Peek()) && !IsSeries(Peek())) {
-            upper = std::make_shared<RefExpression<U>>(m_tokens[m_i++].text);
+            upper = Reading(m_tokens[m_i++].text);
             // Where the body touches the name, a call was meant (C369).
             if (!AtEnd() && Peek().type == LPar && !Peek().spaced) {
                 std::string call  = m_tokens[m_i - 1].text;
@@ -1633,6 +1775,7 @@ PExpression<U> Interpreter<T, U>::ParseGrad() {
     do {
         if (!variables.empty()) ++m_i;
         variables.push_back(expect(Func));
+        Unbound(variables.back());
         if (std::count(variables.begin(), variables.end(), variables.back()) > 1)
             Fail("grad names ", variables.back(), " twice");
         expect(Equal);
@@ -2024,6 +2167,11 @@ std::pair<std::string, std::shared_ptr<Model<U>>> Interpreter<T, U>::ParseModel(
             if (parameter.name != statement.name) continue;
             if (parameter.index.empty())
                 Fail(statement.name, " is a parameter of ", name, ", so its body cannot define it");
+            if (statement.definition &&
+                static_cast<const EqualExpression<U>&>(*statement.definition).written)
+                Fail(statement.name, " is an input of ", name,
+                     ", so its history is written at its index, as ", statement.name, "_",
+                     parameter.index);
             const auto& left = statement.definition
                                    ? statement.definition->Children()[0]->Children()
                                    : std::vector<PExpression<U>>();

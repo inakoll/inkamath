@@ -678,7 +678,7 @@ private:
 
         static std::string Index(const Reference<T>& definition) {
             for (const Clause<T>& clause : definition.Clauses())
-                if (clause.parameters.general()) return clause.parameters.index_name();
+                if (clause.parameters.general()) return clause.parameters.subscript();
             return "n";
         }
 
