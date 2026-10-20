@@ -3600,7 +3600,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **A cumulative sum compiled as an accumulator**, `sum_(t=1)^n e(t)`:
   refused as "a sum whose bounds are not constants", where a regret or a
   running loss is exactly that (Reddi et al. 2018).
-- **The forward form, `x_(t+1) = f(x_t, u_t)`.** Refused as "t is not
+- `[done]` **The forward form, `x_(t+1) = f(x_t, u_t)`.** Refused as "t is not
   defined", so a paper's update is shifted to t-1 by hand, where
   transcriptions slip: Nesterov's momentum as Sutskever, Martens, Dahl and
   Hinton 2013 write it (section 2, eqs. (3) and (4)), the doubling of Chu,
@@ -3734,6 +3734,40 @@ that exploring seven domains asked of the interpreter, by how many asked.
   difference equation at k = 2, the accumulator, a hold and `kalman.ink`'s
   filter, each beside its shift by hand, to the same header and report,
   and the delay refused as its shift is.
+
+  Done in 187 lines of sources, against the 80 estimated and the stop at
+  120: past it at 165, the overrun was accepted, and 22 more fixed four
+  shortfalls the implementation reported. Each part is one the spec needs.
+  The form read and the other indices refused, about 35 lines: the
+  sentence quotes the index as written and, where it reads a name nothing
+  defines, is carried on the definition to where it is bound, so a model's
+  body says it as the session does. The shift, about 60: its state, the
+  second parse, and the fold to the compiler's shapes, `2*m - 1` for `2*(m
+  - 1) + 1` and `t` for `t - 1 + 1`, without which the compiler refuses
+  what the shift by hand compiles. The four refusals, about 35. As
+  written, about 55: the clause as written kept beside its shift, and from
+  it tex's left side, value, guard, cell bounds and a base term's index,
+  the optional input's check and the loop's label. All in the interpreter,
+  `interpreter.hpp` 133, `latex.hpp` 16, `reference.hpp` 13,
+  `parameters.hpp` 11, `expression_visitor.hpp` 8 and `expression.hpp` 6;
+  none in the compiler or the check. 20,492 to 20,679 lines at 9d25328 by
+  `wc -l include/inkamath/*.hpp src/*`. The spec is the golden
+  `test/data/forward.ink`, with the four fixes' entries;
+  `test/compile/forward.ink` is a case of cli.cmake's part 4, and
+  `cli_spec` and the spec suite are gone. README section 4 gains Fibonacci
+  written forward. No golden moves: `x_(k+1)` with k defined, `y_(1+t)`
+  and `y_(t+0)` now mean what is specified, and a computed index reading a
+  name nothing defines is refused in the sentence, in a session and a
+  model's body alike, where it said "n is not defined".
+  Departures:
+  - **The other offset's refusal names a definition by its name**, `nw is
+    written nw_(k+1)`, where the others quote `nw(x)_(k+1)`: it is made
+    where the clause joins, which keeps no left side as written.
+  - A keyword argument named as the index, `b_(n+1) = f(n = n)`, is
+    taken, its value read as the shift reads it: it binds f's parameter,
+    not the clause's index.
+  - The fold takes exact constants only: `q_(n+1) = q_(n + ~0)` is refused
+    as an index approximated, as its shift by hand is.
 - **`--check` says how far a term parts**, not only where it first does: the
   largest difference and where, as MANIFESTO asks of how a difference grows.
 - `[done]` **`atan`, `atan2`, `asin`, `acos` and `acosh` in the prelude.** Kahan's

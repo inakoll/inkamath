@@ -1,6 +1,6 @@
-# The forward form, x_(t+1) = f(x_t, u_t) (DESIGN.md, next in line),
-# specified before it is built and never recorded: every value below is
-# worked out by hand or with Python's fractions, apart from the interpreter.
+# The forward form, x_(t+1) = f(x_t, u_t) (DESIGN.md). Every value below was
+# worked out by hand or with Python's fractions, apart from the interpreter,
+# as its specification.
 # A clause written at its index plus a whole number k is read as its shift,
 # t read as t - k in its right side and guard, so every answer is the one
 # the shift written by hand gives; what shows the clause shows it as

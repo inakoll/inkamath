@@ -1,11 +1,11 @@
-# The forward form compiled (DESIGN.md, next in line): each model written as
+# The forward form compiled (DESIGN.md): each model written as
 # its source writes it, x_(t+1) = f(x_t, u_t), beside its shift written by
 # hand, x_t = f(x_(t-1), u_(t-1)), named 'shifted' and its own name. The
 # forward form is read as its shift where it is defined, so --compile writes
 # the same header for both but for the name and where its comments wrap,
 # and --check the same report for an instance of each, every term against
-# exact values; cli.cmake's spec part holds both. The shifts by hand are
-# the oracle: each compiles and checks today.
+# exact values; cli.cmake holds both. The shifts by hand are the oracle,
+# each compiled and checked before the form was built.
 
 # README section 5's plant, the explicit Euler step as the method writes it,
 # driven by a ramp.
