@@ -3735,11 +3735,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   filter, each beside its shift by hand, to the same header and report,
   and the delay refused as its shift is.
 
-  Done in 202 lines of sources, against the 80 estimated and the stop at
+  Done in 212 lines of sources, against the 80 estimated and the stop at
   120: past it at 165, the overrun was accepted, 22 more fixed four
-  shortfalls the implementation reported, and its review's 15 refuse a
-  cell named as the index as binding it again and fold `(t - 1)*2` as
-  `2*(t - 1)` is. Each part is one the spec needs.
+  shortfalls the implementation reported, and its review's 25 refuse a
+  cell named as the index as binding it again, fold `(t - 1)*2` as
+  `2*(t - 1)` is, and quote the other offset's clauses as written,
+  `nw(x)_(k+1)`. Each part is one the spec needs.
   The form read and the other indices refused, about 35 lines: the
   sentence quotes the index as written and, where it reads a name nothing
   defines, is carried on the definition to where it is bound, so a model's
@@ -3750,10 +3751,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   written, about 55: the clause as written kept beside its shift, and from
   it tex's left side, value, guard, cell bounds and a base term's index,
   the optional input's check and the loop's label. In the interpreter,
-  `interpreter.hpp` 148, `latex.hpp` 16, `reference.hpp` 13,
+  `interpreter.hpp` 148, `latex.hpp` 16, `reference.hpp` 23,
   `parameters.hpp` 11, `expression_visitor.hpp` 8 and `expression.hpp` 6;
   in the compiler, a cell of every term named as written in two refusals,
-  and none in the check. 20,492 to 20,694 lines at 9d25328 by
+  and none in the check. 20,492 to 20,704 lines at 9d25328 by
   `wc -l include/inkamath/*.hpp src/*`. The spec is the golden
   `test/data/forward.ink`, with the four fixes' entries;
   `test/compile/forward.ink` is a case of cli.cmake's part 4, and
@@ -3763,9 +3764,6 @@ that exploring seven domains asked of the interpreter, by how many asked.
   name nothing defines is refused in the sentence, in a session and a
   model's body alike, where it said "n is not defined".
   Departures:
-  - **The other offset's refusal names a definition by its name**, `nw is
-    written nw_(k+1)`, where the others quote `nw(x)_(k+1)`: it is made
-    where the clause joins, which keeps no left side as written.
   - A keyword argument named as the index, `b_(n+1) = f(n = n)`, is
     taken, its value read as the shift reads it: it binds f's parameter,
     not the clause's index.

@@ -305,10 +305,9 @@ public:
                 return ai_parameters.general() && c.parameters.general() &&
                        c.parameters.ahead() != ai_parameters.ahead();
             }))
-            throw std::runtime_error(reference_name_ + " is written " + reference_name_ + "_" +
-                                     other->parameters.subscript() +
-                                     ", so a clause cannot be written " + reference_name_ + "_" +
-                                     ai_parameters.subscript() + Advice());
+            throw std::runtime_error(reference_name_ + " is written " + Indexed(*other) +
+                                     ", so a clause cannot be written " + Indexed(clause) +
+                                     Advice());
         // Writing a clause again replaces it where it stands. Position is what
         // dispatch follows, so a clause that moved would answer differently
         // (DESIGN.md, C45); a guarded clause is named by its left-hand
@@ -1139,6 +1138,17 @@ private:
     // A clause bound from inside an expression has no written form to quote.
     std::string Written(const Clause<T>& clause) const {
         return clause.written.empty() ? reference_name_ : clause.written;
+    }
+
+    // Its left side to its index, as written: 'nw(x)_(k+1)'.
+    std::string Indexed(const Clause<T>& clause) const {
+        const std::string& w     = clause.written;
+        int                depth = 0;
+        size_t             at    = 0;
+        while (at < w.size() && (w[at] != '_' || depth))
+            depth += (w[at] == '(') - (w[at] == ')'), ++at;
+        return (at < w.size() ? w.substr(0, at) : reference_name_) + "_" +
+               clause.parameters.subscript();
     }
 
     // The walk over the cells for the value.
