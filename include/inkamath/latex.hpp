@@ -201,15 +201,21 @@ private:
     }
 
     // Where the names of a clause for every cell range, those bounded as
-    // written: a size inferred is a call's, not the definition's.
+    // written: a size inferred is a call's, not the definition's. A forward
+    // clause's bounds are its left side's, x_(n+1)[j<=n+2].
     static std::string Bounds(const ParametersDefinition<T>& p) {
         std::string out;
-        for (const auto& [name, bound] : {std::pair(&p.slice_name(), &p.slices()),
-                                          {&p.row_name(), &p.rows()},
-                                          {&p.col_name(), p.column() ? nullptr : &p.cols()}})
-            if (bound && *bound)
+        for (const auto& [name, bound, place] :
+             {std::tuple(&p.slice_name(), &p.slices(), 5),
+              {&p.row_name(), &p.rows(), 3},
+              {&p.col_name(), p.column() ? nullptr : &p.cols(), 4}})
+            if (bound && *bound) {
+                const PExpression<T>& w = p.written();
+                const Expression<T>&  at =
+                    w ? *w->Children()[0]->Children()[place]->Children()[1] : **bound;
                 out += (out.empty() ? ", \\quad " : ",\\ ") + std::string("1 \\le ") + Name(*name) +
-                       " \\le " + Of(**bound).text;
+                       " \\le " + Of(at).text;
+            }
         return out;
     }
 

@@ -303,7 +303,8 @@ tap_(n+1)[j<=3] | j == 1 = (n+1)^2
 \mathit{tap}_{n+1,j} = \begin{cases} (n + 1)^2 & \text{if } j = 1 \\ \mathit{tap}_{n,j-1} & \text{otherwise} \end{cases}, \quad 1 \le j \le 3
 
 # A cell's bounds read the index as its shift does: grow_(n+1) has n + 2
-# cells, j + grow_n[1] each, so grow_1 is [2; 3] and grow_2 [3; 4; 5].
+# cells, j + grow_n[1] each, so grow_1 is [2; 3] and grow_2 [3; 4; 5]; tex
+# sets them as written.
 >> grow_0[j<=1] = 1
 grow_0[j<=1] = 1
 
@@ -314,6 +315,10 @@ grow_(n+1)[j<=n+2] = j + grow_n[1]
 [3;
  4;
  5]
+
+>> tex ?grow
+\mathit{grow}_{0,j} = 1, \quad 1 \le j \le 1
+\mathit{grow}_{n+1,j} = j + \mathit{grow}_{n,1}, \quad 1 \le j \le n + 2
 
 # Smith's doubling for the Stein equation P = A P A' + I, as
 # test/compile/blocks.ink quotes it, A_(k+1) = A_k^2 and P_(k+1) = P_k +
