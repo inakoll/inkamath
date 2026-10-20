@@ -25,12 +25,6 @@
 #include <utility>
 #include <vector>
 
-// Nesting too deep, told apart from other failures because a recurrence can
-// recover from it by filling its terms from the base up.
-struct DepthExceeded : std::runtime_error {
-    using std::runtime_error::runtime_error;
-};
-
 // Which call a memoised answer is for. The definition is named by its address,
 // which holds for as long as the memo does: redefining a global replaces its
 // object and clears the memo in the same breath. Arguments are the same when
@@ -1548,17 +1542,24 @@ private:
             (void)convergence.Next(evaluate(index));
         }
 
+        // A term refused past one kept ends the walk on that one, as the cap would.
         T evaluation, before, earlier;
         for (size_t term = 0; term < Convergence<T>::max_terms; ++term) {
-            earlier = std::exchange(before, std::exchange(evaluation, evaluate(++index)));
-            if (convergence.Next(evaluation)) {
-                return convergence.Reached(evaluation);
+            try {
+                earlier = std::exchange(before, std::exchange(evaluation, evaluate(++index)));
+                if (convergence.Next(evaluation)) return convergence.Reached(evaluation);
+            } catch (const DepthExceeded&) {
+                throw;
+            } catch (const std::runtime_error&) {
+                if (!convergence.Kept()) throw;
+                return *convergence.Kept();
             }
         }
+        if (convergence.Kept()) return *convergence.Kept();
         // The last step against the one before: 1 or more where the terms do
         // not settle, just under 1 where they settle too slowly to tell.
         using N                 = numeric_interface<T>;
-        const double      ratio = N::distance(evaluation, before) / N::distance(before, earlier);
+        const double ratio = N::distance(evaluation, before, 1) / N::distance(before, earlier, 1);
         char              text[16];
         const std::string measured(
             text,

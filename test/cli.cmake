@@ -1574,12 +1574,13 @@ check(float_gate)
 holds(float_gate float/gate.h "#include <float.h>\n#include <math.h>\n"
       [[static inline float gate_lim0(const gate* m_, int ran_, float arg_z) {]]
       [[        const float t_ = t1_ + (t1_ + (0.0f - t2_)) * arg_z / (float)k_;
-        if (isnan(t_)) return ran_ ? 0.0f : NAN;
+        if (isnan(t_)) return ran_ ? 0.0f : held_ ? kept_ : NAN;
         if (started_) {
             step_ = fabsf(t_ - t1_);
+            close_ = step_ == 0 ? 0.0f : step_ / fabsf(t_);
             step_ = step_ / fmaxf(1.0f, fabsf(t_));
             if (step_ > 0 && step_ <= 2 * FLT_EPSILON * fabsf(t_) / fmaxf(1.0f, fabsf(t_)) && isfinite(t_) && stepped_) return ran_ ? 0.0f : t_;
-            if (step_ <= 1e-10f && stepped_ &&
+            if (close_ <= 1e-10f && stepped_ &&
 ]] [[    m_->p[0][0][0] = 1.0f / (1.0f + gate_lim0(m_, 0, 0.0f + (0.0f - (0.0f * m_->w[0][0][0] + 0.0f * m_->w[0][1][0] + m_->b[0]))));
 ]])
 
@@ -2505,8 +2506,9 @@ file(WRITE "${OUT}/fact.ink" "layers(x_n) = {\n    s(v)_0 = v\n    s(v)_k = s(v)
 set(args --compile fact.ink layers -o fact.h)
 check(compile_hoisted)
 set(based "    if (isnan(t1_)) return ran_ ? 0.0 : NAN;\n")
-string(CONCAT walk "    double step_ = 0.0, before_ = 0.0;\n"
-       "    int    started_ = 1, stepped_ = 0;\n    for (long long k_ = 1; k_ <= 100; ++k_) {\n")
+string(CONCAT walk "    double step_ = 0.0, before_ = 0.0, close_ = 0.0, closed_ = 0.0, kept_ = 0.0;\n"
+       "    int    started_ = 1, stepped_ = 0, held_ = 0;\n"
+       "    for (long long k_ = 1; k_ <= 100; ++k_) {\n")
 holds(compile_hoisted layered.h "    double v0_[2][1] = {{arg_a}, {1.0}};\n    double v1_[2][1];\n"
       "    layered_lim0(m_, v0_, v1_);\n    double t1_ = arg_a;\n${based}${walk}"
       "        const double t_ = t1_ / 4.0 + (1.0 * v1_[0][0] + 1.0 * v1_[1][0]);\n")

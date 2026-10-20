@@ -844,7 +844,8 @@ Recorded so they are not re-litigated later, or drifted into by accident.
 - **Numbers the user cannot tune.** Two constants decide every answer's
   accuracy and neither can be reached from the prompt: `lim` stops at a
   tolerance of `1e-10`, relative to the term above 1 since *A tolerance
-  relative to the term*, and results print to nine significant digits
+  relative to the term* and below 1 since C401, absolute where a walk never
+  gets within it, as one to 0, and results print to nine significant digits
   (`numeric_interface_precision`). Where it shows: `cos` and `sin` defined as
   series -- the way `sequences.ink` defines them -- give `rot(pi/2)` a
   `5.26e-13` where zero belongs, which is the tolerance and not the
@@ -1915,6 +1916,7 @@ closures need one anyway, and can bring it.
 | C398 `[fixed]` | **A matrix compared with a single value, or with a matrix of another shape, answered 0.** A matrix is equal to no single value, so Doyle 1978's Riccati residual checked as `ric(12) == 0` answered 0 where the residual is the zero matrix, and `ric(12) == [0 0; 0 0]` 1; two shapes, `R*v == v'`, answered 0 too, a truth the shapes alone fix, most likely a missing transpose. `==` and `<>` of two shapes are refused now, in the compiler's words, "a 1x2 matrix compared with a 2x1 matrix, never equal", and where one side is a single value with "; compare with 0*M, M's zero matrix, or a cell, M[j,k]" after, which the compiler's refusal gains too. conditional.ink holds it, its `[1 2] == [1 2 3]` and `[1 1] == 1` moving from 0 to refused, and tensor.ink's `[1 2; 3 4;;] == [1 2; 3 4]` and `T == U`, a tensor of one slice and its matrix, two numbers of slices; `cli.cmake`'s `compile_mateq_refused` gains the words at d and h. In 9 lines of `matrix.hpp`, 1 of comment, and 1 of `compile.hpp` for 4. |
 | C399 `[fixed]` | **An inner optional input its instance left out was refused compiled.** With `last(z_n?)` holding the last value seen, `alone(w_n)` writing `f = fw(w_n = w_n)` left f's z out, which fw forwards to f.e, and `--check` was refused, "cannot compile e.d: e.z is an input nothing gives", and so was a file's `el = last()`, where the interpreter answers z absent at every step, and before the stream but where a history gives it: f.e.x holds 0. Left out, the input is a sequence of the step whose cells are NaN and flag 0 at every step, its window and history as a given one's, its size the one its model states; forwarded, it passes that flag, as an optional input does. No golden, expected header or other generated text moves. In 15 lines of `compile.hpp`, 1 of comment, and 4 removed; `compile/inner.ink`'s `lo`, its report and its header, `compile_inner_alone`, hold it, and `el` compiles with the file. Found by the implementation of an inner instance's optional input, a departure. |
 | C400 `[fixed]` | **A name spelling a word C++ keeps was no C++.** `m(x_n, new = 1) = { y_n = new*x_n }` compiled to `double new;`, which g++ refuses as C++, "expected unqualified-id before 'new'", where the headers are said to build strict as C++ (C393); so did a sequence `class`, an input `this`, an instance `friend` and a header written to `template.h`. Only C's keywords and macros were refused. C++'s are refused now as C's are, "new is a word C++ keeps for itself", and as a header's name, "'template' is a name C++ keeps": the keywords and alternative tokens of C++23 that are not C's, those with a `_` and `and` and `or`, which the language keeps, reaching a header through its file's name alone. A check program, built as C alone, refuses them with its model. A model's own name reaches no C, nor a limit's argument bare, `arg_public`. In 26 lines, 6 of comment, and 8 removed; `compile_c400` in `test/cli.cmake` holds it, a model named `template` built strict. No header or golden moves. |
+| C401 `[fixed]` | **Below 1 `lim` was 1e-10 off, however small the limit.** Its tolerance was absolute below 1, so a limit near 1e-10 was walked only to within about its own size: Newton's root of 2/10^20 was 1.6873769e-10 for 1.41421356e-10, 19% off, where the walk, halving down to it, met the stop a term before it turned, and `(1 - 2^-k)/10^8` 0.8% off. A step and C36's remainder are measured in each cell against the cell itself now, a step to an exact 0 infinite; the first term within the old measure, against max(1, \|cell\|), is kept and answered where the walk does not get within the new one in 100 terms, a walk to 0 or 10^-30 + 2^-k, or meets a term refused or NaN past it, so every limit that stopped still stops, on that term or a later one within 1e-10 of itself, and above 1 nothing changes; a matrix beside a cell walking to 0 is answered so in every cell. The compiled walk does the same, C353's noise rule in both measures, and grad's walk keeps a term where every part is within the old measure, each part compared with its own term before even past its close. A walk to 0 now takes 100 terms: 12 limits of the goldens and 3 of 291 check instances. tolerance.ink holds it, `lim q*10^8` ~0.9921875 to ~1, `lim N(2/10^20)`, a sum, and a refused term and a NaN past the kept one; `compile/newton.ink`'s `minute` the compiled walk, in double and float. Moved: 13 reports, a limit below 1 walked further: `lim half(1)` a term later, 2.9e-11 from 1/2 for 5.8e-11, in tie, knee, both, acc, parted, unasked, founded, folded and float knee, its margins with it, knee's kink moved to 5e-11 below 1/2 to straddle still; equal.y within 5.6e-17 for 1.1e-16, summed.R 4.3e-15 for 4.4e-15, and kinetic.y and jacobian.y 1.4e-17 for 0, a cell near 1e-5 stepping by ulps the step takes for 0 (C353) and the interpreter does not. `cli_2`'s `float_gate` and `cli_4`'s `compile_hoisted` excerpts, the walk's text. In 76 lines, 9 of comment: 20,785 to 20,861. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -12744,9 +12746,21 @@ review:
 - **Structured diagnostics**: `--check` and `--compile` failures in a form
   a program reads, with shapes, whether a value was approximated, and
   source locations, for agents and CI. Found by an external review.
-- **A tolerance floor for small limits**: below 1 the tolerance is the
+- `[done]` **A tolerance floor for small limits**: below 1 the tolerance is the
   absolute 1e-10, so `lim N(2/10^20)` is 19% off. A floor scaled by where
-  the walk starts, perhaps; a design question first.
+  the walk starts, perhaps; a design question first. Ruled by the owner:
+  each cell measured against itself, and the first term within today's
+  measure kept for a walk that never gets there (C401).
+
+  Rejected, each on 18 walks in Python: no rule on the last few terms
+  does, a walk to 10^-20 being one to 0 where the absolute stop meets it.
+  A floor scaled by the start fixes Newton's root from x, not from 1, and
+  refuses 10^-12/k and a walk from an exact 0 to 0, which stop today, and
+  a derivative's part, often 0 at its base; the 1e-10 absolute only where
+  the remainder reaches the term fixes 2/10^20 but not 2.5/10^21, and
+  refuses 10^-12/k; relative with an absolute floor of 1e-20 moves `lim s`
+  and refuses 0.79^k; relative alone, as *A tolerance relative to the
+  term* found, never stops at 0.
 - `[done]` **The end-to-end exploration (`CLAUDE.md` §9)**: a sensor, a learned
   correction, an estimator, a controller and an actuator command at two
   rates, with an injected sensor failure. After the fallback audit above

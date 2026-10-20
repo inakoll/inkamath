@@ -22,6 +22,21 @@ binary(u_n) = {
 }
 halves = binary(u_n = 1/(n + 2))
 
+# Below 1 a limit settles its own digits (DESIGN.md, C401): Newton's square
+# root of (n + 2)/10^20, a few times 1e-10, about 6.2e-25 from the exact
+# one where the absolute 1e-10 left it 6.7e-11 off, and a walk to 0 whose
+# terms no clause gives past k = 39 ends on the term it kept, 2^-34, the
+# compiled one's NaN there as the interpreter's refusal.
+roots(u_n) = {
+    r(x)_0 = 1
+    r(x)_k = (r(x)_(k-1) + x/r(x)_(k-1))/2
+    p(x)_0 = 1
+    p(x)_k | k < 40 = x*p(x)_(k-1)
+    y_n = lim r(u_n)
+    z_n = lim p(1/2 + u_n)
+}
+minute = roots(u_n = (n + 2)/10^20)
+
 # A step of 0 in exact terms is one of an ulp or two in doubles, which is
 # not a limit either: odd terms that cancel exactly.
 cancel(u_n) = {

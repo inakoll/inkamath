@@ -3629,29 +3629,39 @@ private:
                           : each(in, "out_", [](std::size_t) { return std::string("NAN"); }) + in +
                                 "return " + ran + ";\n";
         };
-        // A term with a NaN cell refuses the limit, as the interpreter's (DESIGN.md).
-        const auto nan = [&](const std::string& t, const std::string& in) {
-            const std::string cols = std::to_string(walked.size.cols);
+        // The term kept, answered where the walk ends without closing.
+        const auto kept = [&](const std::string& in) {
             return scalar
-                       ? in + "if (isnan(" + t + ")) " + end("", "0.0")
-                       : in + "for (int c_ = 0; c_ < " + std::to_string(walked.size.count()) +
-                             "; ++c_)\n" + in + "    if (isnan(" + t + "[c_ / " + cols + "][c_ % " +
-                             cols + "])) {\n" + end(in + "        ", "0.0") + in + "    }\n";
+                       ? in + "if (held_) return ran_ ? 0.0 : kept_;\n"
+                       : in + "if (held_) {\n" + in + "    memcpy(out_, kept_, sizeof kept_);\n" +
+                             in + "    return 0.0;\n" + in + "}\n";
+        };
+        // A term with a NaN cell refuses the limit, as the interpreter's (DESIGN.md),
+        // or past a term kept ends the walk on that one.
+        const auto nan = [&](const std::string& t, const std::string& in, bool held) {
+            const std::string cols = std::to_string(walked.size.cols);
+            return scalar ? in + "if (isnan(" + t + ")) " +
+                                end("", held ? "0.0 : held_ ? kept_" : "0.0")
+                          : in + "for (int c_ = 0; c_ < " + std::to_string(walked.size.count()) +
+                                "; ++c_)\n" + in + "    if (isnan(" + t + "[c_ / " + cols +
+                                "][c_ % " + cols + "])) {\n" + (held ? kept(in + "        ") : "") +
+                                end(in + "        ", "0.0") + in + "    }\n";
         };
         text += Temporaries(*walked.based, based + iterate + moved, "    ") + based;
         if (!bases.empty() &&
             (!bases.rbegin()->second.constant || Value::Nan(*bases.rbegin()->second.constant)))
-            text += nan("t1_", "    ");
+            text += nan("t1_", "    ", false);
         if (!scalar) text += "    double t_" + shape + ";\n";
-        text += "    double step_ = 0.0, before_ = 0.0;\n";
-        text +=
-            "    int    started_ = " + std::string(bases.empty() ? "0" : "1") + ", stepped_ = 0;\n";
+        text += "    double step_ = 0.0, before_ = 0.0, close_ = 0.0, closed_ = 0.0, kept_" +
+                (scalar ? " = 0.0" : shape) + ";\n";
+        text += "    int    started_ = " + std::string(bases.empty() ? "0" : "1") +
+                ", stepped_ = 0, held_ = 0;\n";
         text +=
             "    for (long long k_ = " + first + "; k_ <= " +
             std::to_string(highest - counted + static_cast<int>(Convergence<Value>::max_terms)) +
             "; ++k_) {\n";
         text += iterate;
-        text += nan("t_", "        ");
+        text += nan("t_", "        ", true);
         text += "        if (started_) {\n";
         // A step within an ulp or two of the term may be an exact 0 rounded,
         // and is taken for one (C353). Each against max(1, |its term|), as
@@ -3664,9 +3674,10 @@ private:
             text += "            step_ = fabs(t_ - t1_);\n";
             if (!floats)
                 text += "            if (step_ <= 2 * DBL_EPSILON * fabs(t_)) step_ = 0.0;\n";
+            text += "            close_ = step_ == 0 ? 0.0 : step_ / fabs(t_);\n";
             text += "            step_ = step_" + scale("t_") + ";\n";
         } else {
-            text += "            step_ = 0.0;\n";
+            text += "            step_ = 0.0;\n            close_ = 0.0;\n";
             if (floats) text += "            int near_ = 1;\n";
             text += "            for (int i_ = 0; i_ < " + std::to_string(walked.size.rows) +
                     "; ++i_)\n";
@@ -3675,6 +3686,12 @@ private:
             text += "                    const double d_ = fabs(t_[i_][j_] - t1_[i_][j_])" +
                     scale(cell) + ";\n";
             text += "                    if (isnan(d_) || (d_ > step_" + noise + ")) step_ = d_;\n";
+            text +=
+                "                    const double r_ = d_ == 0 ? 0.0 : fabs(t_[i_][j_] - "
+                "t1_[i_][j_]) / fabs(" +
+                cell + ");\n";
+            text += std::string("                    if (isnan(r_) || (r_ > close_") +
+                    (floats ? "" : " && r_ > 2 * DBL_EPSILON") + ")) close_ = r_;\n";
             if (floats)
                 text += "                    near_ &= d_ <= 2 * FLT_EPSILON * fabsf(t_[i_][j_])" +
                         scale(cell) + " && isfinite(t_[i_][j_]);\n";
@@ -3689,18 +3706,25 @@ private:
                            : "            if (near_ && step_ > 0 && stepped_) {\n"
                              "                memcpy(out_, t_, sizeof t_);\n"
                              "                return 0.0;\n            }\n";
-        text += "            if (step_ <= " + tolerance +
-                " && stepped_ &&\n                (!(before_ > 0) || (step_ / before_ < 1 &&\n"
-                "                                    step_ * (step_ / before_) / (1 - step_ / "
-                "before_) <= " +
-                tolerance +
-                " &&\n                                    (step_ > 0 || before_ <= " + tolerance +
-                ")))) {\n";
+        // Within the tolerance of each cell's own size, the limit; absolute
+        // below 1, kept as the answer of a walk that never gets there.
+        const auto settles = [&](const std::string& s, const std::string& b) {
+            return s + " <= " + tolerance + " && stepped_ &&\n                (!(" + b +
+                   " > 0) || (" + s + " / " + b + " < 1 &&\n                 " + s + " * (" + s +
+                   " / " + b + ") / (1 - " + s + " / " + b + ") <= " + tolerance + " &&\n" +
+                   "                 (" + s + " > 0 || " + b + " <= " + tolerance + ")))";
+        };
+        text += "            if (" + settles("close_", "closed_") + ") {\n";
         text += scalar
                     ? "                return ran_ ? 0.0 : t_;\n"
                     : "                memcpy(out_, t_, sizeof t_);\n                return 0.0;\n";
+        text += "            }\n            if (!held_ && " + settles("step_", "before_") + ") {\n";
+        text += scalar ? "                kept_ = t_;\n"
+                       : "                memcpy(kept_, t_, sizeof t_);\n";
+        text += "                held_ = 1;\n            }\n";
         text +=
-            "            }\n            before_  = step_;\n            stepped_ = 1;\n        }\n";
+            "            before_  = step_;\n            closed_  = close_;\n"
+            "            stepped_ = 1;\n        }\n";
         text += "        started_ = 1;\n";
         for (int lag = depth; lag > 1; --lag) {
             const std::string to   = "t" + std::to_string(lag) + "_",
@@ -3711,7 +3735,7 @@ private:
         text += moved;
         text +=
             scalar ? "        t1_ = t_;\n    }\n" : "        memcpy(t1_, t_, sizeof t_);\n    }\n";
-        text += end("    ", "1.0") + "}\n\n";
+        text += kept("    ") + end("    ", "1.0") + "}\n\n";
         auto [named, fresh] =
             limit_names_.emplace(text, module_ + "_lim" + std::to_string(limits_.size()));
         if (fresh)
