@@ -216,6 +216,22 @@ private:
     };
     std::optional<Shift> shift_;
 
+    // What a clause binds, which a local in it cannot bind again (C405):
+    // 'n' and 'the index of v_n'.
+    std::vector<std::pair<std::string, std::string>> binds_;
+
+    // The names a cell's places are given, 'M[j<=2, k]'.
+    static std::vector<std::string> Places(const CellExpression<U>* place) {
+        std::vector<std::string> names;
+        for (const auto& at : {place ? place->Slice() : nullptr, place ? place->Row() : nullptr,
+                               place ? place->Col() : nullptr}) {
+            const auto* bound = dynamic_cast<const CompareExpression<U>*>(at.get());
+            const auto& named = bound && bound->Op() == Comparison::LessEqual ? bound->m_e1() : at;
+            if (named && typeid(*named) == typeid(RefExpression<U>)) names.push_back(named->Name());
+        }
+        return names;
+    }
+
     // How far ahead of its index a clause is written, or 0 at its index or a
     // computed one; t-1, t+0 and 1+t are refused whatever t holds, and a
     // computed one where it reads a name nothing defines.
@@ -1099,6 +1115,19 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
         // k<=2]' or 'M[1,2]'; anywhere else they read one.
         const PExpression<U> cell  = ParseCell(ref);
         const auto*          place = dynamic_cast<CellExpression<U>*>(cell.get());
+        decltype(binds_)     binds = binds_;
+        if (signature_begin == (shift_ ? shift_->begin : 0) && !AtEnd() &&
+            (Peek().type == Guard || Peek().type == Equal)) {
+            binds.clear();
+            if (index_end == index_at + 2 && m_tokens[index_at + 1].type == Func)
+                binds.emplace_back(m_tokens[index_at + 1].text,
+                                   "the index of " + Spelled(signature_begin, index_end));
+            for (const std::string& at : Places(place))
+                binds.emplace_back(at, "a cell's place of " + name);
+            for (const auto& p : params ? params->Children() : std::vector<PExpression<U>>())
+                binds.emplace_back(WrittenParameter<U>(p).left->Name(), "a parameter of " + name);
+        }
+        const Setting<decltype(binds_)> binding(binds_, std::move(binds));
         PExpression<U> guard;
         if (!AtEnd() && Peek().type == Guard)
         {
@@ -1125,6 +1154,9 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
                                                                   index_at + 1, index_end, unindexed);
             if (signature_begin != (shift_ ? shift_->begin : 0)) {
                 if (!listed_) Unbound(name);
+                for (const auto& [bound, what] : binds_)
+                    if (!listed_ && name == bound)
+                        Fail(name, " is ", what, ", so the clause cannot bind it again");
                 if (index_end == index_at + 2) Unbound(m_tokens[index_at + 1].text);
             }
             ++m_i;
@@ -1148,14 +1180,7 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
                 m_i                = signature_begin;
                 const auto shifted = std::static_pointer_cast<EqualExpression<U>>(ParseEqualExpr());
                 shifted->written   = e;
-                for (const auto& at : {place ? place->Slice() : nullptr,
-                                       place ? place->Row() : nullptr,
-                                       place ? place->Col() : nullptr}) {
-                    const auto* bound = dynamic_cast<const CompareExpression<U>*>(at.get());
-                    const auto& named =
-                        bound && bound->Op() == Comparison::LessEqual ? bound->m_e1() : at;
-                    if (named && typeid(*named) == typeid(RefExpression<U>)) Unbound(named->Name());
-                }
+                for (const std::string& at : Places(place)) Unbound(at);
                 return shifted;
             }
         }
