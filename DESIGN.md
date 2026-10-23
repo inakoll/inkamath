@@ -9362,13 +9362,14 @@ checked: what it asked of the compiler, each with its smallest change.
   unseen by a callee, in a value of the parameters; a sum's terms sharing
   one, an empty sum, a guard's taken back; a limit's iterate; under grad a
   step's sensitivity, a local read after grad, one of a gradient by a
-  matrix, and two through a nest. `cli.cmake`'s spec part compiles each,
-  holds Runge-Kutta's step as above, checks an instance of each against its
-  twin's report but for the twin's stages, the sequences of exact doubles
-  within 0 as worked by hand, and the refusals and C313 in their words;
-  skipped while Runge-Kutta is refused "a local definition", and only then.
-  Each value is worked with exact fractions, the sensitivity being
-  `gradlocal.ink`'s.
+  matrix, two through a nest, and two read after the grad that bound them,
+  beside another and in a point by reverse mode (C322). `cli.cmake`'s spec
+  part compiles each, holds Runge-Kutta's step as above, checks an instance
+  of each against its twin's report but for the twin's stages, the
+  sequences of exact doubles within 0 as worked by hand, and the refusals
+  and C313 in their words; skipped while Runge-Kutta is refused "a local
+  definition", and only then. Each value is worked with exact fractions,
+  the sensitivity being `gradlocal.ink`'s.
 - `[done]` **The size of a forward-mode header, measured**, before reverse
   mode is weighed (`MANIFESTO.md`). The item named two costs, measured
   with a prototype of *a compiled gradient with respect to a tensor*:

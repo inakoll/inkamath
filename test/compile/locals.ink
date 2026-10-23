@@ -133,7 +133,12 @@ stagedrt = stagedroot(u_n = n/4)
 # read inside the inner grad with its outer part, so s is the derivative
 # of x^2 + x^2, 4u; and v's local is bound inside the inner grad and read
 # after it, at the inner point, moving with x: the derivative of x + x^2,
-# 1 + 2u. With u_n = n/4, all but x and d within 0.
+# 1 + 2u. Leaving a grad, a local keeps only the parts of the grads around
+# it (C322): p's a is 3x, by x alone, so the grad by z beside the one that
+# bound it reads it as a constant, and p is the derivative of x*(3 + 3x),
+# 3 + 6u, where a's part by y read as one by z would give 6 + 6u; q's a is
+# bound by reverse mode in grad's point and read in its body, 3u + 1, no
+# node of the tape gone read. With u_n = n/4, all but x and d within 0.
 sens(h = 1/10, u_n) = {
     lg(y) = y - y^2
     x_0 = 1/2
@@ -143,6 +148,8 @@ sens(h = 1/10, u_n) = {
     m_n = grad_(w = [u_n, 1]) ((z = w*[1; 2])*z)
     s_n = grad_(x = u_n) ((t = x*x) + grad_(y = x) (t*y))
     v_n = grad_(x = u_n) (grad_(y = x) ((t = x*y)*1) + t)
+    p_n = grad_(x = u_n) x*(grad_(y = x) ((a = 3*y) + 0) + grad_(z = 1) z*a)
+    q_n = grad_(x = (grad_(v = [u_n, 1]) ((a = 3*v[1,1] + v[1,2]) + 0))[1,1]) x*a
 }
 stagedsens(h = 1/10, u_n) = {
     lg(y) = y - y^2
@@ -153,6 +160,8 @@ stagedsens(h = 1/10, u_n) = {
     m_n = grad_(w = [u_n, 1]) ((w*[1; 2])*(w*[1; 2]))
     s_n = grad_(x = u_n) (x*x + grad_(y = x) (x*x*y))
     v_n = grad_(x = u_n) (grad_(y = x) (x*y*1) + x*x)
+    p_n = grad_(x = u_n) x*(grad_(y = x) (3*y + 0) + grad_(z = 1) z*(3*x))
+    q_n = grad_(x = (grad_(v = [u_n, 1]) (3*v[1,1] + v[1,2] + 0))[1,1]) x*(3*u_n + 1)
 }
 se = sens(u_n = n/4)
 stagedse = stagedsens(u_n = n/4)
