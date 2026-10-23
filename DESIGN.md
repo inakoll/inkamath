@@ -9356,7 +9356,7 @@ checked: what it asked of the compiler, each with its smallest change.
   lines at 2135a9b, by `wc -l include/inkamath/*.hpp src/*`. Past 97 the
   implementation stops and reports.
 
-  Specified in `test/compile/locals.ink`, seven models with locals each
+  Specified in `test/compile/locals.ink`, six models with locals each
   beside its twin without, and one of refusals: Runge-Kutta 4 scalar and
   on a state, a matrix local; a local read twice, in a call called twice,
   unseen by a callee, in a value of the parameters; a sum's terms sharing
