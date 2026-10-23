@@ -105,9 +105,7 @@ if(PART STREQUAL "spec")
     set(stdout "cannot compile a: a local by cells, for now
 cannot compile b: t, bound on the right of 'and' or 'or', read after it, for now
 cannot compile c: a local in a sum without an upper bound, for now
-cannot compile d: t, bound by an earlier cell, for now
-cannot compile e: a local named n, the index, for now
-cannot compile f: a local named j, a cell's place, for now
+cannot compile d: t is not defined
 cannot compile g: k is the sum's index, so a local cannot define it
 cannot compile h: x is grad's variable, so a local cannot define it
 cannot compile i: a local cannot take parameters

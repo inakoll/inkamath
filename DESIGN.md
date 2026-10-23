@@ -9276,8 +9276,9 @@ checked: what it asked of the compiler, each with its smallest change.
   step in a model's, a definition's value where its parameters are set, a
   call's expansion, which sees none of its caller's locals and whose own die
   with it; one in an argument is the caller's. Before its binding a name is
-  what it was there, a parameter, a definition or nothing. It shadows a
-  call's parameter and the model's names, as interpreted. Folded through
+  what it was there, a parameter, a definition or nothing. It shadows the
+  model's names, as interpreted; one of a call's parameter, the index or a
+  cell's place the interpreter refuses (C405). Folded through
   the interpreter (`Asked`), a local that is a constant is bound there as a
   call's value is. A matrix's or a tensor's is each cell's code, each cell
   shared. Runge-Kutta's step is then a temporary per stage, `t0_` to
@@ -9316,23 +9317,19 @@ checked: what it asked of the compiler, each with its smallest change.
     after them, `(c = 8) + sum_(k=1) (c/2^k + 0*(c = 1))` being 12.5, which
     the walk's loop would carry: "a local in a sum without an upper bound,
     for now";
-  - one a later cell reads, the interpreter's cells sharing their frame row
-    by row, which where a guard chooses the earlier cell's clause as the
-    step runs is bound at some steps only: "t, bound by an earlier cell,
-    for now";
-  - one named as the index or a cell's place, which it shadows interpreted,
-    so `(n = 3) + u_n` reads u_3, where the step reads a term back by its
-    lag from the index: "a local named n, the index, for now", "a local
-    named j, a cell's place, for now";
   - a local by cells, a definition and not a value, as under `grad` and in
     `tex`: "a local by cells, for now".
   In the interpreter's words, as it refuses them: a sum's index and grad's
   variable (C299), a local with parameters or an index (C303, C309, C314),
-  a grad by several names, and under grad a power of a local named e,
-  "unless its base is e".
+  a grad by several names, under grad a power of a local named e, "unless
+  its base is e", and a later cell's read of an earlier cell's local, each
+  cell its own frame (C406), "t is not defined". A local of the index's, a
+  cell's place's or a parameter's name is refused where its clause is
+  defined (C405), so never reaches the compiler.
 
-  `--check`, `--float` and `tex` need nothing. No interpreter change, so no
-  transcript: no golden moves; `compile_c313`'s expectation does.
+  `--check`, `--float` and `tex` need nothing. No interpreter change here,
+  C405 and C406 being fixes of their own, so no transcript: no golden
+  moves; `compile_c313`'s expectation does.
 
   Rejected: the stages rewritten into hidden sequences, as by hand today,
   which puts state in the struct for a value of one evaluation, has no
@@ -9347,15 +9344,15 @@ checked: what it asked of the compiler, each with its smallest change.
   clause's value is one expression and its temporaries already the
   statements before it.
 
-  About 65 lines, in `compile.hpp` but where said: 14 to bind, with the
+  About 58 lines, in `compile.hpp` but where said: 12 to bind, with the
   refusals; 12 to read a local first and keep each frame's apart, a
   clause's, a global's, a call's and a cell's; 6 to take a guard's back;
-  5 for the right of `and` and `or`; 5 for an earlier cell's; 3 for a sum
-  without an upper bound and `Unmoved` past a local's name; 8 for the
-  parts after a grad and through a nest; 3 for `Asked` and the built-in e;
-  9 for C313's search, 1 of them removed from `derivative.hpp`. 20,704
-  lines at 2135a9b, by `wc -l include/inkamath/*.hpp src/*`. Past 97 the
-  implementation stops and reports.
+  5 for the right of `and` and `or`; 3 for a sum without an upper bound
+  and `Unmoved` past a local's name; 8 for the parts after a grad and
+  through a nest; 3 for `Asked` and the built-in e; 9 for C313's search,
+  1 of them removed from `derivative.hpp`. 20,704 lines at 2135a9b, by
+  `wc -l include/inkamath/*.hpp src/*`. Past 87 the implementation stops
+  and reports.
 
   Specified in `test/compile/locals.ink`, six models with locals each
   beside its twin without, and one of refusals: Runge-Kutta 4 scalar and

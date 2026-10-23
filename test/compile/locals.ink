@@ -174,20 +174,19 @@ stagedse = stagedsens(u_n = n/4)
 # or 'or' and read after it, which the interpreter reads only where the
 # left did not decide (b); one in a sum without an upper bound, whose terms
 # share it as the line's frame does, which the walk's loop would carry (c);
-# one a later cell reads, the interpreter's cells sharing their frame row by
-# row, so d is [7u; 7u] (d); one named as the index, so that e reads u_3
-# (e), or as a cell's place (f); a sum's index (g) and grad's variable (h),
+# one a later cell reads, each cell being its own frame (C406), so that t
+# is not defined there (d); a sum's index (g) and grad's variable (h),
 # which a local cannot define (C299); a local with parameters (i) or an
 # index (l) (C303, C309); and a local named e, which is no longer the
-# built-in e grad differentiates a power of (k).
+# built-in e grad differentiates a power of (k). A local of the index's,
+# a cell's place's or a parameter's name is refused where its clause is
+# defined (C405), so not here.
 refused(u_n) = {
     a_n = (M[j<=2] = j*u_n) + M
     b_n = ((u_n > 1) and ((t = u_n) > 2)) + t
     c_n = sum_(k=1) ((t = u_n/2^k)*1)
     d_n[j<=2] | j == 1 = (t = 7*u_n)
     d_n[j<=2] = t
-    e_n = (n = 3) + u_n
-    f_n[j<=2] = (j = 5) + j*u_n
     g_n = sum_(k=1)^3 ((k = 2) + k*u_n)
     h_n = grad_(x = u_n) x*((x = 5) + x)
     i_n = (lf(y) = y + 1) + lf(u_n)
