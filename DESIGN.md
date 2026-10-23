@@ -9328,7 +9328,8 @@ checked: what it asked of the compiler, each with its smallest change.
     `tex`: "a local by cells, for now".
   In the interpreter's words, as it refuses them: a sum's index and grad's
   variable (C299), a local with parameters or an index (C303, C309, C314),
-  and a grad by several names.
+  a grad by several names, and under grad a power of a local named e,
+  "unless its base is e".
 
   `--check`, `--float` and `tex` need nothing. No interpreter change, so no
   transcript: no golden moves; `compile_c313`'s expectation does.

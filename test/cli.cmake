@@ -111,6 +111,7 @@ cannot compile f: a local named j, a cell's place, for now
 cannot compile g: k is the sum's index, so a local cannot define it
 cannot compile h: x is grad's variable, so a local cannot define it
 cannot compile i: a local cannot take parameters
+cannot compile k: grad cannot differentiate a power whose exponent changes with x, unless its base is e
 cannot compile l: a local cannot take an index
 ")
     set(exit 1)
