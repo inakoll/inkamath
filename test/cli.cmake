@@ -451,7 +451,6 @@ cannot compile c: a comparison needs single values, not a 2x2x2 tensor
 cannot compile d: a 2x2x2 tensor and a 3x2x2 tensor have different numbers of slices
 cannot compile f: the slices of a tensor have one size, not 1x2 and 1x3
 cannot compile g: a tensor in a limit, for now
-cannot compile m: a tensor's cells under a guard that is not a constant, for now
 cannot compile q: a tensor whose slices are single values met by a matrix, for now
 cannot compile r: a tensor whose slices are single values met by a matrix, for now
 ")

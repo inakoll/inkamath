@@ -250,6 +250,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          tensor:heads tensor:whirl tensor:batch tensor:spread
                          tensor:speck cellguards:rfit cellguards:tfit cellguards:layer
                          cellguards:kink cellguards:crest cellguards:mask cellguards:order
+                         cellguards:relus cellguards:sliced
                          grad:swing thresholds:dies thresholds:beat stable:moments stable:peak
                          reddi:thm1 reddi:fixed reddi:gen
                          kahan:sums kahan:muller kahan:rounded kahan:surprise kahan:solveur
@@ -668,7 +669,12 @@ set_tests_properties(check_order_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_crest_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^crest: 100 steps from 0, against exact values\ncrest\\.d\\[1,1\\]: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\ncrest\\.g\\[1,1\\]: 1 at 1, where the interpreter gives 0\n$")
 add_test(NAME check_crest COMMAND check_crest)
-set_tests_properties(check_crest PROPERTIES WILL_FAIL ON)
+set_tests_properties(check_relus_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^relus: 100 steps from 0, against exact values\nrelus\\.Z: within 0\nrelus\\.A: within 0\n$")
+set_tests_properties(check_sliced_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^sliced: 100 steps from 0, against exact values\nsliced\\.g\\[2,1,1\\]: at 1 the compiled step takes 'g_n\\[b<=2, i<=1, j<=1\\] \\| d_n\\[b,i,j\\] < c\\*\\(5 - 2\\*b\\) = 1' and the interpreter 'g_n\\[b<=2, i<=1, j<=1\\] = 0'\\; the guard of the first is exactly on its threshold\nsliced\\.d\\[1,1,1\\]: [0-9.e+-]+ at 8, where the interpreter gives 0\\.29999999999999999\nsliced\\.g\\[2,1,1\\]: 1 at 1, where the interpreter gives 0\n$")
+add_test(NAME check_sliced COMMAND check_sliced)
+set_tests_properties(check_crest check_sliced PROPERTIES WILL_FAIL ON)
 set_tests_properties(check_sized_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^sized: 100 steps from 0, against exact values until 0 and inexact ones from there\n(sized\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 # Its sigmoid's size inferred, compiled where it is called, gives the header

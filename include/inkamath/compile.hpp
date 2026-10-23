@@ -3153,9 +3153,6 @@ private:
                 const std::optional<std::string> condition =
                     p.guarded() ? Condition(p.guard()) : std::optional<std::string>("");
                 Ran(ran, condition);
-                // --check asks the interpreter's guards of a cell by its row and column.
-                if (p.tensor() && condition && !condition->empty())
-                    throw Reason("a tensor's cells under a guard that is not a constant, for now");
                 const std::optional<Code> value =
                     condition ? std::optional<Code>(Emit(clause.expression)) : std::nullopt;
                 index_ = outer;
@@ -3284,7 +3281,7 @@ private:
                 clauses_ && std::any_of(definition.Clauses().begin(), definition.Clauses().end(),
                                         [](const Clause<Value>& c) {
                                             return c.parameters.general() && c.parameters.cells() &&
-                                                   c.parameters.guarded() && !c.parameters.tensor();
+                                                   c.parameters.guarded();
                                         });
             auto [shape, cells] =
                 TermCells(name, definition, every, whole, guarded ? &sequence.taken : nullptr);
