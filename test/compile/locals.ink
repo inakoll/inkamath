@@ -64,8 +64,8 @@ stagedo = stagedosc()
 # where p is set, its s its own, where the model's would make it 400; z
 # calls a local's function twice, each call binding its own s, (u + 1)^2 +
 # (2u + 1)^2; w's callee reads the model's s, 100, not its caller's local,
-# so w is u + 100. With u_n = n/4 every value is a double exactly: each
-# sequence within 0.
+# so w is u + 100; v reads the model's s before its local, 100 + u^2. With
+# u_n = n/4 every value is a double exactly: each sequence within 0.
 twice(p = 3, s = 100, u_n) = {
     sq(x) = (s = x + 1)*s
     q(x) = s + 0*x
@@ -73,6 +73,7 @@ twice(p = 3, s = 100, u_n) = {
     y_n = (s = u_n + 1)*s + c
     z_n = sq(u_n) + sq(2*u_n)
     w_n = (s = u_n) + q(u_n)
+    v_n = s + (s = u_n)*s
 }
 stagedtwice(p = 3, s = 100, u_n) = {
     sq(x) = (x + 1)*(x + 1)
@@ -81,6 +82,7 @@ stagedtwice(p = 3, s = 100, u_n) = {
     y_n = (u_n + 1)*(u_n + 1) + c
     z_n = sq(u_n) + sq(2*u_n)
     w_n = u_n + q(u_n)
+    v_n = s + u_n*u_n
 }
 tw = twice(u_n = n/4)
 stagedtw = stagedtwice(u_n = n/4)

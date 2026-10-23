@@ -9360,11 +9360,12 @@ checked: what it asked of the compiler, each with its smallest change.
   Specified in `test/compile/locals.ink`, six models with locals each
   beside its twin without, and one of refusals: Runge-Kutta 4 scalar and
   on a state, a matrix local; a local read twice, in a call called twice,
-  unseen by a callee, in a value of the parameters; a sum's terms sharing
-  one, an empty sum, a guard's taken back; a limit's iterate; under grad a
-  step's sensitivity, a local read after grad, one of a gradient by a
-  matrix, two through a nest, and two read after the grad that bound them,
-  beside another and in a point by reverse mode (C322). `cli.cmake`'s spec
+  unseen by a callee, in a value of the parameters, its name read before
+  it as the model's; a sum's terms sharing one, an empty sum, a guard's
+  taken back; a limit's iterate; under grad a step's sensitivity, a local
+  read after grad, one of a gradient by a matrix, two through a nest, and
+  two read after the grad that bound them, beside another and in a point
+  by reverse mode (C322). `cli.cmake`'s spec
   part compiles each, holds Runge-Kutta's step as above, checks an instance
   of each against its twin's report but for the twin's stages, the
   sequences of exact doubles within 0 as worked by hand, and the refusals
