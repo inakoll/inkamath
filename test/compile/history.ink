@@ -429,6 +429,25 @@ cycling(x_n) = {
 }
 cycled = cycling(x_n = n)
 
+# A cycle guarded on some of its sequences only, the input read in it: b,
+# unguarded, was refused, "b has no history", where b_-1 reads c's guard and
+# no input; and 'loose' refused a, "its shape depends on itself", where only
+# b's guard gives a shape (C403).
+halving(x_n) = {
+    a_n | n < 0 = 1
+    a_n = b_(n-1)/2
+    b_n = c_(n-1)/2
+    c_n | n < 0 = 1
+    c_n = a_(n-1)/2 + x_n
+}
+semi = halving(x_n = n)
+loosing(x_n) = {
+    a_n = b_(n-1)/2
+    b_n | n < 0 = 1
+    b_n = a_(n-1)/2 + x_n
+}
+loose = loosing(x_n = n)
+
 # Below a base clause where no guard holds, the interpreter gives no term, so
 # 'tenths' starts q at 1, as it does without the guard: it was refused,
 # 'q_0 reads p_-1, ... no clause of p applies' (C376).

@@ -152,7 +152,7 @@ private:
                         const std::string& source, const Model<Value>* model,
                         const Scope<Value>* instance, const std::set<std::string>& aside,
                         bool clauses = false) {
-        std::set<std::string> fixed;
+        std::set<std::string> fixed, first;
         bool                  aware = false;
         for (;;) {
             CompileC compiler(definitions, model, instance ? *instance : definitions.Session());
@@ -161,9 +161,11 @@ private:
             compiler.aside_  = aside;
             compiler.clauses_ = clauses;
             compiler.aware_   = aware;
+            compiler.first_   = first;
             try {
                 compiler.Define(compiler.root_);
                 if (model) compiler.Signature();
+                for (const std::string& name : first) compiler.Compile(name);
                 // An unnamed instance compiled on the way defines more.
                 for (bool more = true; more;) {
                     more = false;
@@ -186,6 +188,8 @@ private:
                 aware = true;
             } catch (const Fix& fix) {
                 fixed.insert(fix.names.begin(), fix.names.end());
+            } catch (const First& shaped) {
+                first.insert(shaped.name);
             }
         }
     }
@@ -227,6 +231,12 @@ private:
     // so this ends.
     struct Fix {
         std::set<std::string> names;
+    };
+    // A sequence compiling whose guards gave it a shape, where one whose shape
+    // its clause would give reads it, is compiled first, so that the cycle
+    // closes on its window (C403).
+    struct First {
+        std::string name;
     };
 
     // Why a definition cannot be compiled; Compile names the definition.
@@ -1704,6 +1714,9 @@ private:
         Sequence& sequence = sequences_.at(name);
         if (sequence.compiled || !sequence.definition) return;
         const Home home(*this, sequence.definition);
+        for (const auto& [key, other] : sequences_)
+            if (sequence.compiling && other.compiling && other.size.rows && !first_.count(key))
+                throw First{key};
         if (sequence.compiling) throw Refusal(Refused(name), "its shape depends on itself");
         sequence.compiling = true;
         for (const std::string& part : sequence.parts) sequences_.at(part).compiling = true;
@@ -5835,9 +5848,10 @@ private:
         const auto              history = histories_.find(name);
         const Reference<Value>* definition =
             history != histories_.end() ? history->second : sequences_.at(name).definition;
-        // A recurrence's own term, where no input or parameter can change it.
+        // A recurrence's own term, where no parameter can change it: an input
+        // its term reads there has none to give, and the term is refused (C403).
         const bool given = (Recurrent(name) || Own(name) || Under(name)) &&
-                           (Parametric(name, true).empty() || Given(name, n));
+                           (Parametric(name).empty() || Given(name, n));
         // A history's clause that holds there reads no parameter, whatever
         // the argument it is tried before reads (C379).
         const bool historic =
@@ -7102,6 +7116,7 @@ private:
     std::map<std::string, Parameter> parameters_;
     std::vector<Derived>             derived_;  // each after those it reads
     std::set<std::string>            fixed_;    // parameters compiled as constants; see Fix
+    std::set<std::string>            first_;    // see First
     std::set<std::string>            approximated_in_;  // what reads one approximated_ says
     std::set<std::string>            rounded_in_;       // what writes a constant marked rounded
     std::set<std::string>            aside_;    // definitions refused; see Refusals

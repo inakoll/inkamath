@@ -1416,6 +1416,10 @@ file(WRITE "${OUT}/cycled.ink" "cycling(x_n) = {\n    a_n | n < 0 = 1\n    a_n =
      "    b_n | n < 0 = 1\n    b_n = c_(n-1)/2\n    c_n | n < 0 = 1\n    c_n = a_(n-1)/2 + x_n\n}\n")
 set(args --compile cycled.ink cycling)
 check(history_cycled)
+# C403: a cycle guarded on some of its sequences only, whose term before the
+# stream reads the input, is refused for it rather than for having no history.
+refused(reached "x_n) = {\n    a_n | n < 0 = 1\n    a_n = b_(n-1)/2\n    b_n = a_(n-1)/2 + x_n"
+        "a: a_0 reads b_-1, before the stream, where b's history gives none: x_-1 is an input, and nothing defines it")
 # And a long one, each term computed again at each read, read twice: 7.6 s at
 # 14, past 100 at 18.
 set(text "long(x_n) = {\n    s0_n | n < 0 = 1\n")

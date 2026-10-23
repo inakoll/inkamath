@@ -233,7 +233,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          history:lit history:rise history:ajar history:sown history:nest history:kin history:vast
                          history:twice history:relayed history:pole history:grown history:paired
                          history:looped history:stepped history:opened history:waited
-                         history:rooted history:heeded history:aliased history:floored history:cycled
+                         history:rooted history:heeded history:aliased history:floored history:cycled history:semi history:loose
                          history:tenths history:huge history:sever history:veiled history:cloaked history:two history:hid history:masked
                          nan:run nan:sign nan:shy nan:slope nan:pair
                          nan:lap nan:trim nan:any nan:cell nan:held nan:idle nan:imag nan:took nan:shut nan:row nan:root
@@ -960,6 +960,10 @@ set_tests_properties(check_floored_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^floored: 100 steps from 0, against exact values\nfloored\\.y: within 0\nfloored\\.x: within 0\nfloored\\.r: within 0\nfloored\\.z: within 0\n$")
 set_tests_properties(check_cycled_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^cycled: 100 steps from 0, against exact values\ncycled\\.a: within 0\ncycled\\.b: within 0\ncycled\\.c: within 0\n$")
+set_tests_properties(check_semi_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^semi: 100 steps from 0, against exact values\nsemi\\.a: within 1\\.8e-15\nsemi\\.b: within 3\\.6e-15\nsemi\\.c: within 7\\.1e-15\n$")
+set_tests_properties(check_loose_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^loose: 100 steps from 0, against exact values\nloose\\.a: within 7\\.1e-15\nloose\\.b: within 1\\.4e-14\n$")
 set_tests_properties(check_huge_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^huge: 100 steps from 0, against exact values\nhuge\\.y: inf at 31, where the interpreter's term is too large for a double\n$")
 set_tests_properties(check_root_report PROPERTIES PASS_REGULAR_EXPRESSION
