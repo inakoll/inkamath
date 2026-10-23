@@ -1714,10 +1714,11 @@ private:
         Sequence& sequence = sequences_.at(name);
         if (sequence.compiled || !sequence.definition) return;
         const Home home(*this, sequence.definition);
-        for (const auto& [key, other] : sequences_)
-            if (sequence.compiling && other.compiling && other.size.rows && !first_.count(key))
-                throw First{key};
-        if (sequence.compiling) throw Refusal(Refused(name), "its shape depends on itself");
+        if (sequence.compiling) {
+            for (const auto& [key, other] : sequences_)
+                if (other.compiling && other.size.rows && !first_.count(key)) throw First{key};
+            throw Refusal(Refused(name), "its shape depends on itself");
+        }
         sequence.compiling = true;
         for (const std::string& part : sequence.parts) sequences_.at(part).compiling = true;
         Bases(name);
