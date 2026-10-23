@@ -60,16 +60,17 @@ stagedosc(h = 1/10) = {
 o = osc()
 stagedo = stagedosc()
 
-# Read twice, README's sq: y is (u + 1)^2, c (p + 1)^2 = 16 computed where
-# p is set, its s its own; z calls a local's function twice, each call
-# binding its own s, (u + 1)^2 + (2u + 1)^2; w's callee reads the model's
-# s, 100, not its caller's local, so w is u + 100. With u_n = n/4 every
-# value is a double exactly: each sequence within 0.
+# Read twice, README's sq: y is (u + 1)^2 + c, c (p + 1)^2 = 16 computed
+# where p is set, its s its own, where the model's would make it 400; z
+# calls a local's function twice, each call binding its own s, (u + 1)^2 +
+# (2u + 1)^2; w's callee reads the model's s, 100, not its caller's local,
+# so w is u + 100. With u_n = n/4 every value is a double exactly: each
+# sequence within 0.
 twice(p = 3, s = 100, u_n) = {
     sq(x) = (s = x + 1)*s
     q(x) = s + 0*x
     c = (s = p + 1)*s
-    y_n = (s = u_n + 1)*s + 0*c
+    y_n = (s = u_n + 1)*s + c
     z_n = sq(u_n) + sq(2*u_n)
     w_n = (s = u_n) + q(u_n)
 }
@@ -77,7 +78,7 @@ stagedtwice(p = 3, s = 100, u_n) = {
     sq(x) = (x + 1)*(x + 1)
     q(x) = s + 0*x
     c = (p + 1)*(p + 1)
-    y_n = (u_n + 1)*(u_n + 1) + 0*c
+    y_n = (u_n + 1)*(u_n + 1) + c
     z_n = sq(u_n) + sq(2*u_n)
     w_n = u_n + q(u_n)
 }
