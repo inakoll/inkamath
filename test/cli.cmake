@@ -104,8 +104,9 @@ if(PART STREQUAL "spec")
     set(args --compile ${story} refused)
     set(stdout "cannot compile a: a local by cells, for now
 cannot compile b: t, bound on the right of 'and' or 'or', read after it, for now
-cannot compile c: a local in a sum without an upper bound, for now
+cannot compile c: t, carried past a term of a sum without an upper bound, for now
 cannot compile d: t is not defined
+cannot compile f: t, carried past a term of a sum without an upper bound, for now
 cannot compile g: k is the sum's index, so a local cannot define it
 cannot compile h: x is grad's variable, so a local cannot define it
 cannot compile i: a local cannot take parameters

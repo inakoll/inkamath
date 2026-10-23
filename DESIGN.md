@@ -9313,10 +9313,13 @@ checked: what it asked of the compiler, each with its smallest change.
   - a local bound on the right of `and` or `or` and read after it, which
     the interpreter binds only where the left did not decide: "t, bound on
     the right of 'and' or 'or', read after it, for now";
-  - one in a sum without an upper bound, whose terms share it and the line
-    after them, `(c = 8) + sum_(k=1) (c/2^k + 0*(c = 1))` being 12.5, which
-    the walk's loop would carry: "a local in a sum without an upper bound,
-    for now";
+  - one a sum without an upper bound carries past a term, its terms sharing
+    it and the line after them: to the next term, `(c = 8) + sum_(k=1)
+    (c/2^k + 0*(c = 1))` being 12.5, which the walk's loop would carry, or
+    to after the sum, reading the term the walk stopped at: "t, carried
+    past a term of a sum without an upper bound, for now". One a term binds
+    before it reads it, and nothing after the sum reads, is a temporary of
+    the walk's loop, as a limit's iterate's;
   - a local by cells, a definition and not a value, as under `grad` and in
     `tex`: "a local by cells, for now".
   In the interpreter's words, as it refuses them: a sum's index and grad's
@@ -9344,31 +9347,31 @@ checked: what it asked of the compiler, each with its smallest change.
   clause's value is one expression and its temporaries already the
   statements before it.
 
-  About 58 lines, in `compile.hpp` but where said: 12 to bind, with the
+  About 60 lines, in `compile.hpp` but where said: 12 to bind, with the
   refusals; 12 to read a local first and keep each frame's apart, a
   clause's, a global's, a call's and a cell's; 6 to take a guard's back;
-  5 for the right of `and` and `or`; 3 for a sum without an upper bound
-  and `Unmoved` past a local's name; 8 for the parts after a grad and
-  through a nest; 3 for `Asked` and the built-in e; 9 for C313's search,
-  1 of them removed from `derivative.hpp`. 20,704 lines at 2135a9b, by
-  `wc -l include/inkamath/*.hpp src/*`. Past 87 the implementation stops
-  and reports.
+  5 for the right of `and` and `or`; 5 for a sum without an upper bound,
+  a local carried past a term and `Unmoved` past a local's name; 8 for
+  the parts after a grad and through a nest; 3 for `Asked` and the
+  built-in e; 9 for C313's search, 1 of them removed from `derivative.hpp`.
+  20,704 lines at 2135a9b, by `wc -l include/inkamath/*.hpp src/*`. Past
+  90 the implementation stops and reports.
 
   Specified in `test/compile/locals.ink`, six models with locals each
   beside its twin without, and one of refusals: Runge-Kutta 4 scalar and
   on a state, a matrix local; a local read twice, in a call called twice,
   unseen by a callee, in a value of the parameters, its name read before
   it as the model's; a sum's terms sharing one, an empty sum, a guard's
-  taken back; a limit's iterate; under grad a step's sensitivity, a local
-  read after grad, one of a gradient by a matrix, two through a nest, and
-  two read after the grad that bound them, beside another and in a point
-  by reverse mode (C322). `cli.cmake`'s spec
-  part compiles each, holds Runge-Kutta's step as above, checks an instance
-  of each against its twin's report but for the twin's stages, the
-  sequences of exact doubles within 0 as worked by hand, and the refusals
-  and C313 in their words; skipped while Runge-Kutta is refused "a local
-  definition", and only then. Each value is worked with exact fractions,
-  the sensitivity being `gradlocal.ink`'s.
+  taken back; a limit's iterate, a term's local in a sum without an upper
+  bound; under grad a step's sensitivity, a local read after grad, one of
+  a gradient by a matrix, two through a nest, and two read after the grad
+  that bound them, beside another and in a point by reverse mode (C322).
+  `cli.cmake`'s spec part compiles each, holds Runge-Kutta's step as
+  above, checks an instance of each against its twin's report but for the
+  twin's stages, the sequences of exact doubles within 0 as worked by
+  hand, and the refusals and C313 in their words; skipped while
+  Runge-Kutta is refused "a local definition", and only then. Each value
+  is worked with exact fractions, the sensitivity being `gradlocal.ink`'s.
 - `[done]` **The size of a forward-mode header, measured**, before reverse
   mode is weighed (`MANIFESTO.md`). The item named two costs, measured
   with a prototype of *a compiled gradient with respect to a tensor*:

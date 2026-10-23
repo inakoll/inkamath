@@ -112,16 +112,20 @@ stagedac = stagedacross(u_n = n/4)
 # Each term a limit walks is evaluated in a frame of its own (C66), so a
 # local in its iterate is its term's, a temporary of the walk's loop: r is
 # sqrt(u + 1) by Newton's iteration, inexact as any limit, and its report
-# the twin's.
+# the twin's. A local a term of a sum without an upper bound binds and reads
+# itself, carried to no other term, is a temporary of the walk's loop as
+# well: q is u^2/3, the sum of (u/2^k)^2.
 root(u_n) = {
     nw(a)_0 = a
     nw(a)_k = (y = nw(a)_(k-1))/2 + a/(2*y)
     r_n = lim nw(u_n + 1)
+    q_n = sum_(k=1) ((t = u_n/2^k)*t)
 }
 stagedroot(u_n) = {
     nw(a)_0 = a
     nw(a)_k = nw(a)_(k-1)/2 + a/(2*nw(a)_(k-1))
     r_n = lim nw(u_n + 1)
+    q_n = sum_(k=1) (u_n/2^k*(u_n/2^k))
 }
 rt = root(u_n = n/4)
 stagedrt = stagedroot(u_n = n/4)
@@ -172,8 +176,10 @@ stagedse = stagedsens(u_n = n/4)
 # Refused, in the interpreter's words where it refuses too and for now
 # where it answers: a local by cells (a); one bound on the right of 'and'
 # or 'or' and read after it, which the interpreter reads only where the
-# left did not decide (b); one in a sum without an upper bound, whose terms
-# share it as the line's frame does, which the walk's loop would carry (c);
+# left did not decide (b); one a sum without an upper bound carries past a
+# term, its terms sharing the line's frame, to the next term, so that c is
+# u + u/2 + 1/2 (c), or to after the sum, where f reads the t of the term
+# the walk stopped at (f);
 # one a later cell reads, each cell being its own frame (C406), so that t
 # is not defined there (d); a sum's index (g) and grad's variable (h),
 # which a local cannot define (C299); a local with parameters (i) or an
@@ -184,7 +190,8 @@ stagedse = stagedsens(u_n = n/4)
 refused(u_n) = {
     a_n = (M[j<=2] = j*u_n) + M
     b_n = ((u_n > 1) and ((t = u_n) > 2)) + t
-    c_n = sum_(k=1) ((t = u_n/2^k)*1)
+    c_n = (t = u_n) + sum_(k=1) (t/2^k + 0*(t = 1))
+    f_n = sum_(k=1) ((t = u_n/2^k)*t) + t
     d_n[j<=2] | j == 1 = (t = 7*u_n)
     d_n[j<=2] = t
     g_n = sum_(k=1)^3 ((k = 2) + k*u_n)
