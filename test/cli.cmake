@@ -68,6 +68,104 @@ endfunction()
 # Read by cases in every part.
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
+# Specified, not yet built (DESIGN.md, locals compiled): each model of
+# compile/locals.ink compiled beside its twin, rk's step a temporary per
+# stage, an instance of each checked to its twin's report but for the
+# twin's stages, and the refusals in their words. Skipped while rk is
+# refused as today, and only then.
+if(PART STREQUAL "spec")
+    file(MAKE_DIRECTORY "${OUT}")
+    set(story "${CMAKE_CURRENT_LIST_DIR}/compile/locals.ink")
+    execute_process(COMMAND "${EXE}" --compile "${story}" rk -o rk.h
+                    WORKING_DIRECTORY "${OUT}" OUTPUT_VARIABLE out ERROR_VARIABLE err
+                    RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
+    if("${out}${err}${code}" STREQUAL "inkamath: cannot compile x: a local definition\n1")
+        message("compile_locals: locals refused, as today")
+        return()
+    endif()
+    foreach(model IN ITEMS rk osc twice across root sens)
+        foreach(written IN ITEMS ${model} staged${model})
+            set(args --compile ${story} ${written} -o ${written}.h)
+            check(compile_locals_${written})
+        endforeach()
+        strict(compile_locals_${model} ${model}.h)
+    endforeach()
+    holds(compile_locals_rk rk.h
+          "    const double t0_ = 0.0 - m_->x[1];\n"
+          "    const double t1_ = 0.0 - (m_->x[1] + m_->h / 2.0 * t0_);\n"
+          "    const double t2_ = 0.0 - (m_->x[1] + m_->h / 2.0 * t1_);\n"
+          "    const double t3_ = 0.0 - (m_->x[1] + m_->h * t2_);\n"
+          "    m_->x[0] = m_->index_ == 0 ? 1.0 : m_->x[1] + m_->h / 6.0 * (t0_ + 2.0 * t1_ + 2.0 * t2_ + t3_);\n")
+    file(READ "${OUT}/rk.h" header)
+    if(header MATCHES "k[1-4]")
+        message(SEND_ERROR "compile_locals_rk: rk.h keeps a stage\n${header}")
+    endif()
+
+    set(args --compile ${story} refused)
+    set(stdout "cannot compile a: a local by cells, for now
+cannot compile b: t, bound on the right of 'and' or 'or', read after it, for now
+cannot compile c: a local in a sum without an upper bound, for now
+cannot compile d: t, bound by an earlier cell, for now
+cannot compile e: a local named n, the index, for now
+cannot compile f: a local named j, a cell's place, for now
+cannot compile g: k is the sum's index, so a local cannot define it
+cannot compile h: x is grad's variable, so a local cannot define it
+cannot compile i: a local cannot take parameters
+cannot compile l: a local cannot take an index
+")
+    set(exit 1)
+    check(compile_locals_refused)
+
+    # C313: an empty sum binds nothing, so the t after it is the global,
+    # which reads the global x.
+    file(WRITE "${OUT}/c313.ink" "x = 100\nt = x^2\ny_n = grad_(x = 2) ((sum_(k=1)^0 (t = k*x)) + t)\n")
+    set(args --compile c313.ink)
+    set(stdout "cannot compile y: t reads the global x, which grad's x does not reach\n")
+    set(exit 1)
+    check(compile_locals_c313)
+
+    if(NOT CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
+        return()
+    endif()
+    foreach(instance IN ITEMS r o tw ac rt se)
+        foreach(written IN ITEMS ${instance} staged${instance})
+            set(args --check ${story} ${written} -o ${written}.c)
+            check(check_locals_${written})
+            execute_process(COMMAND "${CC}" -std=c11 -O2 ${written}.c -o ${written} -lm
+                            WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
+                            ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
+            if(failed)
+                message(SEND_ERROR "check_locals_${written}: ${written}.c does not build\n${errors}")
+            endif()
+            execute_process(COMMAND "${OUT}/${written}" WORKING_DIRECTORY "${OUT}"
+                            OUTPUT_VARIABLE report_${written} RESULT_VARIABLE code_${written}
+                            TIMEOUT ${CASE_TIMEOUT})
+        endforeach()
+        # The twin's stages are sequences of its own, and an estimate's
+        # digits the disturbed runs', which differ where the operations do.
+        string(REPLACE "staged${instance}" "${instance}" staged "${report_staged${instance}}")
+        string(REGEX REPLACE "\n${instance}\\.k[1-4]: [^\n]*" "" staged "${staged}")
+        foreach(report staged report_${instance})
+            string(REGEX REPLACE "about [0-9.e+-]+ from" "about <e> from" ${report} "${${report}}")
+        endforeach()
+        if(NOT code_${instance} EQUAL 0 OR NOT code_staged${instance} EQUAL 0 OR
+           NOT "${report_${instance}}" STREQUAL "${staged}" OR
+           NOT "${staged}" MATCHES "^${instance}: 100 steps from 0, against ")
+            message(SEND_ERROR "check_locals_${instance}: exit ${code_${instance}}\n${report_${instance}}--- where staged${instance}'s, exit ${code_staged${instance}}, is\n${staged}")
+        endif()
+    endforeach()
+    # Exact in doubles, as worked by hand in the story.
+    set(exact_tw "^tw: 100 steps from 0, against exact values\ntw\\.w: within 0\ntw\\.y: within 0\ntw\\.z: within 0\n$")
+    set(exact_ac "^ac: 100 steps from 0, against exact values\nac\\.e: within 0\nac\\.g: within 0\nac\\.y: within 0\n$")
+    set(exact_se "\nse\\.e: within 0\nse\\.m: within 0\nse\\.s: within 0\nse\\.v: within 0\n")
+    foreach(instance IN ITEMS tw ac se)
+        if(NOT "${report_${instance}}" MATCHES "${exact_${instance}}")
+            message(SEND_ERROR "check_locals_${instance}: not within 0 as worked by hand\n${report_${instance}}")
+        endif()
+    endforeach()
+    return()
+endif()
+
 # The cases run as four tests of about equal time under the sanitizers: PART
 # 1 up to charpoly's refusal, 2 from it, 3 from eig's, 4 from the frequency
 # response's, and all where PART is not given.
