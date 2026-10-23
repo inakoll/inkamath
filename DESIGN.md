@@ -9369,9 +9369,10 @@ checked: what it asked of the compiler, each with its smallest change.
   `cli.cmake`'s spec part compiles each, holds Runge-Kutta's step as
   above, checks an instance of each against its twin's report but for the
   twin's stages, the sequences of exact doubles within 0 as worked by
-  hand, and the refusals and C313 in their words; skipped while
-  Runge-Kutta is refused "a local definition", and only then. Each value
-  is worked with exact fractions, the sensitivity being `gradlocal.ink`'s.
+  hand, and the refusals in their words, C313's being `compile_c313`'s;
+  skipped while Runge-Kutta is refused "a local definition", and only
+  then. Each value is worked with exact fractions, the sensitivity being
+  `gradlocal.ink`'s.
 - `[done]` **The size of a forward-mode header, measured**, before reverse
   mode is weighed (`MANIFESTO.md`). The item named two costs, measured
   with a prototype of *a compiled gradient with respect to a tensor*:

@@ -116,14 +116,6 @@ cannot compile l: a local cannot take an index
     set(exit 1)
     check(compile_locals_refused)
 
-    # C313: an empty sum binds nothing, so the t after it is the global,
-    # which reads the global x.
-    file(WRITE "${OUT}/c313.ink" "x = 100\nt = x^2\ny_n = grad_(x = 2) ((sum_(k=1)^0 (t = k*x)) + t)\n")
-    set(args --compile c313.ink)
-    set(stdout "cannot compile y: t reads the global x, which grad's x does not reach\n")
-    set(exit 1)
-    check(compile_locals_c313)
-
     if(NOT CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
         return()
     endif()
