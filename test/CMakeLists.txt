@@ -227,7 +227,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          drift:late drift:radix drift:gone
                          delay:fir newton:stiff newton:halves newton:evens newton:evened newton:twonames newton:weighed newton:minute logistic:gate sized:sized softmax:cls steady:mark
                          rnn:rnn attention:head momentum:ball adam:fit lqr:gain
-                         rates:pairs rates:odd seeded:warm cascade:servo decimate:boxcar
+                         rates:pairs rates:odd seeded:warm seeded:started cascade:servo decimate:boxcar
                          decimate:stride decimate:frame decimate:lead
                          decimate:trail decimate:polled drift:sill drift:seam history:past history:twin
                          history:lit history:rise history:ajar history:sown history:nest history:kin history:vast
@@ -968,6 +968,8 @@ set_tests_properties(check_sever_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^sever: 100 steps from 0, against exact values until 10 and inexact ones from there\nsever\\.p\\[2,2\\]: inf at 12, where the interpreter's term is not a finite number\n$")
 set_tests_properties(check_warm_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^warm: 100 steps from 0, against exact values\n(warm\\.[a-z]+: within [0-9.e+-]+\n)+$")
+set_tests_properties(check_started_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^started: 100 steps from 0, against exact values\nstarted\\.a: within 7\\.1e-15\nstarted\\.v: within 7\\.1e-15\n$")
 set_tests_properties(check_rnn_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^rnn: 100 steps from 0, against exact values until 1 and inexact ones from there\n(rnn\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 set_tests_properties(check_head_report PROPERTIES PASS_REGULAR_EXPRESSION

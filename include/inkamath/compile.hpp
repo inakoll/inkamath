@@ -6078,8 +6078,16 @@ private:
                                       " / sizeof(double); ++c_) ((double*)" + at + ")[c_] = NAN;\n";
     }
 
-    std::vector<std::string> Order() const {
+    // Where no order computes every base a base clause reads at its own
+    // index before it, as with a_0 = v_0 and v_n = a_n, such a base is also
+    // computed ahead of its reader, by 'ahead' (C402).
+    using Ahead = std::multimap<std::string, std::pair<std::string, int>>;
+    std::vector<std::string> Order(Ahead* ahead = nullptr) const {
         std::map<std::string, std::set<std::string>> waiting;
+        const auto early = [&](const Sequence& reader, const Seed& seed) {
+            const Sequence& read = sequences_.at(seed.read);
+            return ahead && reader.parts.empty() && read.parts.empty() && read.bases.count(seed.at);
+        };
         for (const auto& [name, sequence] : sequences_) {
             if (!sequence.definition) continue;
             waiting[name];
@@ -6088,13 +6096,16 @@ private:
             // A hold's lag is counted from the window as the held term's tick
             // leaves it, so the held sequence comes first.
             for (const std::size_t h : sequence.holds) waiting[name].insert(holds_[h].read);
-            for (const Reads* reads : {&sequence.reads, &sequence.deferred, &sequence.seeded}) {
+            for (const Reads* reads : {&sequence.reads, &sequence.deferred}) {
                 for (const auto& [read, lags] : *reads) {
                     if (!lags.count(0) || !sequences_.at(read).definition) continue;
                     if (read == name) throw Refusal(name, "a term reads itself");
                     waiting[name].insert(read);
                 }
             }
+            for (const Seed& seed : sequence.seeds)
+                if (seed.lag == 0 && sequences_.at(seed.read).definition && !early(sequence, seed))
+                    waiting[name].insert(seed.read);
         }
         std::vector<std::string> order;
         while (!waiting.empty()) {
@@ -6107,6 +6118,24 @@ private:
             waiting.erase(ready);
             for (auto& entry : waiting) entry.second.erase(name);
         }
+        const auto place = [&](const std::string& name) {
+            return std::find(order.begin(), order.end(), name) - order.begin();
+        };
+        // And ahead of it, what that base reads at its index and is not computed yet.
+        const auto hoist = [&](const auto& self, const std::string& name, const Sequence& reader,
+                               const Seed& seed, std::size_t depth) -> void {
+            if (seed.lag || !sequences_.at(seed.read).definition || place(seed.read) < place(name))
+                return;
+            if (!early(reader, seed) || depth > order.size())
+                throw Refusal(name, "it and the terms it reads need each other");
+            const Sequence& read = sequences_.at(seed.read);
+            for (const Seed& own : read.seeds)
+                if (own.index == seed.at) self(self, name, read, own, depth + 1);
+            ahead->emplace(name, std::pair(seed.read, seed.at));
+        };
+        for (const std::string& name : order)
+            for (const Seed& seed : sequences_.at(name).seeds)
+                hoist(hoist, name, sequences_.at(name), seed, 0);
         return order;
     }
 
@@ -6622,13 +6651,18 @@ private:
     }
 
     // A sequence's cells assigned in its step, in the order the interpreter
-    // tries its clauses.
-    std::string Assigned(const std::string& name, const std::string& indent) {
+    // tries its clauses; with 'only', that base term's alone.
+    std::string Assigned(const std::string& name, const std::string& indent,
+                         const std::vector<std::string>* only = nullptr) {
         const Sequence& sequence = sequences_.at(name);
         const bool      scalar   = sequence.general.size() == 1;
         std::string     assignments;
         for (std::size_t c = 0; c < sequence.general.size(); ++c) {
             assignments += indent + "m_->" + name + "[0]" + Subscript(sequence.size, c) + " = ";
+            if (only) {
+                assignments += (*only)[c] + ";\n";
+                continue;
+            }
             for (const auto& [index, base] : sequence.bases)
                 assignments += "m_->index_ == " + std::to_string(index) + " ? " + base[c] + " : ";
             // Checked only where an index no base clause gives needs it.
@@ -6706,7 +6740,7 @@ private:
         }
         // Ahead of the cells too, a cell's clause where no base term stands.
         std::string picks;
-        for (std::size_t c = 0; c < sequence.taken.size(); ++c) {
+        for (std::size_t c = 0; !only && c < sequence.taken.size(); ++c) {
             picks += indent + "m_->" + name + "_clause_[" + std::to_string(c) + "] = ";
             for (const auto& [index, base] : sequence.bases)
                 picks += "m_->index_ == " + std::to_string(index) + " ? 0 : ";
@@ -6740,7 +6774,13 @@ private:
         for (auto& [name, sequence] : sequences_)
             for (const std::size_t h : sequence.holds) Resolve(name, holds_[h]);
         for (auto& [name, sequence] : sequences_) Seeds(name, sequence);
-        const std::vector<std::string> order    = Order();
+        Ahead                    ahead;
+        std::vector<std::string> order;
+        try {
+            order = Order();
+        } catch (const Refusal&) {
+            order = Order(&ahead);
+        }
         std::vector<std::string>       fields;
         for (const Early& early : earlies_)
             if (Needed(early))
@@ -6895,10 +6935,30 @@ private:
             if (!given.empty())
                 out += "    m_->" + name + "_present[0] = " + name + "_present_in_ != 0;\n";
         }
+        // Resolved before what is used is known: a term read back that is
+        // not computed again leaves its temporaries unread.
+        const auto written = [&](const std::string& name, const std::string& assignments,
+                                 const std::string& indent) {
+            const Sequence&        sequence    = sequences_.at(name);
+            std::vector<Temporary> temporaries = sequence.temporaries;
+            for (Temporary& temporary : temporaries)
+                for (std::string& line : temporary.lines)
+                    line = Checked(Rated(line, sequence), name, sequence);
+            std::string checked  = Checked(Rated(assignments, sequence), name, sequence);
+            const auto  numbered = Numbered(temporaries, checked);
+            return Split(numbered, checked, indent, sequence.definition->home);
+        };
         for (const std::string& name : order) {
             const Sequence&   sequence = sequences_.at(name);
             // A grad by several names' parts are written with the first.
             if (!sequence.parts.empty() && sequence.parts[0] != name) continue;
+            for (auto [at, end] = ahead.equal_range(name); at != end; ++at) {
+                const auto& [base, n] = at->second;
+                out += "    if (m_->index_ == " + std::to_string(n) + ") {\n" +
+                       written(base, Assigned(base, "        ", &sequences_.at(base).bases.at(n)),
+                               "        ") +
+                       "    }\n";
+            }
             const bool        rated    = sequence.period > 1;
             const bool        late     = sequence.start > earliest || rated;
             const std::string indent   = late ? "        " : "    ";
@@ -6947,15 +7007,7 @@ private:
                 if (chains_.count(part))
                     assignments += gave + (given.general_clause < 0 ? "0" : "1") + ";\n";
             }
-            // Resolved before what is used is known: a term read back that is
-            // not computed again leaves its temporaries unread.
-            std::vector<Temporary> temporaries = sequence.temporaries;
-            for (Temporary& temporary : temporaries)
-                for (std::string& line : temporary.lines)
-                    line = Checked(Rated(line, sequence), name, sequence);
-            std::string checked  = Checked(Rated(assignments, sequence), name, sequence);
-            const auto  numbered = Numbered(temporaries, checked);
-            out += Split(numbered, checked, indent, sequence.definition->home);
+            out += written(name, assignments, indent);
             if (late) out += "    }\n";
         }
         out += "}\n\n#endif\n";
