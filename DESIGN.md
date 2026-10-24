@@ -1092,320 +1092,6 @@ Two smaller rules the prototype needed:
 
 ---
 
-## Deferred
-
-Recorded so they are not re-litigated later, or drifted into by accident.
-
-- **Lazy parameters (call-by-name).** A parameter binding the argument
-  *expression* rather than its value, so that an argument the body never reads
-  is never evaluated. The 2014 README lists *"Évaluation paresseuse"* first
-  among the project's features, which is what put it in the plan. That claim
-  is fair as far as it goes: a definition evaluates nothing, so `later=zzz+1`
-  is accepted and only `later` reports the unknown name. What has never
-  existed is laziness *inside* an expression, and the re-reading that matters
-  is why that turns out to be the right shape rather than an omission.
-
-  **The language already has exactly one lazy construct, and it is the one
-  worth having: clause dispatch.** With `f_0=zzz` and `f_n=n`, `f_5` answers
-  `5` and never looks at the base clause. Choosing a clause is choosing not to
-  evaluate the others, which is what laziness is *for*.
-
-  Everywhere else an expression is **total**: every operand contributes to the
-  answer, and `0*zzz` is an error rather than `0`. There is nothing to skip,
-  because nothing is discarded. Call-by-name can only skip an argument the
-  body never mentions — a parameter that is not used, which is a mistake
-  rather than an idiom. So it is not that laziness does not belong here; it is
-  that it is already where the choices are made.
-
-  Which turns the open question into a different one: **should the language be
-  able to choose anywhere other than at a clause index?** A conditional is
-  what creates skippable work, and it would have to be lazy in itself — an
-  `if` that evaluates both arms cannot guard a recurrence — without making
-  every parameter lazy. That is the argument to have if this is ever
-  revisited. It also names the family the language belongs to, which is the
-  spreadsheet rather than the lazy functional language: cells holding
-  formulas, answers remembered until an input changes (phase 9), locals over a
-  formula (phase 8), and one lazy construct for choosing.
-
-  The measurements against call-by-name stand, and are the reason not to take
-  it as a consolation prize in the meantime:
-
-  - It passes **no assertion** of `laziness.ink`, the transcript written to
-    specify it, that eager arguments do not already pass. The three it fails
-    are three `undefined is not defined` reports for arguments nothing reads,
-    and they fail identically with laziness, because an unknown name is worth
-    reporting at the call site whether or not the body wants the value.
-  - It **costs half the depth budget**: a lazy level nests two references
-    where an eager one nests a single one, so the agm reaches `gm(1,2)_127`
-    against `_254`. Since phase 9 the depth budget is the limit users meet,
-    so this is the whole of the cost, and it is paid on every call.
-  - It **fights the cache**: phase 9 keys a memoised answer on argument
-    values, and laziness is the decision not to have them. Forcing each
-    argument only to build the key, and treating a force that throws as "not
-    cacheable", does work — but it is laziness kept only for the calls where
-    it does not pay.
-
-- **Numbers the user cannot tune.** Two constants decide every answer's
-  accuracy and neither can be reached from the prompt: `lim` stops at a
-  tolerance of `1e-10`, relative to the term above 1 since *A tolerance
-  relative to the term* and below 1 since C401, absolute where a walk never
-  gets within it, as one to 0, and results print to nine significant digits
-  (`numeric_interface_precision`). Where it shows: `cos` and `sin` defined as
-  series -- the way `sequences.ink` defines them -- give `rot(pi/2)` a
-  `5.26e-13` where zero belongs, which is the tolerance and not the
-  arithmetic. At nine printed digits it is invisible except next to a zero,
-  which is exactly where a student looks.
-
-  Recorded rather than fixed because every way of exposing them costs
-  something. A second argument to `lim` changes a keyword into a call. A
-  magic global -- reading a user's `tolerance` if they define one -- is the
-  cheapest and is hidden coupling: a name that means something only because
-  the interpreter looks for it. A flag is a command-line option for a language
-  that has none. The observation stands; the syntax does not, yet.
-
-- **A distance between matrices, so that `lim` works on a matrix sequence.**
-  The obvious student example converges visibly -- a Markov chain,
-  `k_n = k_(n-1)*t`, whose `k_30` is the steady state to nine digits -- and
-  `lim k` cannot say so, because the convergence test needs `abs` and a matrix
-  has none. A max-norm over the cells is three lines and would make it work.
-
-  Not taken yet, because it is a language change rather than a repair, and it
-  asks a question this file should answer first: is the limit of a matrix
-  sequence the cellwise limit? For a Markov chain yes; for a sequence whose
-  terms change size the question is meaningless, and the tolerance would then
-  be comparing a number against the largest cell of a difference rather than
-  against a value the user chose. C39 made the refusal say what it is refusing;
-  this entry is the feature behind it.
-
-  Taken up after the conformance suite's first entries asked for it (implicit
-  layers, Newton for systems, power iteration): see next in line.
-
-- **Built-in series acceleration.** `lim` applying Aitken's delta-squared, or
-  offering it behind a keyword, so that a slowly converging series gets an
-  answer instead of C36's refusal. Declined, and the reason is not cost.
-
-  **There is no universal accelerator.** Matching the method to the shape of
-  the error is the mathematics, not a detail below it: Aitken for a
-  geometric-looking error, Richardson for a power law, the Euler transform for
-  an alternating series. Measured on `1/n^2`: one Richardson step leaves
-  `9.9e-05` at a hundred terms, while the Euler-Maclaurin tail leaves `1.9e-11`
-  at twenty. A built-in would have to pick one of them for every series a user
-  will ever write.
-
-  **And the language already expresses all of them.** Both the tail correction
-  and Aitken are ordinary clauses — `test/data/sequences.ink` records them, and
-  the README shows the first — because a clause may index another sequence at
-  any expression, including one that reaches forward. Adding a keyword would
-  spend syntax on a convenience for one method while taking the choice away
-  from the only party who can make it. It would also make `lim` answer where it
-  now refuses, which is the direction C36 measured as harmful.
-
-- **Substitution and partial expansion.** `?b` showing `2+2` rather than
-  `a+a`: evaluating some references while leaving others symbolic. This is a
-  different feature from printing a definition back, not an option on it. It
-  needs its own syntax, a rule for how far expansion goes, and an answer for
-  what a partially evaluated sequence or matrix of expressions even means.
-  `?name` (phase 4, item 6) prints what was written and nothing more.
-
-- **A third-party matrix library.** Raised explicitly, as `CLAUDE.md` §5
-  requires, and declined for now. Measured against what the code actually is:
-  `matrix.hpp` is 190 lines, of which roughly eighty are the arithmetic a
-  library would replace, and they are now unit-tested. Eigen, the obvious
-  candidate, is a megabyte of headers.
-
-  The semantics do not line up either, in three ways that would each need
-  adapter code: `/` here is element-wise, not scalar division; a 1x1 matrix
-  is deliberately also the scalar type, which D9 measured and chose to keep,
-  where a library makes that a type distinction; and the block expansion that
-  sizes `[a, a; a, a]` from what its cells evaluate to is this language's own
-  rule, living in the visitor rather than in `Matrix`.
-
-  What decides it is that inkamath asks for nothing a library is good at. It
-  has `+`, `-`, element-wise `/`, `*` and an integer power — no inverse, no
-  determinant, no transpose, no solve. A library earns its place at the point
-  those arrive, because pivoting and conditioning are genuinely hard and
-  worth not writing. The seam is clean when that day comes: those operate on
-  an evaluated numeric matrix, so the library sits *below* `Matrix`, on
-  values, and never meets the expressions.
-
-- **Symbolic simplification.** `x+x` to `2*x`, `x^1` to `x`, folding constant
-  subtrees. The shape of the program invites it: names bind expressions, the
-  AST survives evaluation, and `TransformationVisitor`'s own 2014 comment
-  lists "simplify the tree" as one of the two things it exists for. D6's
-  immutability helps rather than hinders — a simplifier builds a new tree
-  rather than editing one — and `?` would give the result somewhere to show.
-
-  What stops it being small is specific to *this* language rather than to
-  simplification generally: **the identities are unsound over matrices.**
-  `x*0` is not `0` when `x` is a matrix, because the result's extent comes
-  from `x`; nor is `x-x`, for the same reason. Almost every algebraic rule
-  needs the extent of its operands, and an extent is only known after
-  evaluating them — which is the thing simplification is meant to avoid. The
-  complex arithmetic adds the usual IEEE caveats: `x-x` is not `0` at NaN,
-  and `(x^2)^0.5` is not `x` off the positive reals.
-
-  So the sound subset is roughly constant folding over literals, which buys
-  little, and everything beyond it needs a type-and-extent analysis the
-  interpreter does not have. A real CAS is a larger program than this
-  interpreter, and the size constraint at the top of this file is the reason
-  to say so out loud rather than drift towards one. Recorded, not scheduled:
-  if it is ever wanted, it starts with extents, not with rewrite rules.
-
-- **Epistemic levels in printing.** An external review proposed that a value
-  carry its level, exact, certified (rho, eig, hinf and the others) or
-  rounded, and that printing say which. A prototype measured two notations,
-  a `≈` per certified cell and a `# certified` mark on the answer: the level
-  survives only on those functions' direct answers, since any arithmetic
-  rounds it; `≈` breaks reading back and column alignment; and either mark
-  makes a certified `0.5` look less exact than a rounded `0.5`, which prints
-  bare. Decided by the owner: the REPL is no place for a distinction the eye
-  cannot parse reliably. If it surfaces, it does at a C API or in an output
-  format meant for programs.
-
-- **Local functions.** A local with parameters is refused (C303): bound in
-  the line's frame, it could not capture its parameters, and its answers
-  read globals instead. Cut by the owner for now; it comes back only with a
-  design that captures them, as a function's own definitions would.
-
-- **Compiling definitions inside the interpreter.** A §9 measurement
-  (integration 3a0f342) turned a definition by cells, once, into a flat
-  sequence of operations with names resolved to slots, run in doubles
-  where its inputs are inexact, the tree answering anything else: 7 to 8
-  times on those definitions, 2.3 on a transformer's forward pass, 1.04 on
-  its training step, 85 per cent of which is reverse mode's own walk. In
-  full: some 700 lines for the evaluator (2 to 3 times on cellwise and
-  recurrence models), 300 to 500 more for a node of compiled cells on the
-  tape (1.6 to 1.8 times on the step), and 500 to 800 for inexact matrices
-  held as plain doubles (about 1.45). It is a second implementation of
-  Number's rules and of where the tree counts steps, each mismatch a silent
-  wrong mark. Deferred by the owner: `--compile` gives native speed now.
-  The flat sequence is what an in-process JIT would take as input; that
-  stays open, a larger work and a dependency to raise.
-
-## Openings
-
-Not scheduled, and not Deferred either -- Deferred is for what has been argued
-and declined. These are the directions worth taking, with what is known about
-each measured rather than assumed. New directions go in `MANIFESTO.md`; what is
-here stays for what it measured.
-
-**Other number systems.** The seam D9 and C9 argued about is real, and this is
-not a guess: `Interpreter<double>` compiles and runs with no complex numbers at
-all and no change to the project, and `Interpreter<Rational>` -- eighty lines
-of exact fraction over two `long long`s, written to find out -- runs sequences,
-matrices, cells and the memoisation on top of them, needing one thing the
-concepts never stated (C44). Then `1/3+1/3+1/3` is `1` rather than nearly one,
-`s_n=s_(n-1)/3` gives `1/243`, and `a/3` is a matrix of fractions.
-
-Three things it opens, at three prices. *Exact division* is the eighty lines
-above. *Exact magnitude* is a bignum -- `fib_100` prints `3.54224848e+20` for a
-number with twenty-one digits, and `!21` and `2^64` lose the same way -- which
-is several hundred lines to write or a dependency to raise, and §5 makes that a
-decision rather than something to slip in. *Both* is a rational over a bignum,
-which is the real prize and the real cost. The question worth answering first
-is not whether it works but what the prompt should be: one interpreter per
-number type, chosen when it is built, or a language where the kind of a number
-is part of the number. Taken up as phase 13, for the second.
-
-**A standard library.** There are no functions: `sqrt` is `^0.5`, `exp` is
-`e^x`, and `ln`, `sin` and `cos` are nothing at all. Two shapes, and they are
-not the same project. A **prelude written in inkamath** is in character and is
-the better demonstration -- `sequences.ink` already defines `cos` and `sin` from
-the exponential series, and they work -- but it needs a way to load a file, and
-its accuracy is bounded by `lim`'s tolerance, so *Numbers the user cannot tune*
-comes first. **Built-in elementary functions** are accurate and fast and
-contradict `README.md`, which says there are none as a statement of design
-rather than an apology. Deciding which of those two sentences is true is the
-whole of the work. Taken: a prelude in inkamath and no built-in (*`exp`,
-`log` and `tanh` accurate, bounded and compiled*).
-
-**A conditional.** Done -- phase 10. It was the one opening specified before
-it was built, and the specification is what found both of its mistakes.
-
-**Performance.** No session has ever been too slow -- a prompt evaluates one
-line -- so this is about where the time goes if the interpreter is ever asked
-to do real work, and it was measured before anything was written. Two
-workloads under callgrind, and they disagree completely. On a 20x20 matrix
-product, 74% is `matrix.hpp` and 11% is complex arithmetic: compiled C++
-already, nothing to win. On a small tree folded through `lim` thousands of
-times with the memo cache dropped each line, the arithmetic is **0.9%** --
-the interpreter spends a hundred times more effort administering a value than
-computing with it, and that effort is strings hashed and compared (20%), an
-allocation per intermediate (19%), clause dispatch (17%) and an atomic
-refcount per node (10%).
-
-A prototype took that workload down 43%, in four steps, each measured on top
-of the last and each leaving every golden byte-identical:
-
-| | sequence | matrix |
-|---|---|---|
-| `Name()` by reference, a frame as a flat vector | -6% | +1% |
-| a parameter, a default and an index bound as a **value** | -33% | +3% |
-| every name interned to an integer | -34% | +3% |
-| the memo key a struct rather than a rebuilt string | -43% | +3% |
-
-Two of those four lines carry it. Binding one parameter cost a
-`make_shared<Reference>`, a `Clause`, a `ParametersDefinition` holding two
-vectors and two strings, and a heap `ValExpression` -- per argument, per call,
-and again per term of a sequence for the index variable; a frame that holds
-values instead is three quarters of the saving. And **interning bought
-nothing**: the 20% the profile blamed on hashing names was the memo key and
-the allocations under it. Slot resolution by index -- the obvious reading of
-that profile, and the reason the experiment was run -- is the one change here
-not worth making. The matrix column is the warning attached to all of it: a
-frame carrying two vectors costs 3% where there are no references to resolve.
-
-What the goldens caught, and no reasoning would have: `h(x) = (x = 10) + x`
-answers 20. A local shadows a *parameter* of the same name, so a frame is one
-slot per name, not a value list beside a definition list.
-
-It also answers the question that started it, which was an LLVM JIT. The tree
-walk such a backend would replace is 7% of the baseline and the arithmetic it
-would compile is 1%, and a `Matrix` whose shape is dynamic leaves it either
-specialising on shape -- a project of its own -- or calling this same runtime
-and keeping every cost above. 43% came with no dependency, no codegen, and
-mostly by deleting what stood behind a bound parameter. If the codegen is the
-point rather than the speed, `Interpreter<double>` already compiles and is the
-honest target, out of tree.
-
-The second line of the table is what landed, rewritten rather than applied: one
-slot per name in a frame, carrying a value or a definition, no symbol table.
-**-32%**, and *nothing* on the matrix workload where the prototype cost 3%,
-because a frame is one vector and not two. +89/-32 lines, which does not pay
-for itself; what it buys besides the time is that the `from_frame` flag
-threaded through three functions is gone, the frame shadowing a global being
-now a branch one can read. Checked three ways, because a faster wrong answer
-measures nothing: every golden byte-identical, 4000 random lines and 35 edge
-cases byte-identical against the previous build.
-
-A second step, eight lines: every child accessor handed its `shared_ptr` out by
-value, so reading a child cost an atomic pair -- on every child of every node
-of every fold. By reference it is another 6%, and half the refcounting.
-
-**-36%** together, and what remains, measured on what is in the tree: clause
-dispatch 18%, names 17%, the allocator 12%, `matrix.hpp` 11%, the AST fold 9%,
-refcounting 4%, the arithmetic 1.7%; 216M instructions down to 122M. Most of
-that 17% is the memo key, still a string built per call, and the prototype's 7%
-for making it a struct needed a symbol table that earned its place nowhere
-else -- so that step wants a different idea, not that one.
-
-One correction to what this entry first claimed: the boxed value is *not* what
-is left, because D9 already unboxed it -- `Matrix(Extent, value)` skips
-`cells_` when the extent is one cell, and a 1x1 keeps its number in `scalar_`,
-so no scalar intermediate allocates. What the profile shows is smaller and
-worse placed: a `Matrix` carries a `std::vector` member even when it is one
-number, so every intermediate constructs and copies an empty vector for
-nothing, about 5% between the two. Closing that is the scalar/matrix split D9
-declined on its own measurement, and 5% does not reopen it.
-
-If they were mine to order: the conditional, because it is the one missing
-primitive rather than a convenience; then the number systems, because the seam
-is already open and the experiment above took an afternoon; then the tolerance,
-and a prelude behind it. Performance sits outside that order: it is the one
-direction that can end with fewer lines than it started with.
-
----
-
 ## Phase 10 — Definitions in cases `[done]`
 
 A clause may carry a **guard**: the condition it applies under, written
@@ -2532,6 +2218,320 @@ is what measured the cost of lazy parameters and sent them to Deferred.
 The honest risk was phase 4. It changed what existing sessions mean, so it
 could not hide behind unchanged goldens — every moved line was justified
 against a spec transcript, in the commit that moved it.
+
+## Deferred
+
+Recorded so they are not re-litigated later, or drifted into by accident.
+
+- **Lazy parameters (call-by-name).** A parameter binding the argument
+  *expression* rather than its value, so that an argument the body never reads
+  is never evaluated. The 2014 README lists *"Évaluation paresseuse"* first
+  among the project's features, which is what put it in the plan. That claim
+  is fair as far as it goes: a definition evaluates nothing, so `later=zzz+1`
+  is accepted and only `later` reports the unknown name. What has never
+  existed is laziness *inside* an expression, and the re-reading that matters
+  is why that turns out to be the right shape rather than an omission.
+
+  **The language already has exactly one lazy construct, and it is the one
+  worth having: clause dispatch.** With `f_0=zzz` and `f_n=n`, `f_5` answers
+  `5` and never looks at the base clause. Choosing a clause is choosing not to
+  evaluate the others, which is what laziness is *for*.
+
+  Everywhere else an expression is **total**: every operand contributes to the
+  answer, and `0*zzz` is an error rather than `0`. There is nothing to skip,
+  because nothing is discarded. Call-by-name can only skip an argument the
+  body never mentions — a parameter that is not used, which is a mistake
+  rather than an idiom. So it is not that laziness does not belong here; it is
+  that it is already where the choices are made.
+
+  Which turns the open question into a different one: **should the language be
+  able to choose anywhere other than at a clause index?** A conditional is
+  what creates skippable work, and it would have to be lazy in itself — an
+  `if` that evaluates both arms cannot guard a recurrence — without making
+  every parameter lazy. That is the argument to have if this is ever
+  revisited. It also names the family the language belongs to, which is the
+  spreadsheet rather than the lazy functional language: cells holding
+  formulas, answers remembered until an input changes (phase 9), locals over a
+  formula (phase 8), and one lazy construct for choosing.
+
+  The measurements against call-by-name stand, and are the reason not to take
+  it as a consolation prize in the meantime:
+
+  - It passes **no assertion** of `laziness.ink`, the transcript written to
+    specify it, that eager arguments do not already pass. The three it fails
+    are three `undefined is not defined` reports for arguments nothing reads,
+    and they fail identically with laziness, because an unknown name is worth
+    reporting at the call site whether or not the body wants the value.
+  - It **costs half the depth budget**: a lazy level nests two references
+    where an eager one nests a single one, so the agm reaches `gm(1,2)_127`
+    against `_254`. Since phase 9 the depth budget is the limit users meet,
+    so this is the whole of the cost, and it is paid on every call.
+  - It **fights the cache**: phase 9 keys a memoised answer on argument
+    values, and laziness is the decision not to have them. Forcing each
+    argument only to build the key, and treating a force that throws as "not
+    cacheable", does work — but it is laziness kept only for the calls where
+    it does not pay.
+
+- **Numbers the user cannot tune.** Two constants decide every answer's
+  accuracy and neither can be reached from the prompt: `lim` stops at a
+  tolerance of `1e-10`, relative to the term above 1 since *A tolerance
+  relative to the term* and below 1 since C401, absolute where a walk never
+  gets within it, as one to 0, and results print to nine significant digits
+  (`numeric_interface_precision`). Where it shows: `cos` and `sin` defined as
+  series -- the way `sequences.ink` defines them -- give `rot(pi/2)` a
+  `5.26e-13` where zero belongs, which is the tolerance and not the
+  arithmetic. At nine printed digits it is invisible except next to a zero,
+  which is exactly where a student looks.
+
+  Recorded rather than fixed because every way of exposing them costs
+  something. A second argument to `lim` changes a keyword into a call. A
+  magic global -- reading a user's `tolerance` if they define one -- is the
+  cheapest and is hidden coupling: a name that means something only because
+  the interpreter looks for it. A flag is a command-line option for a language
+  that has none. The observation stands; the syntax does not, yet.
+
+- **A distance between matrices, so that `lim` works on a matrix sequence.**
+  The obvious student example converges visibly -- a Markov chain,
+  `k_n = k_(n-1)*t`, whose `k_30` is the steady state to nine digits -- and
+  `lim k` cannot say so, because the convergence test needs `abs` and a matrix
+  has none. A max-norm over the cells is three lines and would make it work.
+
+  Not taken yet, because it is a language change rather than a repair, and it
+  asks a question this file should answer first: is the limit of a matrix
+  sequence the cellwise limit? For a Markov chain yes; for a sequence whose
+  terms change size the question is meaningless, and the tolerance would then
+  be comparing a number against the largest cell of a difference rather than
+  against a value the user chose. C39 made the refusal say what it is refusing;
+  this entry is the feature behind it.
+
+  Taken up after the conformance suite's first entries asked for it (implicit
+  layers, Newton for systems, power iteration): see next in line.
+
+- **Built-in series acceleration.** `lim` applying Aitken's delta-squared, or
+  offering it behind a keyword, so that a slowly converging series gets an
+  answer instead of C36's refusal. Declined, and the reason is not cost.
+
+  **There is no universal accelerator.** Matching the method to the shape of
+  the error is the mathematics, not a detail below it: Aitken for a
+  geometric-looking error, Richardson for a power law, the Euler transform for
+  an alternating series. Measured on `1/n^2`: one Richardson step leaves
+  `9.9e-05` at a hundred terms, while the Euler-Maclaurin tail leaves `1.9e-11`
+  at twenty. A built-in would have to pick one of them for every series a user
+  will ever write.
+
+  **And the language already expresses all of them.** Both the tail correction
+  and Aitken are ordinary clauses — `test/data/sequences.ink` records them, and
+  the README shows the first — because a clause may index another sequence at
+  any expression, including one that reaches forward. Adding a keyword would
+  spend syntax on a convenience for one method while taking the choice away
+  from the only party who can make it. It would also make `lim` answer where it
+  now refuses, which is the direction C36 measured as harmful.
+
+- **Substitution and partial expansion.** `?b` showing `2+2` rather than
+  `a+a`: evaluating some references while leaving others symbolic. This is a
+  different feature from printing a definition back, not an option on it. It
+  needs its own syntax, a rule for how far expansion goes, and an answer for
+  what a partially evaluated sequence or matrix of expressions even means.
+  `?name` (phase 4, item 6) prints what was written and nothing more.
+
+- **A third-party matrix library.** Raised explicitly, as `CLAUDE.md` §5
+  requires, and declined for now. Measured against what the code actually is:
+  `matrix.hpp` is 190 lines, of which roughly eighty are the arithmetic a
+  library would replace, and they are now unit-tested. Eigen, the obvious
+  candidate, is a megabyte of headers.
+
+  The semantics do not line up either, in three ways that would each need
+  adapter code: `/` here is element-wise, not scalar division; a 1x1 matrix
+  is deliberately also the scalar type, which D9 measured and chose to keep,
+  where a library makes that a type distinction; and the block expansion that
+  sizes `[a, a; a, a]` from what its cells evaluate to is this language's own
+  rule, living in the visitor rather than in `Matrix`.
+
+  What decides it is that inkamath asks for nothing a library is good at. It
+  has `+`, `-`, element-wise `/`, `*` and an integer power — no inverse, no
+  determinant, no transpose, no solve. A library earns its place at the point
+  those arrive, because pivoting and conditioning are genuinely hard and
+  worth not writing. The seam is clean when that day comes: those operate on
+  an evaluated numeric matrix, so the library sits *below* `Matrix`, on
+  values, and never meets the expressions.
+
+- **Symbolic simplification.** `x+x` to `2*x`, `x^1` to `x`, folding constant
+  subtrees. The shape of the program invites it: names bind expressions, the
+  AST survives evaluation, and `TransformationVisitor`'s own 2014 comment
+  lists "simplify the tree" as one of the two things it exists for. D6's
+  immutability helps rather than hinders — a simplifier builds a new tree
+  rather than editing one — and `?` would give the result somewhere to show.
+
+  What stops it being small is specific to *this* language rather than to
+  simplification generally: **the identities are unsound over matrices.**
+  `x*0` is not `0` when `x` is a matrix, because the result's extent comes
+  from `x`; nor is `x-x`, for the same reason. Almost every algebraic rule
+  needs the extent of its operands, and an extent is only known after
+  evaluating them — which is the thing simplification is meant to avoid. The
+  complex arithmetic adds the usual IEEE caveats: `x-x` is not `0` at NaN,
+  and `(x^2)^0.5` is not `x` off the positive reals.
+
+  So the sound subset is roughly constant folding over literals, which buys
+  little, and everything beyond it needs a type-and-extent analysis the
+  interpreter does not have. A real CAS is a larger program than this
+  interpreter, and the size constraint at the top of this file is the reason
+  to say so out loud rather than drift towards one. Recorded, not scheduled:
+  if it is ever wanted, it starts with extents, not with rewrite rules.
+
+- **Epistemic levels in printing.** An external review proposed that a value
+  carry its level, exact, certified (rho, eig, hinf and the others) or
+  rounded, and that printing say which. A prototype measured two notations,
+  a `≈` per certified cell and a `# certified` mark on the answer: the level
+  survives only on those functions' direct answers, since any arithmetic
+  rounds it; `≈` breaks reading back and column alignment; and either mark
+  makes a certified `0.5` look less exact than a rounded `0.5`, which prints
+  bare. Decided by the owner: the REPL is no place for a distinction the eye
+  cannot parse reliably. If it surfaces, it does at a C API or in an output
+  format meant for programs.
+
+- **Local functions.** A local with parameters is refused (C303): bound in
+  the line's frame, it could not capture its parameters, and its answers
+  read globals instead. Cut by the owner for now; it comes back only with a
+  design that captures them, as a function's own definitions would.
+
+- **Compiling definitions inside the interpreter.** A §9 measurement
+  (integration 3a0f342) turned a definition by cells, once, into a flat
+  sequence of operations with names resolved to slots, run in doubles
+  where its inputs are inexact, the tree answering anything else: 7 to 8
+  times on those definitions, 2.3 on a transformer's forward pass, 1.04 on
+  its training step, 85 per cent of which is reverse mode's own walk. In
+  full: some 700 lines for the evaluator (2 to 3 times on cellwise and
+  recurrence models), 300 to 500 more for a node of compiled cells on the
+  tape (1.6 to 1.8 times on the step), and 500 to 800 for inexact matrices
+  held as plain doubles (about 1.45). It is a second implementation of
+  Number's rules and of where the tree counts steps, each mismatch a silent
+  wrong mark. Deferred by the owner: `--compile` gives native speed now.
+  The flat sequence is what an in-process JIT would take as input; that
+  stays open, a larger work and a dependency to raise.
+
+## Openings
+
+Not scheduled, and not Deferred either -- Deferred is for what has been argued
+and declined. These are the directions worth taking, with what is known about
+each measured rather than assumed. New directions go in `MANIFESTO.md`; what is
+here stays for what it measured.
+
+**Other number systems.** The seam D9 and C9 argued about is real, and this is
+not a guess: `Interpreter<double>` compiles and runs with no complex numbers at
+all and no change to the project, and `Interpreter<Rational>` -- eighty lines
+of exact fraction over two `long long`s, written to find out -- runs sequences,
+matrices, cells and the memoisation on top of them, needing one thing the
+concepts never stated (C44). Then `1/3+1/3+1/3` is `1` rather than nearly one,
+`s_n=s_(n-1)/3` gives `1/243`, and `a/3` is a matrix of fractions.
+
+Three things it opens, at three prices. *Exact division* is the eighty lines
+above. *Exact magnitude* is a bignum -- `fib_100` prints `3.54224848e+20` for a
+number with twenty-one digits, and `!21` and `2^64` lose the same way -- which
+is several hundred lines to write or a dependency to raise, and §5 makes that a
+decision rather than something to slip in. *Both* is a rational over a bignum,
+which is the real prize and the real cost. The question worth answering first
+is not whether it works but what the prompt should be: one interpreter per
+number type, chosen when it is built, or a language where the kind of a number
+is part of the number. Taken up as phase 13, for the second.
+
+**A standard library.** There are no functions: `sqrt` is `^0.5`, `exp` is
+`e^x`, and `ln`, `sin` and `cos` are nothing at all. Two shapes, and they are
+not the same project. A **prelude written in inkamath** is in character and is
+the better demonstration -- `sequences.ink` already defines `cos` and `sin` from
+the exponential series, and they work -- but it needs a way to load a file, and
+its accuracy is bounded by `lim`'s tolerance, so *Numbers the user cannot tune*
+comes first. **Built-in elementary functions** are accurate and fast and
+contradict `README.md`, which says there are none as a statement of design
+rather than an apology. Deciding which of those two sentences is true is the
+whole of the work. Taken: a prelude in inkamath and no built-in (*`exp`,
+`log` and `tanh` accurate, bounded and compiled*).
+
+**A conditional.** Done -- phase 10. It was the one opening specified before
+it was built, and the specification is what found both of its mistakes.
+
+**Performance.** No session has ever been too slow -- a prompt evaluates one
+line -- so this is about where the time goes if the interpreter is ever asked
+to do real work, and it was measured before anything was written. Two
+workloads under callgrind, and they disagree completely. On a 20x20 matrix
+product, 74% is `matrix.hpp` and 11% is complex arithmetic: compiled C++
+already, nothing to win. On a small tree folded through `lim` thousands of
+times with the memo cache dropped each line, the arithmetic is **0.9%** --
+the interpreter spends a hundred times more effort administering a value than
+computing with it, and that effort is strings hashed and compared (20%), an
+allocation per intermediate (19%), clause dispatch (17%) and an atomic
+refcount per node (10%).
+
+A prototype took that workload down 43%, in four steps, each measured on top
+of the last and each leaving every golden byte-identical:
+
+| | sequence | matrix |
+|---|---|---|
+| `Name()` by reference, a frame as a flat vector | -6% | +1% |
+| a parameter, a default and an index bound as a **value** | -33% | +3% |
+| every name interned to an integer | -34% | +3% |
+| the memo key a struct rather than a rebuilt string | -43% | +3% |
+
+Two of those four lines carry it. Binding one parameter cost a
+`make_shared<Reference>`, a `Clause`, a `ParametersDefinition` holding two
+vectors and two strings, and a heap `ValExpression` -- per argument, per call,
+and again per term of a sequence for the index variable; a frame that holds
+values instead is three quarters of the saving. And **interning bought
+nothing**: the 20% the profile blamed on hashing names was the memo key and
+the allocations under it. Slot resolution by index -- the obvious reading of
+that profile, and the reason the experiment was run -- is the one change here
+not worth making. The matrix column is the warning attached to all of it: a
+frame carrying two vectors costs 3% where there are no references to resolve.
+
+What the goldens caught, and no reasoning would have: `h(x) = (x = 10) + x`
+answers 20. A local shadows a *parameter* of the same name, so a frame is one
+slot per name, not a value list beside a definition list.
+
+It also answers the question that started it, which was an LLVM JIT. The tree
+walk such a backend would replace is 7% of the baseline and the arithmetic it
+would compile is 1%, and a `Matrix` whose shape is dynamic leaves it either
+specialising on shape -- a project of its own -- or calling this same runtime
+and keeping every cost above. 43% came with no dependency, no codegen, and
+mostly by deleting what stood behind a bound parameter. If the codegen is the
+point rather than the speed, `Interpreter<double>` already compiles and is the
+honest target, out of tree.
+
+The second line of the table is what landed, rewritten rather than applied: one
+slot per name in a frame, carrying a value or a definition, no symbol table.
+**-32%**, and *nothing* on the matrix workload where the prototype cost 3%,
+because a frame is one vector and not two. +89/-32 lines, which does not pay
+for itself; what it buys besides the time is that the `from_frame` flag
+threaded through three functions is gone, the frame shadowing a global being
+now a branch one can read. Checked three ways, because a faster wrong answer
+measures nothing: every golden byte-identical, 4000 random lines and 35 edge
+cases byte-identical against the previous build.
+
+A second step, eight lines: every child accessor handed its `shared_ptr` out by
+value, so reading a child cost an atomic pair -- on every child of every node
+of every fold. By reference it is another 6%, and half the refcounting.
+
+**-36%** together, and what remains, measured on what is in the tree: clause
+dispatch 18%, names 17%, the allocator 12%, `matrix.hpp` 11%, the AST fold 9%,
+refcounting 4%, the arithmetic 1.7%; 216M instructions down to 122M. Most of
+that 17% is the memo key, still a string built per call, and the prototype's 7%
+for making it a struct needed a symbol table that earned its place nowhere
+else -- so that step wants a different idea, not that one.
+
+One correction to what this entry first claimed: the boxed value is *not* what
+is left, because D9 already unboxed it -- `Matrix(Extent, value)` skips
+`cells_` when the extent is one cell, and a 1x1 keeps its number in `scalar_`,
+so no scalar intermediate allocates. What the profile shows is smaller and
+worse placed: a `Matrix` carries a `std::vector` member even when it is one
+number, so every intermediate constructs and copies an empty vector for
+nothing, about 5% between the two. Closing that is the scalar/matrix split D9
+declined on its own measurement, and 5% does not reopen it.
+
+If they were mine to order: the conditional, because it is the one missing
+primitive rather than a convenience; then the number systems, because the seam
+is already open and the experiment above took an afternoon; then the tolerance,
+and a prelude behind it. Performance sits outside that order: it is the one
+direction that can end with fewer lines than it started with.
+
+---
 
 ## Next in line
 
