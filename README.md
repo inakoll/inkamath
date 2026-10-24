@@ -7,8 +7,9 @@ the interpreter (`--check`). It evaluates exact rational arithmetic, complex
 numbers in doubles, matrices and rank-3 tensors of expressions, user-defined
 functions and models, sequences defined by recurrence, series, and derivatives
 (`grad`). First written offline around 2007–2008 and imported from Google Code
-around 2014 (`LICENSE.txt`), it has since been rebuilt around exact numbers as
-the reference semantics and generated C checked against them (`DESIGN.md`).
+around 2014 ([`LICENSE.txt`](LICENSE.txt)), it has since been rebuilt around
+exact numbers as the reference semantics and generated C checked against them
+([`DESIGN.md`](DESIGN.md)).
 
 The idea it is built around is that **an identifier names an expression, not a
 value**. The expression is re-evaluated every time the name is used, so a
@@ -92,6 +93,25 @@ cos(x)=(exp(i*x)+exp(-i*x))/2
 ~0.5
 ```
 
+| | |
+|---|---|
+| [README.md](README.md) | using it: the language, the compiler and the check |
+| [test/compile/](test/compile/) | models compiled and checked by the tests, each a worked example |
+| [MANIFESTO.md](MANIFESTO.md) | why it is built so, and where it could go |
+| [DESIGN.md](DESIGN.md) | the decision record and the defect table, for maintainers |
+| [CLAUDE.md](CLAUDE.md) | the rules for contributors and agents |
+
+Contents: [Getting started](#getting-started) ·
+[Building](#building), with the compiler, the check and hosts ·
+[Language](#language):
+[1. Numbers and operators](#1-numbers-and-operators),
+[2. Matrices](#2-matrices),
+[3. Definitions](#3-definitions),
+[4. Sequences](#4-sequences),
+[5. Models and files](#5-models-and-files),
+[6. Printing a definition back](#6-printing-a-definition-back),
+[7. Diagnostics](#7-diagnostics).
+
 Getting started
 ---------------
 
@@ -152,7 +172,8 @@ Asked at the prompt, every term is exact; a bare number is all of its value,
 ~0.999845095
 ```
 
-The same lines without the prompts are `test/compile/pidloop.ink`. Compiled
+The same lines without the prompts are
+[`test/compile/pidloop.ink`](test/compile/pidloop.ink). Compiled
 by the model's name, the controller is a C header for a host that measures y
 and applies u; without a name, the file's instances are compiled as one
 closed-loop step:
@@ -193,8 +214,8 @@ cc -O2 checkf.c -o checkf -lm && ./checkf
     ctl.u: within 5.9e-07, 9.9 units of a float
 
 A check that fails names the first term that parts and exits with a failure.
-`wild` in `test/compile/drift.ink` computes a tenth again at every step, and
-each step multiplies the double's rounding by ten:
+`wild` in [`test/compile/drift.ink`](test/compile/drift.ink) computes a tenth
+again at every step, and each step multiplies the double's rounding by ten:
 
 ```sh
 ./inkamath --check ../test/compile/drift.ink wild -o wild.c
@@ -240,16 +261,17 @@ int main(void) {
 
 `cc -O2 main.c -o main -lm && ./main` prints `u_0 = 3`, `u_1 = 2.69` and
 `u_2 = 2.47`, as `pid(kp = 3, y_n = n/10)` gives them at the prompt. Python
-calls it through a shared library, under Building below.
+calls it through a shared library, under [Building](#building).
 
-A training step takes the same path. `lsq` in `test/compile/grad.ink` is
+A training step takes the same path. `lsq` in
+[`test/compile/grad.ink`](test/compile/grad.ink) is
 least squares by gradient descent, `w_n = w_(n-1) - eta*grad_(v = w_(n-1))
 loss(v)`, and `line` an instance of it: `--compile` of `lsq` writes its step,
 and `--check` of `line`, built and run as above, reports `line.w: within
 4.4e-16`.
 
-Next: Language, below, for the notation; Building for what else compiles and
-what the check reports.
+Next: [Language](#language) for the notation; [Building](#building) for what
+else compiles and what the check reports.
 
 Building
 --------
@@ -293,19 +315,27 @@ several, and what one computes and a later one reads is held in the model
 struct, its last member: about 300 KB for one training a transformer's 13
 weights at once. A host places that struct statically or on the heap, not as a
 local of a thread with a small stack; `sizeof` the struct counts it.
-`test/compile/pid.ink` is a PID controller, and `test/compile/expected/pid.h`
-is what it compiles to; `test/compile/kalman.ink` is a Kalman filter over
-matrices.
-`test/compile/pid_clamped.ink` limits its output with guards, and
-`test/compile/fir.ink` is a filter written as a sum. A sum or a product up to
+[`test/compile/pid.ink`](test/compile/pid.ink) is a PID controller, and
+[`test/compile/expected/pid.h`](test/compile/expected/pid.h)
+is what it compiles to; [`test/compile/kalman.ink`](test/compile/kalman.ink) is
+a Kalman filter over matrices.
+[`test/compile/pid_clamped.ink`](test/compile/pid_clamped.ink) limits its
+output with guards, and
+[`test/compile/fir.ink`](test/compile/fir.ink) is a filter written as a sum. A
+sum or a product up to
 the index, or the index less a constant, `sum_(t=1)^n e_t`, is kept as a
 running total, a sequence of the step's own, `s0_`, as a recurrence written by
-hand would be: `test/compile/accum.ink` has a regret. Refused: terms that read
+hand would be: [`test/compile/accum.ink`](test/compile/accum.ink) has a regret.
+Refused: terms that read
 the index itself, as Adam's `b2^(t-i)` does, a last index other than the index
-less a constant, and for now a maximum up to it. `test/compile/kalman2.ink`
-inverts a matrix at every step, and `test/compile/heat.ink` once, in `update`;
-`test/compile/adc.ink` rounds with `floor` and tests with `and` and `or`, and
-`test/compile/net.ink` is a small network whose terms are defined by cells.
+less a constant, and for now a maximum up to it.
+[`test/compile/kalman2.ink`](test/compile/kalman2.ink)
+inverts a matrix at every step, and
+[`test/compile/heat.ink`](test/compile/heat.ink) once, in `update`;
+[`test/compile/adc.ink`](test/compile/adc.ink) rounds with `floor` and tests
+with `and` and `or`, and
+[`test/compile/net.ink`](test/compile/net.ink) is a small network whose terms
+are defined by cells.
 `--compile mix.ink mix -o mix.h` compiles the model `mix` that `mix.ink`
 defines (section 5), read as `use` reads the file: its inputs are the step's
 arguments, in the order of its signature, one whose size the signature states
@@ -313,32 +343,39 @@ a pointer to its cells, row by row, and its parameters, with their
 defaults, the only fields; a name nothing defines is refused rather than
 taken for one more input. A read of an input before the stream is a term the
 model's history gives, which `init` folds into the input's window, or is
-refused: `down` in `test/compile/decimate.ink` states `x_n | n < 0 = 0`.
+refused: `down` in [`test/compile/decimate.ink`](test/compile/decimate.ink)
+states `x_n | n < 0 = 0`.
 An optional input, `z_n?`, is followed in the step by its flag, `int
 z_present_in_`, 0 where it is absent, its value then not read; the struct
 keeps the flags beside the input's terms, `z_present[k]`, and the input's
 cells are NaN where it is absent, before the stream too. A guard whose truth
 is NaN where an input it reads is absent does not hold, as interpreted:
-`test/compile/optional.ink`. An inner instance's optional input takes its
+[`test/compile/optional.ink`](test/compile/optional.ink). An inner instance's
+optional input takes its
 argument's flag: an optional input's, forwarded; a sequence's, 1 where a
 clause of its chain gave the term, NaN included, and 0 where none did; any
 other's, 1; and 0 at every step where its instance
-leaves it out (`test/compile/inner.ink`). An argument reading such a chain back
-in time, or holding it, is refused, for now.
+leaves it out ([`test/compile/inner.ink`](test/compile/inner.ink)). An argument
+reading such a chain back in time, or holding it, is refused, for now.
 A file's named instances are compiled with it, into
 one step that orders all their terms together, each instance a struct of its
-own: `test/compile/loop.ink` closes a loop, `m.ctl.u[0]` and `m.plt.x[0]`,
-and `test/compile/chain.ink` nests one. A function, and an instance of a model
+own: [`test/compile/loop.ink`](test/compile/loop.ink) closes a loop,
+`m.ctl.u[0]` and `m.plt.x[0]`,
+and [`test/compile/chain.ink`](test/compile/chain.ink) nests one. A function,
+and an instance of a model
 without memory, are compiled where they are called, a constant folding
 through and a recursion unrolling where its guards fold:
-`test/compile/kernel.ink` has a convolution run at every step. A local is a
+[`test/compile/kernel.ink`](test/compile/kernel.ink) has a convolution run at
+every step. A local is a
 temporary of the step, read from its binding on in its clause as
-interpreted: `test/compile/locals.ink` takes Runge-Kutta's stages as locals,
+interpreted: [`test/compile/locals.ink`](test/compile/locals.ink) takes
+Runge-Kutta's stages as locals,
 each computed once. One by cells, one bound on the right of `and` or `or`
 and read after it, one bound in a term's index, and one a sum without an
 upper bound carries past a term are refused for now. An instance
 with memory written where it is read is one of its own, named after where it
-is written and the cell it is written for: `test/compile/bank.ink` is a bank
+is written and the cell it is written for:
+[`test/compile/bank.ink`](test/compile/bank.ink) is a bank
 of filters, `m.bank_smooth_1` to `_3`. The compiler refuses by name what it
 cannot yet express, such as an instance with memory made anew at each step,
 or a cell at an index the step computes, `T[k_n, 1]`, "a cell whose place is
@@ -346,54 +383,69 @@ not a constant";
 without `-o` it writes nothing and lists every definition it would refuse,
 and why. A limit of constants is folded, and any other is a
 function that walks the terms with the interpreter's stopping rule, NaN where
-the interpreter would say it does not converge: `test/compile/newton.ink`
+the interpreter would say it does not converge:
+[`test/compile/newton.ink`](test/compile/newton.ink)
 solves each step of a stiff equation by Newton's method, a sequence with
-parameters under `lim`, and `test/compile/logistic.ink` trains a logistic
-regression, its `exp` a limit written in inkamath, as `test/compile/softmax.ink`
+parameters under `lim`, and
+[`test/compile/logistic.ink`](test/compile/logistic.ink) trains a logistic
+regression, its `exp` a limit written in inkamath, as
+[`test/compile/softmax.ink`](test/compile/softmax.ink)
 writes softmax and cross-entropy, `log` being Newton's method on `exp`. A
 guard that reads a limit whose walk runs out does not hold, as interpreted,
 whatever else it reads, so the action to take in doubt is the later clause:
-`test/compile/fallback.ink` is an MPC whose plan falls back to a fixed gain
-where projected gradient cycles. A
+[`test/compile/fallback.ink`](test/compile/fallback.ink) is an MPC whose plan
+falls back to a fixed gain where projected gradient cycles. A
 sequence with parameters read at a constant index, `f(x)_K`, is written out
 as a sum with constant bounds is, each term below the one read a temporary of
-the step: `test/compile/iterates.ink` takes a determinant by Faddeev-LeVerrier,
+the step: [`test/compile/iterates.ink`](test/compile/iterates.ink) takes a
+determinant by Faddeev-LeVerrier,
 grad through it, and a few steps of projected gradient. One read at a
 limit's index less a constant, `t(x)_k`, is walked beside it in its loop:
-`test/compile/series.ink` writes e^x and a rotation's exponential as the
-limits of their partial sums, as on paper, and `test/compile/sums.ink` as
+[`test/compile/series.ink`](test/compile/series.ink) writes e^x and a
+rotation's exponential as the
+limits of their partial sums, as on paper, and
+[`test/compile/sums.ink`](test/compile/sums.ink) as
 unbounded sums, `sum_(q=0) x^q/!q`, each walked as such a limit is. A
-limit of matrices fills an array, cell by cell: `test/compile/steady.ink`
+limit of matrices fills an array, cell by cell:
+[`test/compile/steady.ink`](test/compile/steady.ink)
 finds a chain's steady state and, by power iteration, a matrix's dominant
 direction at every step. A limit's iterate has temporaries as a step has, a
 matrix inverse or a call nested in an argument computed once per iterate:
-`test/compile/implicit.ink` takes each step of backward Euler on a stiff
+[`test/compile/implicit.ink`](test/compile/implicit.ink) takes each step of
+backward Euler on a stiff
 chemical system by Newton's method under `lim`, its inverse written as the
 paper writes it. A `grad` by a single value is compiled forward, each value
 carrying its part beside it by the interpreter's rules, and one by a matrix in
 reverse mode as the interpreter takes it, the body written once and swept
 back, so that the step's gradient is the interpreter's to the bit where the
-interpreter's values are doubles: `test/compile/grad.ink` trains a line and a
-logistic regression by it, and `test/compile/cellguards.ink` a ReLU network
+interpreter's values are doubles:
+[`test/compile/grad.ink`](test/compile/grad.ink) trains a line and a
+logistic regression by it, and
+[`test/compile/cellguards.ink`](test/compile/cellguards.ink) a ReLU network
 through its activation written by its cells, each cell's guards tested in the
 step. A grad inside a grad is compiled forward over forward, each value
 carrying a part by each, so a Hessian and a Jacobian by cells of a gradient
-compile: `test/compile/hessian.ink` steps a double pendulum from its
+compile: [`test/compile/hessian.ink`](test/compile/hessian.ink) steps a double
+pendulum from its
 Lagrangian. A nest three deep or holding a grad by several names, and a
 derivative of a limit or of a matrix power, are refused for now. A `grad` by several names is a struct of its parts, as an instance
 is, `m.g.W[0]` being `g.W_n`, the body written once and swept back once:
-`test/compile/gradmany.ink` trains a two-layer network by one grad of its
-four weights. A tensor is an array as C keeps one,
+[`test/compile/gradmany.ink`](test/compile/gradmany.ink) trains a two-layer
+network by one grad of its four weights. A tensor is an array as C keeps one,
 `double O[B][T][D]`, slice after slice, and is met slice by slice as the
-interpreter meets it: `test/compile/tensor.ink` runs multi-head attention
+interpreter meets it: [`test/compile/tensor.ink`](test/compile/tensor.ink) runs
+multi-head attention
 over a batch and trains a layer on minibatches by `grad`, and
-`test/compile/tensorgrad.ink` takes a `grad` with respect to a tensor; a
+[`test/compile/tensorgrad.ink`](test/compile/tensorgrad.ink) takes a `grad`
+with respect to a tensor; a
 tensor in a limit is refused for now. A block literal,
 `[A, 0; -C, 1]`, is laid out as the interpreter lays it out (section 2),
-each block's cells written into their place: `test/compile/blocks.ink`
+each block's cells written into their place:
+[`test/compile/blocks.ink`](test/compile/blocks.ink)
 packs a doubling algorithm's iterates into one term, and refuses a block
 that does not fill its band. Two matrices are compared whole, `R'*R == I3`
-as the equalities of their cells: `test/compile/orthogonal.ink` has a
+as the equalities of their cells:
+[`test/compile/orthogonal.ink`](test/compile/orthogonal.ink) has a
 rational rotation the step takes out of SO(3) at its first step, which the
 interpreter never does. A header that
 writes NaN anywhere carries it to every term that reads it, as the
@@ -402,7 +454,7 @@ answer NaN, and a matrix or tensor term with a NaN cell is NaN in
 every cell, which its first comment says. Such a header is not to be built
 with `-ffinite-math-only`, which `-ffast-math` implies: GCC removes the tests
 that carry NaN, and Clang warns of each NaN the header writes.
-`test/compile/nan.ink` has an instance of each.
+[`test/compile/nan.ink`](test/compile/nan.ink) has an instance of each.
 Clang before 23.1 can miscompile some headers' NaN tests at -O2 (llvm
 925e284), and Clang 19 does on the tests; build with `-fno-slp-vectorize`.
 Built at -O0, a header builds in seconds and runs about four times slower
@@ -418,12 +470,14 @@ second step: its terms are the input's at another rate, and `y_(floor(n/2))`
 holds its latest term at the input's rate again. The step is still one, the
 input's, and a term of `y` is computed on the first step at which every sample
 it reads exists; a hold of a term not computed yet is refused, saying to read
-the term before it. `test/compile/rates.ink` is a decimator and two holds.
+the term before it. [`test/compile/rates.ink`](test/compile/rates.ink) is a
+decimator and two holds.
 Such a sequence may be guarded, defined by its cells or without a base
 clause; one read by another is refused, naming the hold at the input's rate
-to sample instead. `test/compile/decimate.ink` adds an interpolator and a
-strided convolution, and `test/compile/cascade.ink` a servo whose clamped
-outer loop runs every fourth step.
+to sample instead. [`test/compile/decimate.ink`](test/compile/decimate.ink)
+adds an interpolator and a
+strided convolution, and [`test/compile/cascade.ink`](test/compile/cascade.ink)
+a servo whose clamped outer loop runs every fourth step.
 
 `--check drift.ink calm -o calm.c` holds the compiled code to the
 interpreter. It compiles `calm`, an instance the file defines, with the
@@ -442,7 +496,8 @@ terms were exact throughout, and, where they were not, about how far they are
 from the exact ones: each is asked three times more with every rounding taken
 the other way at random and every limit moved by the remainder it estimated,
 an estimate and not a bound, which names the first step it passes the
-tolerance (`test/compile/estimate.ink`). `test/compile/drift.ink` has an instance that
+tolerance ([`test/compile/estimate.ink`](test/compile/estimate.ink)).
+[`test/compile/drift.ink`](test/compile/drift.ink) has an instance that
 holds and one that does not: a tenth computed again at every step, whose
 rounding each step multiplies by ten. Before the values, it reports the first step
 at which a compiled guard takes another clause than the interpreter's, and how
@@ -453,22 +508,26 @@ in the same file sits exactly on its threshold, and `ledge` a trillionth from
 it. Before that, it reports the first step at which a disturbed run takes
 another clause than the interpreter, at a sequence's guard or a function's the
 file writes, in the same words: there the estimate is a clause's, not a
-rounding's, and the check does not fail for it (`test/compile/straddle.ink`,
+rounding's, and the check does not fail for it
+([`test/compile/straddle.ink`](test/compile/straddle.ink),
 where `crease`'s 0.30000000000000004 is 5.6e-17 from the double nearest its
 threshold 3/10). After the values it lists, from the code and not the run,
 every guard the step compiles that reads a limit and the clause tried where
 that limit runs out, so that a reviewer can see which way each falls:
 `braked.brake: where lim nv runs out, 'brake_n | lim nv(c_n) < 1 = 1' falls to
-'brake_n = 0'` skips the brake where Newton fails (`test/compile/fallback.ink`).
+'brake_n = 0'` skips the brake where Newton fails
+([`test/compile/fallback.ink`](test/compile/fallback.ink)).
 A guard that reads an optional input is listed with it: `seen.x: where z is
 absent, 'x_n | ...' falls to 'x_n = xp_n'`, after the limits if it reads
 both, `where lim qp runs out or z is absent`; the check gives the step an
-absent input as its flag 0 (`test/compile/optional.ink`).
+absent input as its flag 0
+([`test/compile/optional.ink`](test/compile/optional.ink)).
 
 `--steps n` beside an instance's `--check` steps it n times rather than a
 hundred, n from 1 to 100000. n counts the step's calls, the one that computes the first
 term among them, so a model of N steps after its initial term, `y_0` to
-`y_N`, is checked whole with `--steps` N + 1 (`test/compile/steps.ink`).
+`y_N`, is checked whole with `--steps` N + 1
+([`test/compile/steps.ink`](test/compile/steps.ink)).
 
 `--float`, beside `--compile` or an instance's `--check`, writes floats where
 the header writes doubles, every constant the nearest float, for a target that
@@ -476,7 +535,8 @@ computes in float; its first comment names what reads a constant folded from
 inexact numbers, computed at the interpreter's precision, not a float's. Its check holds each term within a thousandth of one plus
 the interpreter's and says the most any term came in units of a float, the
 spacing of floats at the interpreter's term, a term of 0 counting none:
-`test/compile/float.ink`. Where that most reaches 2^23 units, as a term a
+[`test/compile/float.ink`](test/compile/float.ink). Where that most reaches
+2^23 units, as a term a
 normal float holds does when lost whole or of the other sign, it names the
 cell and step: `outside.y: within 0.00061, 1e+10 units of a float in y[2,1]
 at step 1101`. A limit
@@ -526,7 +586,8 @@ driver that says absent by NaN converts in its own C, `track_step(m, z,
 without them an address held as a
 Python int, as numpy's `a.ctypes.data` is, is passed as a C int and cut to
 32 bits. A call from Python costs about 0.7 µs, twenty times a small
-model's step, 31 to 34 ns for `test/compile/kalman.ink`: for such a model,
+model's step, 31 to 34 ns for
+[`test/compile/kalman.ink`](test/compile/kalman.ink): for such a model,
 batch the steps in C, as `ink_run` does, 37 to 81 ns a step from Python.
 `compile_host` builds this file as written here and holds `ink_run` to
 `ink_step`.
@@ -547,9 +608,6 @@ which are literal sessions — every example in this file is one of them, so the
 documentation and the tests check each other. Regenerate with
 `cmake --build build --target record_goldens` and read the diff: it is the
 record of what your change did.
-
-`DESIGN.md` tracks the work in progress and the known defects.
-`CLAUDE.md` has the working rules.
 
 Language
 --------
@@ -1829,12 +1887,14 @@ refuse past 1 either way, `acosh` below 1 and `atan2` the origin, each in its
 own words; a double's -0 is 0, so `atan2(~0*(-1), -1)` is pi, where C's is
 -pi. Compiled, each is a C function of the
 header's own; the interpreter calls the same functions, and under `grad` their
-parts, checked in as `include/inkamath/inkamath_prelude.h`, on a double, where
+parts, checked in as
+[`include/inkamath/inkamath_prelude.h`](include/inkamath/inkamath_prelude.h),
+on a double, where
 they answer what the definitions answer. Measured against mpmath, at worst
 `exp` is 1.31 units off, `log` 2.94, `tanh` 2.97, `sin` 2.43, `cos` 2.45,
 `atan` 1.44, `atan2` 1.89, `asin` 2.61, `acos` 2.61 and `acosh` 3.57, log's
-own error near its fold (`test/prelude_test.cpp`).
-`test/data/models.ink` is the whole of it.
+own error near its fold ([`test/prelude_test.cpp`](test/prelude_test.cpp)).
+[`test/data/models.ink`](test/data/models.ink) is the whole of it.
 
 Data comes in as a file of definitions like any other, written by whatever
 holds it. From Python, a matrix is one literal, its decimals read exactly as
