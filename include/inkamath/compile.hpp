@@ -4862,6 +4862,7 @@ private:
             for (auto& [name, code] : e->values) inward(code);
         }
         inward(point);
+        const std::map<std::string, Code> before = frame_.values;  // put back where not bound
         for (auto& [name, code] : frame_.values) inward(code);
         struct Restore {
             std::vector<std::pair<Expansion*, std::map<std::string, Code>>>& each;
@@ -4870,7 +4871,12 @@ private:
             }
         } restore{saved};
         Code out = Graded(expression, {point}, nullptr)[0];
-        for (auto& [name, code] : frame_.values) code = Outward(code);  // its part by the outer
+        std::set<std::string> rebound;
+        Binding(*expression.Body(), rebound);
+        for (auto& [name, code] : frame_.values) {  // its part by the outer, its exact value kept
+            const auto was = before.find(name);
+            code = was != before.end() && !rebound.count(name) ? was->second : Outward(code);
+        }
         out.part = std::move(out.outer);
         out.outer.clear();
         out.moves.reset();

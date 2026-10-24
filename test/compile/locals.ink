@@ -150,7 +150,10 @@ stagedrt = stagedroot(u_n = n/4)
 # bound by reverse mode in grad's point and read in its body, 3u + 1, no
 # node of the tape gone read. j's local holds a comparison that jumps at u
 # = 1, n = 4, where the step is NaN as the twin's, though nothing reads it
-# (C410). With u_n = n/4, all but x and d within 0.
+# (C410). o's t, read in a nest, is still 4 after it, a constant that
+# bounds a sum and places a cell: 8 + 10 + 4; r's second d, bound in a nest
+# as the first was, moves with y as the first did, 3 + 3. With u_n = n/4,
+# all but x and d within 0.
 sens(h = 1/10, u_n) = {
     lg(y) = y - y^2
     x_0 = 1/2
@@ -163,6 +166,8 @@ sens(h = 1/10, u_n) = {
     p_n = grad_(x = u_n) x*(grad_(y = x) ((a = 3*y) + 0) + grad_(z = 1) z*a)
     q_n = grad_(x = (grad_(v = [u_n, 1]) ((a = 3*v[1,1] + v[1,2]) + 0))[1,1]) x*a
     j_n = grad_(y = 1) ((c = (y*(u_n - 1) > 0)) + y*y)
+    o_n = grad_(x = 2) ((t = x*x) + grad_(y = x) (t*y) + 0) + sum_(k=1)^t k + [1, 2, 3, 4, 5][1, t]
+    r_n = grad_(y = u_n) ((grad_(w = [y, 1]) ((d = w*[1; 2])*d))[1,1] + d) + grad_(y = u_n) ((grad_(w = [y, 1]) ((d = w*[1; 2])*d))[1,1] + d)
 }
 stagedsens(h = 1/10, u_n) = {
     lg(y) = y - y^2
@@ -176,6 +181,8 @@ stagedsens(h = 1/10, u_n) = {
     p_n = grad_(x = u_n) x*(grad_(y = x) (3*y + 0) + grad_(z = 1) z*(3*x))
     q_n = grad_(x = (grad_(v = [u_n, 1]) (3*v[1,1] + v[1,2] + 0))[1,1]) x*(3*u_n + 1)
     j_n = grad_(y = 1) ((y*(u_n - 1) > 0) + y*y)
+    o_n = grad_(x = 2) (x*x + grad_(y = x) (x*x*y) + 0) + sum_(k=1)^4 k + [1, 2, 3, 4, 5][1, 4]
+    r_n = grad_(y = u_n) ((grad_(w = [y, 1]) ((w*[1; 2])*(w*[1; 2])))[1,1] + y + 2) + grad_(y = u_n) ((grad_(w = [y, 1]) ((w*[1; 2])*(w*[1; 2])))[1,1] + y + 2)
 }
 se = sens(u_n = n/4)
 stagedse = stagedsens(u_n = n/4)

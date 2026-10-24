@@ -9405,9 +9405,12 @@ checked: what it asked of the compiler, each with its smallest change.
     `Asked`, a local shadows a call's value, but not grad's names.
   - **C313 by every grad around**: a global read in a nest is searched by
     the outer grad's names too, as the interpreter's searches chain.
-  - **Out of a nest**, a local that moves by the outer grad keeps its part
-    and loses its exact value, as the nest's own value does: a fold lost,
-    never a value.
+  - **Out of a nest**, a local its body does not bind is put back as it
+    was, its exact value with it, so that `(t = x*x)` read in a nest at x =
+    2 still bounds a sum and places a cell after it; one the body binds
+    keeps its part by the outer grad and loses its exact value, as the
+    nest's own value does. 7 lines, by the implementation review's ruling:
+    losing every local's cost refusals where the interpreter answers.
   - **A local bound in a term's index** is refused, "t, bound in a term's
     index, for now", the index being asked more than once (C409).
 
