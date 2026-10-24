@@ -144,9 +144,12 @@ square(x_n) = {
     y_n = sum_(t=0)^n sum_(s=0)^n x_s*x_t
 }
 
-# A running maximum, for now.
+# A running maximum and its index, for now.
 peak(x_n) = {
     M_n = max_(t=0)^n x_t
+}
+peakat(x_n) = {
+    A_n = argmax_(t=0)^n x_t
 }
 
 # Last indexes other than the index less a constant, and a first one that
