@@ -25,7 +25,7 @@ the language could go. Entries are cited by bold title, defects by number.
 - *Sequencing* -- why the phases ran in the order they did.
 - *Deferred* -- argued and declined, so as not to be argued again.
 - *Openings* -- directions measured but not scheduled.
-- *Done since phase 15* -- the finished entries of *Next in line*, by source.
+- *Done after the phases* -- the finished entries of *Next in line*, by source.
 - *Next in line* -- the open queue, where a §8 change starts.
 
 ---
@@ -2561,7 +2561,7 @@ is already open and the experiment above took an afternoon; then the tolerance,
 and a prelude behind it. Performance sits outside that order: it is the one
 direction that can end with fewer lines than it started with.
 
-## Done since phase 15
+## Done after the phases
 
 ### After phase 13's decimals
 
