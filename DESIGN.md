@@ -3765,8 +3765,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `cli.cmake`'s parts, `cli_spec` goes, and `ol` joins the checks at 300
   steps with its report.
 
-  Built as specified: every case passes as written, `cli_spec`'s part is
-  `cli.cmake`'s last, its skip gone, and `ol` is checked at 300 steps in
+  Built as specified: every case passes as written, `cli_spec`'s part
+  is `cli.cmake`'s, its skip gone, the checks in part 3 and the rest in
+  part 1, which keeps each part under the sanitizers within its 240 s
+  (100 s and 146 s here, 224 s together), and `ol` is checked at 300 steps in
   `test/CMakeLists.txt` with its report. No golden, expected header,
   report or other cli case moves. The total's definition is the
   interpreter's own: its general clause is the sum itself, which the step
