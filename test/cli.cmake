@@ -571,7 +571,7 @@ if(CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
     # Exact in doubles, as worked by hand in the story.
     set(exact_tw "^tw: 100 steps from 0, against exact values\ntw\\.a: within 0\ntw\\.v: within 0\ntw\\.w: within 0\ntw\\.y: within 0\ntw\\.z: within 0\n$")
     set(exact_ac "^ac: 100 steps from 0, against exact values\nac\\.e: within 0\nac\\.g: within 0\nac\\.y: within 0\n$")
-    set(exact_se "\nse\\.e: within 0\nse\\.m: within 0\nse\\.p: within 0\nse\\.q: within 0\nse\\.s: within 0\nse\\.v: within 0\n")
+    set(exact_se "\nse\\.e: within 0\nse\\.j: within 0\nse\\.m: within 0\nse\\.p: within 0\nse\\.q: within 0\nse\\.s: within 0\nse\\.v: within 0\n")
     foreach(instance IN ITEMS tw ac se)
         if(NOT "${report_${instance}}" MATCHES "${exact_${instance}}")
             message(SEND_ERROR "check_locals_${instance}: not within 0 as worked by hand\n${report_${instance}}")

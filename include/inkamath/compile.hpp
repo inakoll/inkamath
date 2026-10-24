@@ -4968,7 +4968,7 @@ private:
         // as one does where that value writes it and no part reads it (C113),
         // in any walk: each moves by its own name, and the interpreter refuses
         // all where one jumps (C341).
-        for (const Cell& c : values.cells) aware_ |= WritesNan(c.text);
+        for (const Cell& c : values.cells) aware_ |= MayNan(c.text);  // a temporary's too
         const std::string nan = aware_ ? Nan(Shared(values)) : "";
         std::vector<Code> outs;
         for (std::size_t v = 0, first = 0; v < names.size(); ++v) {

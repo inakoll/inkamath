@@ -148,7 +148,9 @@ stagedrt = stagedroot(u_n = n/4)
 # bound it reads it as a constant, and p is the derivative of x*(3 + 3x),
 # 3 + 6u, where a's part by y read as one by z would give 6 + 6u; q's a is
 # bound by reverse mode in grad's point and read in its body, 3u + 1, no
-# node of the tape gone read. With u_n = n/4, all but x and d within 0.
+# node of the tape gone read. j's local holds a comparison that jumps at u
+# = 1, n = 4, where the step is NaN as the twin's, though nothing reads it
+# (C410). With u_n = n/4, all but x and d within 0.
 sens(h = 1/10, u_n) = {
     lg(y) = y - y^2
     x_0 = 1/2
@@ -160,6 +162,7 @@ sens(h = 1/10, u_n) = {
     v_n = grad_(x = u_n) (grad_(y = x) ((t = x*y)*1) + t)
     p_n = grad_(x = u_n) x*(grad_(y = x) ((a = 3*y) + 0) + grad_(z = 1) z*a)
     q_n = grad_(x = (grad_(v = [u_n, 1]) ((a = 3*v[1,1] + v[1,2]) + 0))[1,1]) x*a
+    j_n = grad_(y = 1) ((c = (y*(u_n - 1) > 0)) + y*y)
 }
 stagedsens(h = 1/10, u_n) = {
     lg(y) = y - y^2
@@ -172,6 +175,7 @@ stagedsens(h = 1/10, u_n) = {
     v_n = grad_(x = u_n) (grad_(y = x) (x*y*1) + x*x)
     p_n = grad_(x = u_n) x*(grad_(y = x) (3*y + 0) + grad_(z = 1) z*(3*x))
     q_n = grad_(x = (grad_(v = [u_n, 1]) (3*v[1,1] + v[1,2] + 0))[1,1]) x*(3*u_n + 1)
+    j_n = grad_(y = 1) ((y*(u_n - 1) > 0) + y*y)
 }
 se = sens(u_n = n/4)
 stagedse = stagedsens(u_n = n/4)
