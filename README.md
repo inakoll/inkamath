@@ -259,8 +259,12 @@ int main(void) {
 ```
 
 `cc -O2 main.c -o main -lm && ./main` prints `u_0 = 3`, `u_1 = 2.69` and
-`u_2 = 2.47`, as `pid(kp = 3, y_n = n/10)` gives them at the prompt. Python
-calls it through a shared library, under [Building](#building).
+`u_2 = 2.47`, as `pid(kp = 3, y_n = n/10)` gives them at the prompt. The
+header is C99, warning-free under `-std=c99 -Wpedantic` with GCC and Clang,
+and C++ as well; it includes `<math.h>` and `<string.h>`, and `<float.h>`
+where a limit is compiled, and allocates nothing: the struct holds all the
+step keeps. Python calls it through a shared library, under
+[Building](#building).
 
 A training step takes the same path. `lsq` in
 [`test/compile/grad.ink`](test/compile/grad.ink) is
@@ -877,6 +881,26 @@ value stretches to the other side's size, and the order is kept:
  -2, -3]
 ```
 
+A product cell by cell, Hadamard's, is written by its cells, as `rl` is. A
+function applies to a matrix whole, not to its cells, so `x*x` of a matrix is
+its square:
+
+```
+>> hd(A, B)[j,k] = A[j,k]*B[j,k]
+hd(A, B)[j,k] = A[j,k]*B[j,k]
+
+>> hd(a, [5 6; 7 8])
+[ 5, 12;
+ 21, 32]
+
+>> sqr(x) = x*x
+sqr(x) = x*x
+
+>> sqr(a)
+[ 7, 10;
+ 15, 22]
+```
+
 A tensor of rank 3 is a stack of matrices of one size, its slices, along its
 first index, where a paper puts the batch. A touching `;;` separates its
 slices, one semicolon more than separates rows, after Julia's convention of
@@ -1315,7 +1339,9 @@ A model's input reads the names in its bounds instead (section 5).
 A name indexed with `_` is a sequence. It is one definition with several
 *clauses*: any number of base cases at constant indices, plus at most one
 general clause indexed by an identifier. This is how a recurrence is written on
-paper.
+paper. On paper both are subscripts; here `_` is a term's index, a step or a
+time, `x_t`, and brackets a cell's place, `W[j,k]`, so that a term of a
+sequence of matrices has both: `W_n[j,k]`.
 
 ```
 >> s_0=1
@@ -1851,6 +1877,30 @@ plt = plant(u_n = ctl.u_n)
 The plant reads the controller's output a step late, which is what lets the
 loop start. Without such a delay each would read the other at the same index,
 and the definition that closes the loop is refused, naming it.
+
+A training loop is a model too, its update written as a paper writes it:
+least squares by gradient descent on four points a line fits exactly, w =
+[1; 2]. `lsq` in [`test/compile/grad.ink`](test/compile/grad.ink) is this
+model, compiled and checked:
+
+```
+>> fit(eta = 1/10) = {
+..     X = [1, 0; 1, 1; 1, 2; 1, 3]
+..     y = [1; 3; 5; 7]
+..     L(v) = sum_(r=1)^4 (X[r]*v - y[r])^2/8
+..     w_0 = [0; 0]
+..     w_n = w_(n-1) - eta*grad_(v = w_(n-1)) L(v)
+.. }
+fit(eta = 1/10) = { ... }
+
+>> frac fit().w_2
+[253/400;
+ 537/400]
+
+>> fit().w_200
+[~0.999876345;
+  ~2.00005792]
+```
 
 An instance is changed where it is defined: `fast.a = 1` is an error, and
 `fast = lowpass(a = 1, u_n = 1)` the way to say it. Redefined, a model
