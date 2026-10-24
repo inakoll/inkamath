@@ -458,3 +458,20 @@ tenthing() = {
     p_n = q_n
 }
 tenths = tenthing()
+
+# A term by its cells with no base clause, read before the stream: 'rowed'
+# reads S_-1, which q's history gives, where the step had none, "R: none at
+# 0, where the interpreter gives 2" without T; and T_-2, a closed form, was
+# refused, "a complex number", its cells computed again with i unbound (C412).
+#
+#     rowed: 100 steps from 0, against exact values
+#     rowed.<name>: within 0, for each of R, q, S and T
+celling(x_n) = {
+    q_n | n < 0 = 1
+    q_n = q_(n-1) + x_n
+    S_n[i<=2] | q_n > i = q_n*i
+    S_n[i<=2] = i
+    T_n[i<=2] = n*i
+    R_n = S_(n-1)[2] + T_(n-2)[1]
+}
+rowed = celling(x_n = n - 1)

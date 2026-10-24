@@ -3129,7 +3129,8 @@ private:
     std::pair<Code, std::vector<std::string>> TermCells(const std::string&      name,
                                                         const Reference<Value>& definition,
                                                         Fits fits, std::optional<Code> whole,
-                                                        std::vector<std::string>* taken = nullptr) {
+                                                        std::vector<std::string>* taken  = nullptr,
+                                                        bool                      marked = false) {
         const std::string           nan    = Refused(whole);
         const std::optional<Extent> extent = Measured(name, definition, whole, fits);
         if (!extent) throw Reason(name + " has no size");
@@ -3153,19 +3154,24 @@ private:
                 const int place = static_cast<int>(&clause - definition.Clauses().data()) + 1;
                 const ParametersDefinition<Value>& p = clause.parameters;
                 const std::string outer = std::exchange(index_, p.general() ? p.index_name() : "");
+                Reads                 guard_reads, value_reads;
+                const Setting<Reads*> reads(clause_reads_, marked ? &guard_reads : clause_reads_);
                 const std::optional<std::string> condition =
                     p.guarded() ? Condition(p.guard()) : std::optional<std::string>("");
                 Ran(ran, condition);
+                if (marked) clause_reads_ = &value_reads;
                 const std::optional<Code> value =
                     condition ? std::optional<Code>(Emit(clause.expression)) : std::nullopt;
                 index_ = outer;
                 if (!value) return false;
                 if (!value->Scalar()) throw Reason("a cell of " + name + " must be a single value");
+                // Computed again (At), what each guard and value reads is checked where it is.
+                const std::string text = Marked(value_reads) + value->cells[0].text;
                 if (condition->empty()) {
-                    last   = value->cells[0].text;
+                    last   = text;
                     picked = place;
                 } else {
-                    chain += *condition + " ? " + value->cells[0].text + " : ";
+                    chain += Marked(guard_reads) + *condition + " ? " + text + " : ";
                     pick += Picked(*condition) + " ? " + std::to_string(place) + " : ";
                 }
                 return condition->empty();
@@ -4254,8 +4260,16 @@ private:
     // One with no base clause, which the interpreter answers wherever its
     // clauses can be evaluated, below where the step starts it too.
     static bool Recomputed(const Sequence& sequence) {
-        return sequence.definition && sequence.bases.empty() && !ByCells(*sequence.definition) &&
+        return sequence.definition && sequence.bases.empty() &&
+               std::ranges::all_of(sequence.definition->Clauses(),  // no term's own cells
+                                   [](const auto& c) { return c.parameters.general(); }) &&
                sequence.definition->passes.empty();  // an inner optional input is absent there
+    }
+
+    std::string Marked(Reads& read) {
+        if (read.empty()) return std::string();
+        checks_.push_back({read, nullptr, false, nullptr, std::string(), {}, 0});
+        return "\x02" + std::to_string(checks_.size() - 1) + "\x03";
     }
 
     // A term computed again 'lag' before the reader's index, its clauses
@@ -4272,15 +4286,12 @@ private:
         const auto   places = std::exchange(places_, {});
         Reads* const reads  = std::exchange(clause_reads_, nullptr);
         const int    shift  = std::exchange(shift_, lag);
-        const auto   mark   = [&](Reads& read) {
-            if (read.empty()) return std::string();
-            checks_.push_back({read, nullptr, false, nullptr, std::string(), {}, 0});
-            return "\x02" + std::to_string(checks_.size() - 1) + "\x03";
-        };
+        const auto   mark   = [&](Reads& read) { return Marked(read); };
+        const bool   by     = ByCells(*sequence.definition);
         for (const bool guard : {true, false}) {
             for (const Clause<Value>& clause : sequence.definition->Clauses()) {
                 const ParametersDefinition<Value>& p = clause.parameters;
-                if (otherwise || !p.general() || p.guarded() != guard) continue;
+                if (by || otherwise || !p.general() || p.guarded() != guard) continue;
                 index_ = p.index_name();
                 Reads guard_reads, value_reads;
                 clause_reads_ = &guard_reads;
@@ -4301,6 +4312,24 @@ private:
                 else
                     guarded.emplace_back(test, value);
             }
+        }
+        // A term by its cells, each cell's chain as the step's (C412).
+        if (by) {
+            Reads whole;
+            clause_reads_ = &whole;
+            for (const Clause<Value>& clause : sequence.definition->Clauses())
+                if (clause.parameters.general() && !clause.parameters.cells()) {
+                    index_    = clause.parameters.index_name();
+                    otherwise = Emit(clause.expression);
+                }
+            clause_reads_ = nullptr;
+            if (otherwise)
+                for (Cell& cell : otherwise->cells) cell = Cell(mark(whole) + cell.text, 0);
+            const auto every = [](const Clause<Value>& c) { return c.parameters.general(); };
+            const auto [shape, cells] = TermCells(sequence.definition->Name(), *sequence.definition,
+                                                  every, otherwise, nullptr, true);
+            otherwise                 = shape;
+            for (const std::string& cell : cells) otherwise->cells.push_back(Cell(cell, 0));
         }
         index_        = index;
         index_text_   = text;
