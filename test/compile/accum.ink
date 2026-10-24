@@ -5,7 +5,8 @@
 # step, so --check writes the same report for an instance of each but for
 # the name and the lines of the totals by hand, named run; cli.cmake holds
 # both. The recurrences by hand are the oracle, each compiled and checked
-# before the accumulator was built.
+# before the accumulator was built, and each instance's terms its twin's
+# in the interpreter, which cli.cmake holds now.
 
 # The model that asked for it: the interpreter answers m.R_3 = 0.375, and
 # --compile refused the sum as one whose bounds are not constants.

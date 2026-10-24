@@ -3728,8 +3728,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `gram`, two totals one of them 2x2, `every`, `moments` by cells and
   `early`, each beside its recurrence by hand, `rec` and its name, the
   totals by hand named run, and an instance of each; then a model for each
-  refusal. And in `test/cli.cmake`'s `spec` part, run by `cli_spec`,
-  skipped while `reg` is refused as today, and only then: every model and
+  refusal. And in `test/cli.cmake`'s `spec` part, run by `cli_spec`: now,
+  each instance's terms its twin's in the interpreter, up to the steps it
+  is checked at, since a report cannot tell a wrong twin from its sum's
+  where both check within 0, as `recm`'s with `R_0 = 0`; then, skipped
+  while `reg` is refused as today, and only then: every model and
   its recurrence compiled and strict; `reg`'s header holding `double
   s0_[2];` and the two lines above, `every`'s `m_->s0_[0] = m_->index_ ==
   0 ? 0.0 : m_->index_ == 1 ? m_->x[1] : m_->s0_[1] + m_->x[1];` and its

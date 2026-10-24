@@ -73,10 +73,29 @@ set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 # compiled, reg's and every's totals as specified, an instance of each
 # checked to its recurrence's report but for the name and the lines of run,
 # ol at 300 steps in double and in float, and the refusals. Skipped while
-# the sum is refused as today, and only then.
+# the sum is refused as today, and only then; each twin held to its sum
+# before that.
 if(PART STREQUAL "spec")
     file(MAKE_DIRECTORY "${OUT}")
     set(story "${CMAKE_CURRENT_LIST_DIR}/compile/accum.ink")
+    # Run now: each instance is its twin term for term in the interpreter, up
+    # to the steps it is checked at. A twin that is not, R_0 = 0 for e_0 in
+    # recreg, checks as its sum does, and the reports below cannot tell.
+    foreach(term IN ITEMS m.R ol.R ag.v sv.S ls.G ls.b ev.y mm.mo ey.y)
+        string(REGEX REPLACE "\\..*" "" instance "${term}")
+        set(last 99)
+        if(instance STREQUAL "ol")
+            set(last 299)
+        endif()
+        file(WRITE "${OUT}/twin.in" "prod_(k=0)^${last} (${term}_k == rec${term}_k)\n")
+        execute_process(COMMAND "${EXE}" "${story}" -i INPUT_FILE "${OUT}/twin.in"
+                        OUTPUT_VARIABLE out ERROR_VARIABLE err RESULT_VARIABLE code
+                        TIMEOUT ${CASE_TIMEOUT})
+        string(REGEX MATCH "[^\n]*\n$" answer "${out}")
+        if(NOT "${code}" STREQUAL "0" OR NOT "${answer}" STREQUAL "1\n")
+            message(FATAL_ERROR "compile_accum_twin: ${term} is not rec${term} up to ${last}: ${answer}${err}")
+        endif()
+    endforeach()
     execute_process(COMMAND "${EXE}" --compile "${story}" reg -o reg.h
                     WORKING_DIRECTORY "${OUT}" OUTPUT_VARIABLE out ERROR_VARIABLE err
                     RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
