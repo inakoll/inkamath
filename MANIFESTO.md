@@ -57,10 +57,10 @@ discretisation exactly.
 infrastructure. A model is a file of definitions.
 
 **Not yet a library.** A compiled header is hosted from Python already, by a
-C file of a few lines and ctypes (`README.md`, after `--float`), with no API
-of inkamath's. A C API, and bindings over it, would let the oracle's harness
-run interactively. They are not the end, and they freeze an interface; they
-wait until the language has stopped moving.
+C file of a few lines and ctypes (`docs/compile.md`, *Hosting from C and
+Python*), with no API of inkamath's. A C API, and bindings over it, would let
+the oracle's harness run interactively. They are not the end, and they freeze
+an interface; they wait until the language has stopped moving.
 
 The size constraint at the top of `DESIGN.md` governs everything below.
 Several of these directions could each double the program. Where one does, the
@@ -119,8 +119,8 @@ term below 1 is lost whole or of the other sign, 2^52 units of a double, and
 reports the first step at which a compiled or a disturbed guard takes another
 clause, with that guard's distance from its threshold. It lists every
 compiled guard that reads a limit or an optional input, with the clause tried
-where the walk runs out or the input is absent (`README.md`, after
-`--compile`).
+where the walk runs out or the input is absent (`docs/compile.md`, *The
+check*).
 
 ## Directions
 
@@ -150,7 +150,7 @@ Taken for float32, the whole compilation's: `--float` writes the step in
 floats and checks it in units of a float, naming the cell and step where
 they reach 2^23, as a term a normal float holds lost whole or of the other
 sign does; the header names what reads a constant folded at the
-interpreter's precision (`README.md`, after `--steps`). Fixed point, int8
+interpreter's precision (`docs/compile.md`, *In float*). Fixed point, int8
 and a precision per definition are open.
 
 ### Time: several rates, and events
@@ -172,7 +172,7 @@ a read whose index is neither, which is the clock calculus of synchronous
 languages reduced to divisibility of integers.
 
 Taken for periodic rates: samples `x_(a*m + b)` and holds `y_(floor((n -
-b)/a) - d)` in one step at the input's rate (`README.md`, after `--compile`;
+b)/a) - d)` in one step at the input's rate (`docs/compile.md`, *Rates*;
 `test/compile/rates.ink`, `decimate.ink`, `cascade.ink`). Irregular arrival
 is an optional input, `z_n?`, at the fast rate, interpreted and compiled: a
 static check refuses a read of it outside a guard with a clause after it, and
@@ -411,7 +411,7 @@ Two things are worth deciding before any of this is written:
   already makes, one instance per cell, is the shape to grow from.
 - **Layout.** One struct per instance is the natural C and the wrong GPU
   layout. It stays: its fields' offsets are the host's contract, read by
-  ctypes (`README.md`), and structures of arrays across the instance
+  ctypes (`docs/compile.md`), and structures of arrays across the instance
   dimension are a GPU printer's to decide. A step split into functions keeps
   what its parts share as the struct's last member, instances stepped in
   turn sharing a union, so the offsets hold (`DESIGN.md`, *A split step's
