@@ -918,6 +918,7 @@ private:
             expansion.values.emplace(given, value);
             expansion.written.emplace(given, std::tuple(argument.get(), scope_, expansion_));
             if (Plain(*argument)) try {
+                    const Setting<Frame> bound(frame_, frame_);  // its locals bound above, once
                     expansion.offsets.emplace(given, Offset(argument, given));
                 } catch (const Reason&) {
                 } catch (const Fix&) {
