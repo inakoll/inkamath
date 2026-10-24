@@ -3726,11 +3726,13 @@ that exploring seven domains asked of the interpreter, by how many asked.
     times `b2^-i`: algebra the compiler does not do (Deferred, symbolic
     simplification), and b2^-i overflows.
 
-  About 70 lines of `compile.hpp`, estimated from reading it, not on a
-  prototype: the shape and its refusals 22, the terms compiled at n - c 8,
-  the total as a sequence, its bases, chain, size, reads and key by place
-  30, its name in the header's comment 5, its terms before a + c reading
-  nothing 5. None in `check.hpp`, the parser or the interpreter. Past 105
+  About 68 lines of `compile.hpp`, estimated from reading it, not on a
+  prototype: the shape and its refusals 25, the terms compiled at n - c 8,
+  the total as a sequence, its history, chain, size, reads and key by
+  place 25, no base chain and no terms before a + c to compile, kept out
+  of the sequences `--check` asks the interpreter for and read at a lag
+  where its reader's clause is computed again 5, its name in the header's
+  comment 5. None in `check.hpp`, the parser or the interpreter. Past 102
   the implementation stops and reports. 20,774 lines at a7e18e9 by `wc -l
   include/inkamath/*.hpp src/*`. README's `--compile` paragraph gains,
   after `fir.ink`: "A sum or a product up to the index, or the index less
