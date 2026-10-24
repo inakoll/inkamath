@@ -1,10 +1,14 @@
 Inkamath
 ========
 
-Inkamath is a small mathematical interpreter written in standard C++. It
-evaluates complex arithmetic, matrices of expressions, user-defined functions,
-sequences defined by recurrence, and series. It was written around 2014; see the
-accompanying licence file.
+Inkamath is a small mathematical interpreter written in standard C++20, with a
+compiler of its definitions to C (`--compile`) and a check of that C against
+the interpreter (`--check`). It evaluates exact rational arithmetic, complex
+numbers in doubles, matrices and rank-3 tensors of expressions, user-defined
+functions and models, sequences defined by recurrence, series, and derivatives
+(`grad`). First written offline around 2007–2008 and imported from Google Code
+around 2014 (`LICENSE.txt`), it has since been rebuilt around exact numbers as
+the reference semantics and generated C checked against them (`DESIGN.md`).
 
 The idea it is built around is that **an identifier names an expression, not a
 value**. The expression is re-evaluated every time the name is used, so a
