@@ -138,6 +138,12 @@ adam(b2 = 999/1000, g_n) = {
     v_t = (1 - b2)*sum_(i=1)^t b2^(t-i)*g_i^2
 }
 
+# So too where they read it as an inner sum's last index: each outer term
+# is the inner total at n, (sum_(t=0)^n x_t)^2 in all.
+square(x_n) = {
+    y_n = sum_(t=0)^n sum_(s=0)^n x_s*x_t
+}
+
 # A running maximum, for now.
 peak(x_n) = {
     M_n = max_(t=0)^n x_t
