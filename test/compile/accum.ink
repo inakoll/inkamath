@@ -238,6 +238,13 @@ late(x_n) = {
     R_n = sum_(t=0)^n x_(t-1)
 }
 
+# Matrices where the sum is empty: the interpreter's G_0 is a single 0,
+# and G_1 a 2x2 matrix.
+gramfrom(x_n) = {
+    u_n = [x_n; 1]
+    G_n = sum_(t=1)^n u_t*u_t'
+}
+
 # Under grad and at a slower rate, for now.
 slope(x_n) = {
     g_n = grad_(w = 1) sum_(t=0)^n w*x_t

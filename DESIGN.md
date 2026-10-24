@@ -3687,7 +3687,13 @@ that exploring seven domains asked of the interpreter, by how many asked.
     - a first term read before the stream, in today's words: `R_0 reads
       x_-1, before the stream, where x has no history`. Its terms read
       their own sequence at t as the loop check reads any term, and after
-      the clause's as any read after it is.
+      the clause's as any read after it is;
+    - terms not single values where the clause applies before a + c, as
+      `G_n = sum_(t=1)^n u_t*u_t'` at 0: the interpreter's empty sum is a
+      single 0, its empty product a single 1, so the sequence would change
+      shape at a + c, as `G_0 = 0` by hand is refused today: `a sum up to
+      n empty at 0, a single 0 there and a 2x2 matrix after`. A base
+      clause there, `G_0 = [0 0; 0 0]`, takes it.
   - **Unchanged**: the interpreter, `tex`, and every golden, header, report
     and cli case. `test/compile/reddi.ink` keeps its regret by hand: as the
     sum it adds `f(t, x_t) - f(t, -1)` as one term where the recurrence adds
