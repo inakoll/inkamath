@@ -48,9 +48,7 @@ Specifically:
   and stray tabs. Leave them. `.clang-format` applies to lines you write or
   rewrite, not to files you happen to open. CI checks changed lines only.
 - **No speculative abstraction.** No interface, template parameter, or
-  extension point for a requirement that does not exist yet. This codebase is
-  already paying for `best_promotion`, `numeric_interface_imp_types`, and a
-  `MapType` template-template parameter that is only ever `std::unordered_map`.
+  extension point for a requirement that does not exist yet.
 - **Delete rather than deprecate.** Git remembers. Dead code that stays "just
   in case" is code the next reader has to understand.
 - **Prefer removing to adding.** A change that deletes 40 lines and adds 10 is
