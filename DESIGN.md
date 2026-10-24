@@ -1,5 +1,35 @@
 # Design record
 
+For maintainers, and for the agents of `CLAUDE.md` §8, who write its
+entries and read them back. It holds what was decided, measured and fixed,
+and what is queued; `CLAUDE.md` has the working rules, `MANIFESTO.md` where
+the language could go. Entries are cited by bold title, defects by number.
+
+- *Defects* -- B, C and D rows by number, under the pass that found them.
+- *Phase 0* -- CMake, doctest and the golden transcripts.
+- *Phase 1* -- dead code deleted, every golden byte-identical.
+- *Phase 2* -- the redesign specified as transcripts first.
+- *Phase 3* -- failure as a value rather than a printed zero.
+- *Phase 4* -- one definition per name, in clauses.
+- *Phase 5* -- `Matrix` on `std::vector`, and the value types.
+- *Phase 6* -- the README rewritten, and replayed as a test.
+- *Phase 7* -- the second pass's defects, crashes first.
+- *Phase 8* -- locals, the first change to the language.
+- *Phase 9* -- memoisation.
+- *Phase 10* -- guarded clauses.
+- *Phase 11* -- sums and products over an index.
+- *Phase 12* -- the command line.
+- *Phase 13* -- exact numbers, shown as decimals, on a bignum.
+- *Phase 14* -- the evaluator's cost, and `--compile` to C; partly done.
+- *Phase 15* -- models, files and their scopes.
+- *Sequencing* -- why the phases ran in the order they did.
+- *Deferred* -- argued and declined, so as not to be argued again.
+- *Openings* -- directions measured but not scheduled.
+- *Done since phase 15* -- the finished entries of *Next in line*, by source.
+- *Next in line* -- the open queue, where a §8 change starts.
+
+---
+
 This began as the plan to modernise the 2014 sources, which was done by
 phase 7; phase 8 was the first to change the language. It is now the record
 of what was decided, measured and fixed, in the order it happened. Where the
