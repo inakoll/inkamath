@@ -1924,6 +1924,7 @@ closures need one anyway, and can bring it.
 | C406 `[fixed]` | **A later cell read an earlier cell's local.** The cells of a matrix or a term by cells were evaluated in one frame, so `N[j<=2] \| j == 1 = (t = 7)` with `N[j<=2] = t` gave [7; 7], and with the guard at `j == 2` "t is not defined": the answer hung on the order of the cells, as C66's terms' did and C300's guards'. So did a term's cells, a function's and grad's through either. Each cell is evaluated in a frame of its own now, the frame as the cells found it put back after each where a clause binds a local, in the evaluator's and in grad's, so both say "t is not defined". The matrix written whole is evaluated before the cells and its locals still reach them, `W = (t = 7)*[1; 1]` with `W[2] = t` [7; 7]: in no order of the cells. No golden moves. In 27 lines of `reference.hpp` and `derivative.hpp`, 3 of comment, and 1 removed; locals.ink's C406 entries hold it. |
 | C407 `[fixed]` | **A grad by several names looked its other names up as globals.** Asking whether a definition the body reads reads the global of a grad's name, each name was scanned with only itself bound, so with `y = 5` and `x = y + 1`, `grad_(x = 1, y = 2) (x*y)` followed the body's x, grad's own, to the global x, and refused it, "x reads the global y, which grad's y does not reach", in the interpreter and the compiler alike, where its parts are 2 and 1. Every name of the grad is bound in the body now. No golden moves. In 4 lines of `derivative.hpp`, and 3 removed; gradmany.ink's `gy` holds it. |
 | C408 `[fixed]` | **A call's argument bound its local twice.** Compiled, an argument is asked once more whether it is the caller's index give or take a constant (C119), and that asking bound its locals again: with `f(z) = z`, `(c = 1) + f((c = c*2) + 0) + c` was 7 where the interpreter gives 5. The asking now starts and ends in the frame the argument left. Found by the implementation review of locals compiled; 1 line, `locals.ink`'s `tw.a` holds it. |
+| C409 `[fixed]` | **A local bound in a term's index was bound at each asking.** The compiler asks an index several times what it is, a sample, a hold, a lag, and each asking bound its locals again: `(t = 0) + u_(n - (t = t + 1)) + t` read u_(n-2) and gave t 2, where the interpreter reads u_(n-1) and gives 1. Refused, for now, "t, bound in a term's index, for now". Found by the implementation review of locals compiled; 4 lines, `locals.ink`'s `refused` holds it. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -9406,6 +9407,8 @@ checked: what it asked of the compiler, each with its smallest change.
   - **Out of a nest**, a local that moves by the outer grad keeps its part
     and loses its exact value, as the nest's own value does: a fold lost,
     never a value.
+  - **A local bound in a term's index** is refused, "t, bound in a term's
+    index, for now", the index being asked more than once (C409).
 
   87 lines, 123 added and 36 removed, 2 of them comment, where about 60
   were estimated: 14 to bind and to refuse a local read as a function, 23

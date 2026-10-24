@@ -186,8 +186,10 @@ stagedse = stagedsens(u_n = n/4)
 # one a later cell reads, each cell being its own frame (C406), so that t
 # is not defined there (d); a sum's index (g) and grad's variable (h),
 # which a local cannot define (C299); a local with parameters (i) or an
-# index (l) (C303, C309); and a local named e, which is no longer the
-# built-in e grad differentiates a power of (k). A local of the index's,
+# index (l) (C303, C309); a local named e, which is no longer the
+# built-in e grad differentiates a power of (k); and one bound in a term's
+# index, which the compiler asks more than once (j, C409), where u_(n - 1)
+# was read as u_(n - 2) and t was 2. A local of the index's,
 # a cell's place's or a parameter's name is refused where its clause is
 # defined (C405), so not here.
 refused(u_n) = {
@@ -200,6 +202,7 @@ refused(u_n) = {
     g_n = sum_(k=1)^3 ((k = 2) + k*u_n)
     h_n = grad_(x = u_n) x*((x = 5) + x)
     i_n = (lf(y) = y + 1) + lf(u_n)
+    j_n = (t = 0) + u_(n - (t = t + 1)) + t
     k_n = grad_(x = u_n) ((e = 2) + e^x)
     l_n = (s_m = m*u_n) + s_3
 }

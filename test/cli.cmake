@@ -533,6 +533,7 @@ cannot compile f: t, carried past a term of a sum without an upper bound, for no
 cannot compile g: k is the sum's index, so a local cannot define it
 cannot compile h: x is grad's variable, so a local cannot define it
 cannot compile i: a local cannot take parameters
+cannot compile j: t, bound in a term's index, for now
 cannot compile k: grad cannot differentiate a power whose exponent changes with x, unless its base is e
 cannot compile l: a local cannot take an index
 ")

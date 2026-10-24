@@ -4164,6 +4164,10 @@ private:
             return !calls && !call.subexpr() ? Answer(local->second)
                                              : throw Reason(name + (calls ? " takes no arguments"
                                                                           : " is not a sequence"));
+        if (std::set<std::string> bound; call.subexpr()) {  // asked more than once (C409)
+            Binding(*call.subexpr(), bound);
+            if (!bound.empty()) throw Reason(*bound.begin() + ", bound in a term's index, for now");
+        }
         if (limit_ && name == limit_->name && call.subexpr()) return Answer(Earlier(call));
         if (calls && !own_) {
             const auto [local, in] = Local(name);

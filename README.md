@@ -167,8 +167,8 @@ through and a recursion unrolling where its guards fold:
 temporary of the step, read from its binding on in its clause as
 interpreted: `test/compile/locals.ink` takes Runge-Kutta's stages as locals,
 each computed once. One by cells, one bound on the right of `and` or `or`
-and read after it, and one a sum without an upper bound carries past a term
-are refused for now. An instance
+and read after it, one bound in a term's index, and one a sum without an
+upper bound carries past a term are refused for now. An instance
 with memory written where it is read is one of its own, named after where it
 is written and the cell it is written for: `test/compile/bank.ink` is a bank
 of filters, `m.bank_smooth_1` to `_3`. The compiler refuses by name what it
