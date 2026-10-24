@@ -3780,7 +3780,14 @@ that exploring seven domains asked of the interpreter, by how many asked.
   s0_ at -1 its 1. Departures, each the implementation's:
   - **Its history's shape**: of a matrix, a 0 of its terms' size, an
     identity for a product, set once its term is compiled, its general
-    clause compiled before its history for that.
+    clause compiled before its history for that. So a reader of the sum's
+    sequence below a + c, where the interpreter's sum is a single 0, takes
+    a matrix of zeros: `u_n = [x_n; 1]`, `G_n = sum_(t=0)^n u_t*u_t'`,
+    `D_n = G_(n-1)` compiles, with D_0 a 2x2 zero, and `--check` refuses
+    it, `D_(0) is a 1x1 matrix, where the compiled step's is a 2x2
+    matrix`. A known departure: refusing it where the sum is compiled
+    would refuse too a reader whose guard keeps it from 0, or that adds
+    `G_n`, both of which agree.
   - **At another rate**, refused where the rates are checked, in the same
     words wherever the sample is, after the sum too, where its terms' own
     samples would make the total the slow one.
@@ -3795,6 +3802,13 @@ that exploring seven domains asked of the interpreter, by how many asked.
   - **Inside a limit's walk**, `sum_(q=0) sum_(j=0)^q`, the inner sum's
     index is not the clause's, and today's words stand (`cli.cmake`'s
     `compile_sums_refused`).
+  - **A limit, terms that read the sum's own sequence below n**, where
+    that sequence has no history: `y_n = sum_(t=0)^(n-1) y_t + x_n`, or
+    through another, `z_n = y_n + x_n`, is refused as `y: its shape
+    depends on itself`, where the recurrence by hand compiles. The total's
+    general clause is compiled before its history, and the restart that
+    compiles a shaped sequence first cannot name a total. Given a history,
+    `y_n | n < 0 = 0`, the sequence compiles.
 
   109 lines of `compile.hpp`, 121 added and 12 removed, 4 of them
   comment, where about 68 were estimated: the shape and its refusals 34,
