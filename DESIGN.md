@@ -1923,6 +1923,9 @@ closures need one anyway, and can bring it.
 | C405 `[fixed]` | **A local rebinding a clause's index, a cell's place or a function's parameter was accepted.** With `u_n = 10*n`, `v_n = (n = 3) + u_n` read u_3 at every index, `x_n = (n = 3) + x_(n-1)` ran 256 deep, `M[j<=2] = (j = 5) + j` was [10; 10] and `f(x) = (x = 3) + x` was 6 for any x: what the clause binds was read no more past the local. A forward clause's index was already refused so; every clause's index, cell's places and parameters are now, as the clause is parsed, in the same words: "n is the index of v_n", "j is a cell's place of M", "x is a parameter of f", "so the clause cannot bind it again". The owner's ruling, all three (CLAUDE.md section 2). An argument given by name binds nothing of the clause's, and a model's parameter, read by its other definitions, a local still shadows within one. Moved: locals.ink's `h(x) = (x = 10) + x`, 20 at 1, refused; gradlocal.ink's `h(x) = x*((x = 10) + x)`, 60 and its grad 20, refused, its grad through a shadowing local now of a global; conditional.ink's `rp`, C300's parameter clobbered by a guard's local, now a global of a fresh name, `rp(x) | (lu = 9) > 10 = 1` with `rp(x) = lu + x` 6 at 2, where C300's defect gave 11. In 33 lines of `interpreter.hpp`, 3 of comment, and 8 removed, the forward clause's cell places read by the same helper; locals.ink's C405 entries hold it. |
 | C406 `[fixed]` | **A later cell read an earlier cell's local.** The cells of a matrix or a term by cells were evaluated in one frame, so `N[j<=2] \| j == 1 = (t = 7)` with `N[j<=2] = t` gave [7; 7], and with the guard at `j == 2` "t is not defined": the answer hung on the order of the cells, as C66's terms' did and C300's guards'. So did a term's cells, a function's and grad's through either. Each cell is evaluated in a frame of its own now, the frame as the cells found it put back after each where a clause binds a local, in the evaluator's and in grad's, so both say "t is not defined". The matrix written whole is evaluated before the cells and its locals still reach them, `W = (t = 7)*[1; 1]` with `W[2] = t` [7; 7]: in no order of the cells. No golden moves. In 27 lines of `reference.hpp` and `derivative.hpp`, 3 of comment, and 1 removed; locals.ink's C406 entries hold it. |
 | C407 `[fixed]` | **A grad by several names looked its other names up as globals.** Asking whether a definition the body reads reads the global of a grad's name, each name was scanned with only itself bound, so with `y = 5` and `x = y + 1`, `grad_(x = 1, y = 2) (x*y)` followed the body's x, grad's own, to the global x, and refused it, "x reads the global y, which grad's y does not reach", in the interpreter and the compiler alike, where its parts are 2 and 1. Every name of the grad is bound in the body now. No golden moves. In 4 lines of `derivative.hpp`, and 3 removed; gradmany.ink's `gy` holds it. |
+| C408 `[fixed]` | **A call's argument bound its local twice.** Compiled, an argument is asked once more whether it is the caller's index give or take a constant (C119), and that asking bound its locals again: with `f(z) = z`, `(c = 1) + f((c = c*2) + 0) + c` was 7 where the interpreter gives 5. The asking now starts and ends in the frame the argument left. Found by the implementation review of locals compiled; 1 line, `locals.ink`'s `tw.a` holds it. |
+| C409 `[fixed]` | **A local bound in a term's index was bound at each asking.** The compiler asks an index several times what it is, a sample, a hold, a lag, and each asking bound its locals again: `(t = 0) + u_(n - (t = t + 1)) + t` read u_(n-2) and gave t 2, where the interpreter reads u_(n-1) and gives 1. Refused, for now, "t, bound in a term's index, for now". Found by the implementation review of locals compiled; 4 lines, `locals.ink`'s `refused` holds it. |
+| C410 `[fixed]` | **A jump held in a temporary nothing read did not make its grad NaN.** Under grad, the part of a value is NaN where that value is (C113), but only where the value's code wrote NaN itself: one in a temporary was not seen, and where nothing else read the temporary the header was not compiled aware, so `grad_(y = 1) ((c = (y*a > 0)) + y*y)` at a = 0 was 2 where the interpreter refuses, "a comparison jumps at y = 1". A call's value in an argument did the same before locals, `grad_(y = 1) (g(g(y*a)) + y*y)` with `g(z) = z > 0`. A temporary that may be NaN is seen now. Found by the implementation review of locals compiled; 1 line, `locals.ink`'s `se.j` holds it. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -9480,12 +9483,161 @@ checked: what it asked of the compiler, each with its smallest change.
   local, none for a power's base first, 8 to put back a pass's and a failed
   guard's locals, 10 for the search in order. 16,241 lines in all, 16,213
   at 02b7b9e.
-- **Locals compiled**, "a local definition": a step written with
-  Runge-Kutta's stages as locals is a call per stage in a header. A local as
-  a C temporary where it is bound, read after it in the evaluator's order,
-  its part beside it under `grad`. Open: a local in a sum unrolled term by
-  term, which persists across terms, in a chain of guarded clauses, and in
-  a model's clause, once per step.
+- `[done]` **Locals compiled**, "a local definition": a step written with
+  Runge-Kutta's stages as locals is refused, and written with them as
+  sequences keeps each stage in the struct, two terms of it, for nothing to
+  read. Phase 8 does not move: a local binds the value of its right side
+  once, for the rest of its frame.
+
+  Decided: a local compiled is the code of its right side, its value and,
+  under `grad`, its parts, bound to its name from its binding on in the
+  evaluator's order -- left to right, a power's base before its exponent,
+  a guard before its clause, a sum's bounds before its terms, a grad's
+  points before its body -- and a temporary of the step where that code is
+  not a name or a number, so that a local read twice is computed once. Its
+  extent is the interpreter's frame: the clause being compiled, once per
+  step in a model's, a definition's value where its parameters are set, a
+  call's expansion, which sees none of its caller's locals and whose own die
+  with it; one in an argument is the caller's. Before its binding a name is
+  what it was there, a parameter, a definition or nothing. It shadows the
+  model's names, as interpreted; one of a call's parameter, the index or a
+  cell's place the interpreter refuses (C405). Folded through
+  the interpreter (`Asked`), a local that is a constant is bound there as a
+  call's value is. A matrix's or a tensor's is each cell's code, each cell
+  shared. Runge-Kutta's step is then a temporary per stage, `t0_` to
+  `t3_`, each what the twin assigns its stage, and nothing in the struct.
+
+  The constructs that evaluate a part more than once, or not at all, each
+  as the interpreter's frame has it:
+  - **A sum unrolled** shares its line's locals: each term reads what the
+    one before bound, the line the last term's after it, and an empty sum
+    binds nothing, which is what unrolling gives at no cost.
+  - **A guard's local** is read by its clause and taken back for the
+    clauses after it (C300); a clause's are its own. Each is computed at
+    every step, whichever clause is taken, as a clause's temporary is
+    already.
+  - **A limit's terms** are each a frame of their own (C66), so a local in
+    an iterate is its term's, a temporary of the walk's loop.
+  - **Under `grad`** the parts are the local's, a nest's outer part and a
+    node of reverse mode's tape included. Leaving the grad that took them,
+    a local keeps its value and the parts of the grads around it, as C322
+    has it, so no node of a tape gone is read; entering a nested grad, one
+    bound outside moves by the outer grad, as a call's values do (`Nest`).
+  - **C313**: the search for a global that reads grad's name follows the
+    locals statically in their order (C305), and each global the step reads
+    under `grad` is searched as well, as the interpreter's is. So an empty
+    sum's local hides nothing: with globals `x = 100` and `t = x^2`, `y_n =
+    grad_(x = 2) ((sum_(k=1)^0 (t = k*x)) + t)` is refused "t reads the
+    global x, which grad's x does not reach", where it was "a local
+    definition" (`compile_c313`).
+
+  Refused, for now, where the interpreter answers but a step would need
+  what it does not have:
+  - a local bound on the right of `and` or `or` and read after it, which
+    the interpreter binds only where the left did not decide: "t, bound on
+    the right of 'and' or 'or', read after it, for now";
+  - one a sum without an upper bound carries past a term, its terms sharing
+    it and the line after them: to the next term, `(c = 8) + sum_(k=1)
+    (c/2^k + 0*(c = 1))` being 12.5, which the walk's loop would carry, or
+    to after the sum, reading the term the walk stopped at: "t, carried
+    past a term of a sum without an upper bound, for now". One a term binds
+    before it reads it, and nothing after the sum reads, is a temporary of
+    the walk's loop, as a limit's iterate's;
+  - a local by cells, a definition and not a value, as under `grad` and in
+    `tex`: "a local by cells, for now".
+  In the interpreter's words, as it refuses them: a sum's index and grad's
+  variable (C299), a local with parameters or an index (C303, C309, C314),
+  a grad by several names, under grad a power of a local named e, "unless
+  its base is e", and a later cell's read of an earlier cell's local, each
+  cell its own frame (C406), "t is not defined". A local of the index's, a
+  cell's place's or a parameter's name is refused where its clause is
+  defined (C405), so never reaches the compiler.
+
+  `--check`, `--float` and `tex` need nothing. No interpreter change here,
+  C405 and C406 being fixes of their own, so no transcript: no golden
+  moves; `compile_c313`'s expectation does.
+
+  Rejected: the stages rewritten into hidden sequences, as by hand today,
+  which puts state in the struct for a value of one evaluation, has no
+  index to give a local in a call, a sum's term or a guard, and would not
+  persist across a sum's terms; the value written where each read is, the
+  call by name phase 8 rejected, which reads what its value names where
+  the name is read, so `(t = 2*x) + (x = 10) + t` would read the second x;
+  a temporary named after its local, `k1`, where one name holds several
+  values in a step, the two calls of `sq` in `test/compile/locals.ink`
+  each binding its own `s`, and would have to be kept apart from the
+  struct's names and C's; a C block of statements per clause, where a
+  clause's value is one expression and its temporaries already the
+  statements before it.
+
+  About 60 lines, in `compile.hpp` but where said: 12 to bind, with the
+  refusals; 12 to read a local first and keep each frame's apart, a
+  clause's, a global's, a call's and a cell's; 6 to take a guard's back;
+  5 for the right of `and` and `or`; 5 for a sum without an upper bound,
+  a local carried past a term and `Unmoved` past a local's name; 8 for
+  the parts after a grad and through a nest; 3 for `Asked` and the
+  built-in e; 9 for C313's search, 1 of them removed from `derivative.hpp`.
+  20,704 lines at 2135a9b, by `wc -l include/inkamath/*.hpp src/*`. Past
+  90 the implementation stops and reports.
+
+  Specified in `test/compile/locals.ink`, six models with locals each
+  beside its twin without, and one of refusals: Runge-Kutta 4 scalar and
+  on a state, a matrix local; a local read twice, in a call called twice,
+  unseen by a callee, in a value of the parameters, its name read before
+  it as the model's; a sum's terms sharing one, an empty sum, a guard's
+  taken back; a limit's iterate, a term's local in a sum without an upper
+  bound; under grad a step's sensitivity, a local read after grad, one of
+  a gradient by a matrix, two through a nest, and two read after the grad
+  that bound them, beside another and in a point by reverse mode (C322).
+  `cli.cmake`'s spec part compiles each, holds Runge-Kutta's step as
+  above, checks an instance of each against its twin's report but for the
+  twin's stages, the sequences of exact doubles within 0 as worked by
+  hand, and the refusals in their words, C313's being `compile_c313`'s;
+  skipped while Runge-Kutta is refused "a local definition", and only
+  then. Each value is worked with exact fractions, the sensitivity being
+  `gradlocal.ink`'s.
+
+  Built as specified: every case passes as written, `cli_spec`'s part is
+  a case of `cli.cmake`'s first, its skip gone, and `compile_c313` says
+  "t reads the global x, which grad's x does not reach". No golden or
+  expected header moves. A frame is the compiler's own, its locals and
+  the names of the grads it is in, set aside where a clause, a cell, a
+  call, a global or an iterate is compiled, so `Expansion::outer` is
+  untouched. Departures, each the implementation's:
+  - **Read again from where it began.** A guard, an `and` or `or` and a
+    comparison tested are compiled more than once, to know whether they
+    defer and then to test them; each later reading starts from the frame
+    the first began in and ends as it ended, or `t > (t = 5)` would read
+    the second t first.
+  - **A local read as a function or a sequence** is refused in the
+    evaluator's words, "sq takes no arguments", "t is not a sequence", and
+    `t()` is t, where the definition it shadows was called.
+  - **Grad's names are the frame's**: one hides a local of its name bound
+    before the grad, and a local cannot define it, in its body alone, so a
+    function the body calls binds one as interpreted. Folded through
+    `Asked`, a local shadows a call's value, but not grad's names.
+  - **C313 by every grad around**: a global read in a nest is searched by
+    the outer grad's names too, as the interpreter's searches chain.
+  - **Out of a nest**, a local its body does not bind is put back as it
+    was, its exact value with it, so that `(t = x*x)` read in a nest at x =
+    2 still bounds a sum and places a cell after it; one the body binds
+    keeps its part by the outer grad and loses its exact value, as the
+    nest's own value does. 7 lines, by the implementation review's ruling:
+    losing every local's cost refusals where the interpreter answers.
+  - **A local bound in a term's index** is refused, "t, bound in a term's
+    index, for now", the index being asked more than once (C409).
+
+  87 lines, 123 added and 36 removed, 2 of them comment, where about 60
+  were estimated: 14 to bind and to refuse a local read as a function, 23
+  for frames, one line at each of the ten places a frame begins, 2 for
+  `Asked` and none for e, 11 to read again from where it began, 4 for
+  `and` and `or`, 16 for a sum without an upper bound, the names a term
+  binds collected before `Unmoved` and shared with `and` and `or`, 18 for
+  grad's parts and names, and 1 fewer for C313, whose search before any
+  value already followed the locals once `derivative.hpp`'s refusal went,
+  3 fewer there. Within the 90 the spec set: the estimate counted a frame
+  per kind where the code has one per place, and missed the readings
+  again. 20,913 lines in all, 20,826 at ad4ba21.
 - `[done]` **The size of a forward-mode header, measured**, before reverse
   mode is weighed (`MANIFESTO.md`). The item named two costs, measured
   with a prototype of *a compiled gradient with respect to a tensor*:

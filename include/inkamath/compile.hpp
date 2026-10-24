@@ -514,6 +514,13 @@ private:
             written = {};
     };
 
+    // A clause's locals (DESIGN.md, locals compiled), why one is refused, and grads' names.
+    struct Frame {
+        std::map<std::string, Code>        values;
+        std::map<std::string, std::string> refused;
+        std::set<std::string>              graded;
+    };
+
     // What an expansion gives a name, if one does.
     std::optional<Code> Expanded(const std::string& name) {
         for (Expansion* expansion = expansion_; expansion; expansion = expansion->outer) {
@@ -616,6 +623,12 @@ private:
             if (!member || child != member->Member()) Named(child, names);
     }
 
+    static void Binding(const Expression<Value>& e, std::set<std::string>& names) {
+        if (dynamic_cast<const EqualExpression<Value>*>(&e)) names.insert(e.Name());
+        for (const PExpression<Value>& child : e.Children())
+            if (child) Binding(*child, names);
+    }
+
     // The model an object names, 'conv(lap, x)' or 'gain', if it names one.
     const Reference<Value>* ModelOf(const Expression<Value>& object) const {
         const auto* ref  = dynamic_cast<const RefExpression<Value>*>(&object);
@@ -660,7 +673,8 @@ private:
         if (++expanded_ > max_expanded)
             throw Deep("nested " + std::to_string(max_expanded) +
                        " deep, which a recursion its guards do not end would pass");
-        const Setting<bool> unguarded(guarding_, false);
+        const Setting<bool>  unguarded(guarding_, false);
+        const Setting<Frame> own(frame_, {});
         return body();
     }
     static constexpr int max_expanded = 64;
@@ -738,6 +752,7 @@ private:
                 if (otherwise || (p.guarded() || base) != guard || (base && p.index() != *at) ||
                     (at && !guard && lowest && *at < lowest->parameters.index()))
                     continue;
+                const Setting<Frame> own(frame_, {});
                 if (at) expansion_->values = unbound;
                 if (at && p.general())
                     expansion_->values.insert_or_assign(p.index_name(),
@@ -771,6 +786,13 @@ private:
         return Chain(guarded, otherwise, size);
     }
 
+    static Code Outward(Code c) {
+        c.part  = std::move(c.outer);
+        c.moves = c.part.empty() ? nullptr : c.part[0].moves;
+        c.outer.clear();
+        return c;
+    }
+
     // Each cell as the step tests it: the guarded values in order, then the
     // one that always applies, else NaN, as where no clause applies (C86).
     Code Chain(const std::vector<std::pair<std::string, Code>>& guarded,
@@ -790,19 +812,13 @@ private:
         }
         // In a nest, the outer part of the clause taken, chained as the part
         // below, of each clause as a value whose part it is.
-        const auto outward = [](Code c) {
-            c.part  = std::move(c.outer);
-            c.moves = c.part.empty() ? nullptr : c.part[0].moves;
-            c.outer.clear();
-            return c;
-        };
         if ((otherwise && !otherwise->outer.empty()) ||
             std::ranges::any_of(guarded, [](const auto& g) { return !g.second.outer.empty(); })) {
             std::vector<std::pair<std::string, Code>> outers;
             for (const auto& [condition, value] : guarded)
-                outers.emplace_back(condition, outward(value));
+                outers.emplace_back(condition, Outward(value));
             const Code by =
-                Chain(outers, otherwise ? std::optional(outward(*otherwise)) : std::nullopt, size);
+                Chain(outers, otherwise ? std::optional(Outward(*otherwise)) : std::nullopt, size);
             chain.outer = by.part;
             if (!by.part.empty()) chain.outer[0].moves = by.moves;
         }
@@ -902,6 +918,7 @@ private:
             expansion.values.emplace(given, value);
             expansion.written.emplace(given, std::tuple(argument.get(), scope_, expansion_));
             if (Plain(*argument)) try {
+                    const Setting<Frame> bound(frame_, frame_);  // its locals bound above, once
                     expansion.offsets.emplace(given, Offset(argument, given));
                 } catch (const Reason&) {
                 } catch (const Fix&) {
@@ -1559,7 +1576,8 @@ private:
         const int  outer_shift  = std::exchange(shift_, 0);
         // Nor the reader's guard, which defers what it reads (C92).
         const bool outer_deferring  = std::exchange(deferring_, false);
-        const Setting<Memo> memo(memo_, {temporaries_, {}});
+        const Setting<Memo>  memo(memo_, {temporaries_, {}});
+        const Setting<Frame> own(frame_, {});
         auto       outer_parameters = std::exchange(read_parameters_, {});
         const bool          outer_approximated = std::exchange(approximated_, false);
         try {
@@ -1692,7 +1710,8 @@ private:
             if (ByCells(*sequence.definition)) return BaseTerms(name, sequence);
             for (const Clause<Value>& clause : sequence.definition->Clauses()) {
                 if (clause.parameters.general()) continue;
-                Sequence* const outer = std::exchange(basing_, &sequence);
+                const Setting<Frame> own(frame_, {});
+                Sequence* const      outer = std::exchange(basing_, &sequence);
                 const int       base  = std::exchange(base_, clause.parameters.index());
                 const Code      code  = Emit(clause.expression);
                 basing_               = outer;
@@ -1883,11 +1902,13 @@ private:
         definitions_.BeginEvaluation();
         const typename ReferenceStack<Value>::Within within(definitions_, scope_);
         const typename ReferenceStack<Value>::Frame  frame(definitions_);
-        std::vector<const Expansion*>                calls;
-        for (const Expansion* call = expansion_; call; call = call->outer) calls.push_back(call);
+        std::vector<const std::map<std::string, Code>*> calls{&frame_.values};  // the locals last
+        for (const Expansion* call = expansion_; call; call = call->outer)
+            calls.push_back(&call->values);
         for (auto call = calls.rbegin(); call != calls.rend(); ++call)
-            for (const auto& [name, code] : (*call)->values)
-                if (code.constant || every)
+            for (const auto& [name, code] : **call)
+                if ((code.constant || every) &&
+                    (*call != &frame_.values || !frame_.graded.count(name)))
                     definitions_.BindValue(name, code.constant ? *code.constant : Value(Number(0)));
         for (const auto& [name, value] : places_) definitions_.BindValue(name, value);
         if (every && !index_.empty()) definitions_.BindValue(index_, Value(Number(0)));
@@ -2595,7 +2616,7 @@ private:
     // The built-in e, as Derivative::Euler has it.
     bool Euler(const Expression<Value>& base) {
         return dynamic_cast<const RefExpression<Value>*>(&base) && base.Name() == "e" &&
-               !places_.count("e") && !Expanded("e") &&
+               !places_.count("e") && !frame_.values.count("e") && !Expanded("e") &&
                Lookup("e").where == &definitions_.Builtins();
     }
 
@@ -2728,7 +2749,8 @@ private:
         const Setting<std::set<std::string>*> asking(statuses_, &asked), doubting(unsure_, &unsure);
         const Setting<std::vector<Compiled::Named>*> reading(read_, &read);
         const Setting<bool> guarding(guarding_, true), moved(moved_, false);
-        const Code          code = Quiet(guard);
+        const Frame                                  frame = frame_;
+        const Code                                   code  = Quiet(guard);
         chosen_                  = chosen_ || moved_;
         unconverged_.clear();
         asked_.clear();
@@ -2749,7 +2771,10 @@ private:
             (grad_.empty() ? fallen.plain : fallen.grad) = true;
         }
         const auto taken = [this](const std::string& status) { return Falls(status); };
-        if (!Defers(guard) && std::ranges::none_of(asked, taken)) return Test(guard);
+        const Setting<Frame> again(frame_, frame);
+        const bool           defers = Defers(guard);
+        frame_                      = frame;
+        if (!defers && std::ranges::none_of(asked, taken)) return Test(guard);
         std::string       fell;
         const std::string truth = Shared(Cell(Truth(guard, &fell), primary)).text;
         if (std::ranges::none_of(asked, taken))
@@ -2800,10 +2825,13 @@ private:
             if (left == (logic->Conjunction() ? "0" : "1")) return left;
             return left + (logic->Conjunction() ? " && " : " || ") + Right(*logic, operand).first;
         }
-        const Code code = Emit(expression);
+        const Frame frame = frame_;
+        const Code  code  = Emit(expression);
         if (code.constant) return Holds(*code.constant) ? "1" : "0";
         if (const auto* compare = dynamic_cast<CompareExpression<Value>*>(expression.get())) {
-            return Compared(compare->Op(), Emit(compare->m_e1()), Emit(compare->m_e2()));
+            const Setting<Frame> again(frame_, frame);
+            const Code           left = Emit(compare->m_e1());
+            return Compared(compare->Op(), left, Emit(compare->m_e2()));
         }
         return Nan(code) + Wrap(code.cells[0], sum) + " != 0.0";
     }
@@ -2925,7 +2953,8 @@ private:
                                  : std::nullopt;
         };
         // A left side that decides is the answer, and the right is not read.
-        const std::optional<bool> left = truth(Emit(expression->m_e1()));
+        const Frame               frame = frame_;
+        const std::optional<bool> left  = truth(Emit(expression->m_e1()));
         if (left && *left != expression->Conjunction())
             return Answer(Literal(Value(Number(*left ? 1 : 0))));
         // What an 'or' reads on its right alone may have run out where it holds.
@@ -2935,9 +2964,16 @@ private:
         if (either)
             for (const std::string& status : *statuses_)
                 if (!before.count(status)) unsure_->insert(status);
+        std::set<std::string> bound;
+        if (!left) Binding(*expression->m_e2(), bound);
+        for (const std::string& name : bound)
+            frame_.refused[name] = ", bound on the right of 'and' or 'or', read after it, for now";
         if (left && right) return Answer(Literal(Value(Number(*right ? 1 : 0))));
         const PExpression<Value> self = expression->self();
-        if (Defers(self)) return Answer(Cell(Truth(self), primary));
+        const Setting<Frame>     again(frame_, frame);  // read again from where it began
+        const bool               defers = Defers(self);
+        frame_                          = frame;
+        if (defers) return Answer(Cell(Truth(self), primary));
         return Answer(Cell("(" + Test(self) + " ? 1.0 : 0.0)", primary));
     }
 
@@ -3045,6 +3081,11 @@ private:
             if (const auto place = places_.find(name); place != places_.end())
                 return Answer(Literal(place->second));
             if (!index_.empty() && name == index_) return Answer(Atom(index_text_, true));
+            if (const auto refused = frame_.refused.find(name); refused != frame_.refused.end())
+                throw Reason(name + refused->second);
+            const auto local = frame_.values.find(name);
+            if (local != frame_.values.end() && !frame_.graded.count(name))
+                return Answer(local->second);
             if (const auto expanded = Expanded(name)) return Answer(*expanded);
         }
         const Found             found      = Lookup(name);
@@ -3058,6 +3099,10 @@ private:
                 }))
                 throw Reason(key + " is a sequence; index it");
             return Answer(Field(key, Value(Number(NAN))));
+        }
+        for (const std::string& by : graded_) {  // where a local did not hide it (C313)
+            std::set<const Reference<Value>*> seen;
+            Reasoned([&] { Derivative<Value>(definitions_).Definition(*definition, by, seen); });
         }
         ReadWhole(key, *definition, false, false);
         // 'f()' is 'f', a call with every default (C169).
@@ -3091,6 +3136,7 @@ private:
         {
             const Home                home(*this, definition);
             const Setting<Expansion*> uncalled(expansion_, nullptr);
+            const Setting<Frame>      own(frame_, {});
             code = std::any_of(definition->Clauses().begin(), definition->Clauses().end(), cells)
                        ? Cells(key, *definition)
                        : Emit(definition->Clauses().front().expression);
@@ -3152,6 +3198,7 @@ private:
             std::optional<std::string> last;
             int                        picked  = 0;
             const auto                 settles = [&](const Clause<Value>& clause) {
+                const Setting<Frame> own(frame_, {});  // each cell its own (C406)
                 const int place = static_cast<int>(&clause - definition.Clauses().data()) + 1;
                 const ParametersDefinition<Value>& p = clause.parameters;
                 const std::string outer = std::exchange(index_, p.general() ? p.index_name() : "");
@@ -3416,6 +3463,7 @@ private:
         Walk(
             definition, slice, row, col, [](const Clause<Value>&) { return true; },
             [&](const Clause<Value>& clause) {
+                const Setting<Frame>               own(frame_, {});
                 const ParametersDefinition<Value>& p = clause.parameters;
                 const std::optional<std::string>   condition =
                     p.guarded() ? Condition(p.guard()) : std::optional<std::string>("");
@@ -3507,6 +3555,7 @@ private:
                                 if (!c.indexed() || c.general()) continue;
                                 if (c.guarded())
                                     throw Reason("a guarded base clause in a limit's terms");
+                                const Setting<Frame> own(frame_, {});
                                 bases[c.index()] = shaped(Emit(clause.expression));
                             }
                             walked.first = (bases.empty() ? 0 : bases.rbegin()->first) + 1;
@@ -3817,6 +3866,7 @@ private:
                     continue;
                 if (base && c.guarded()) throw Reason("a guarded base clause in a limit's terms");
                 const Setting<std::string>       named(index_, base ? index_ : c.index_name());
+                const Setting<Frame>             own(frame_, {});
                 const std::optional<std::string> condition =
                     base    ? "k_ == " + std::to_string(c.index())
                     : guard ? Condition(c.guard())
@@ -3923,7 +3973,16 @@ private:
         const std::string what = std::string(expression->Product() ? "prod_(" : "sum_(") + q + "=" +
                                  std::to_string(first) + ")";
         std::vector<PExpression<Value>> unmoved;
-        Unmoved(expression->Body(), {q}, what, unmoved);
+        std::set<std::string>           bound;  // a local is its term's
+        Binding(*expression->Body(), bound);
+        const auto carried = [&] {
+            for (const std::string& name : bound)
+                frame_.refused[name] =
+                    ", carried past a term of a sum without an upper bound, for now";
+        };
+        carried();
+        bound.insert(q);
+        Unmoved(expression->Body(), bound, what, unmoved);
         std::map<std::string, Code>              given;
         std::map<const Expression<Value>*, Code> lifted;
         std::vector<std::string>                 names;
@@ -3943,6 +4002,7 @@ private:
             expression, what, what, expression->Product() ? "partial products" : "partial sums", 1,
             names, given, inside,
             [&](Walked& walked, std::map<int, Code>& bases, const auto& shaped) {
+                carried();
                 places_[q]   = Value(Number(first));
                 bases[first] = shaped(Emit(expression->Body()));
                 places_.erase(q);
@@ -4104,6 +4164,14 @@ private:
         const bool calls = !call.parameters_expression().empty() || !call.parameters_dict().empty();
         situated_ += call.limit() || !calls;
         if (call.limit()) return Limit(expression, name, call);
+        if (const auto local = frame_.values.find(name); !own_ && local != frame_.values.end())
+            return !calls && !call.subexpr() ? Answer(local->second)
+                                             : throw Reason(name + (calls ? " takes no arguments"
+                                                                          : " is not a sequence"));
+        if (std::set<std::string> bound; call.subexpr()) {  // asked more than once (C409)
+            Binding(*call.subexpr(), bound);
+            if (!bound.empty()) throw Reason(*bound.begin() + ", bound in a term's index, for now");
+        }
         if (limit_ && name == limit_->name && call.subexpr()) return Answer(Earlier(call));
         if (calls && !own_) {
             const auto [local, in] = Local(name);
@@ -4278,6 +4346,7 @@ private:
             for (const Clause<Value>& clause : sequence.definition->Clauses()) {
                 const ParametersDefinition<Value>& p = clause.parameters;
                 if (otherwise || !p.general() || p.guarded() != guard) continue;
+                const Setting<Frame> own(frame_, {});
                 index_ = p.index_name();
                 Reads guard_reads, value_reads;
                 clause_reads_ = &guard_reads;
@@ -4530,8 +4599,18 @@ private:
         return Reasoned([&] { return AsIndex<Value>(*code.constant); });
     }
 
-    PExpression<Value> visit(EqualExpression<Value>*) override {
-        throw Reason("a local definition");
+    PExpression<Value> visit(EqualExpression<Value>* local) override {
+        Reasoned([&] { EvaluationVisitor<Value>::Unparametrized(*local); });
+        const std::string& name = local->Name();
+        if (places_.count(name) || name == index_)
+            throw Reason(name + " is the sum's index, so a local cannot define it");
+        if (frame_.graded.count(name))
+            throw Reason(name + " is grad's variable, so a local cannot define it");
+        if (!local->m_e1()->Children().empty()) throw Reason("a local by cells, for now");
+        Code code = Emit(local->m_e2());
+        for (Cell& cell : code.cells) cell.atom &= cell.level == primary;  // a name or a number
+        frame_.refused.erase(name);
+        return Answer(frame_.values.insert_or_assign(name, SharedAll(code)).first->second);
     }
     // '[a;; b]', slice by slice as Matrix::Stack stacks them, and their parts too.
     PExpression<Value> visit(TensorExpression<Value>* expression) override {
@@ -4702,15 +4781,13 @@ private:
         std::vector<Code> points, parts;
         for (std::size_t v = 0; v < expression->Variables().size(); ++v)
             points.push_back(Emit(expression->Point(v)));
-        Asked([&] { Reasoned([&] { Derivative<Value>(definitions_).Names(*expression, true); }); },
-              true);
+        Asked([&] { Reasoned([&] { Derivative<Value>(definitions_).Names(*expression); }); }, true);
         const bool hessian =
             Reasoned([&] { return Derivative<Value>::Hessian(*expression, points[0].size); });
         // Its inner grad's point reads v, where its body may not.
         if (hessian) {
             auto& inner = static_cast<GradExpression<Value>&>(*expression->Body());
-            Asked([&] { Reasoned([&] { Derivative<Value>(definitions_).Names(inner, true); }); },
-                  true);
+            Asked([&] { Reasoned([&] { Derivative<Value>(definitions_).Names(inner); }); }, true);
         }
         if (depth_ + (hessian ? 1 : 0) > 1)
             throw Reason("a derivative of a derivative of a derivative, for now");
@@ -4719,12 +4796,13 @@ private:
             throw Reason("a derivative of a derivative by several names, for now");
         if (depth_ && tape_) throw Forward();
         if (depth_) return Answer(Nest(*expression, points[0]));
+        const Frame frame = frame_;
         if (!hessian && (points.size() > 1 || points[0].size.count() > 1)) try {
                 Tape tape;
                 parts = Graded(*expression, points, &tape);
             } catch (const Forward&) {
             }
-        if (parts.empty()) parts = Graded(*expression, points, nullptr, hessian);
+        if (parts.empty()) parts = (frame_ = frame, Graded(*expression, points, nullptr, hessian));
         // A nest at constant points reading nothing that moves is folded, as
         // a first derivative's values are, and NaN where the interpreter refuses.
         if (!depth_ && dynamic_cast<GradExpression<Value>*>(expression->Body().get()) &&
@@ -4748,6 +4826,7 @@ private:
         const Setting<Expansion*>                   binding(expansion_, &bound);
         const Setting<std::map<std::string, Value>> places(places_, places_);
         const Setting<std::string>                  indexed(index_, index_);
+        const Setting<Frame>                        probed(frame_, frame_);
         Code                                        body;
         try {
             for (GradExpression<Value>* g = &grad; g;) {
@@ -4787,6 +4866,8 @@ private:
             for (auto& [name, code] : e->values) inward(code);
         }
         inward(point);
+        const std::map<std::string, Code> before = frame_.values;  // put back where not bound
+        for (auto& [name, code] : frame_.values) inward(code);
         struct Restore {
             std::vector<std::pair<Expansion*, std::map<std::string, Code>>>& each;
             ~Restore() {
@@ -4794,6 +4875,12 @@ private:
             }
         } restore{saved};
         Code out = Graded(expression, {point}, nullptr)[0];
+        std::set<std::string> rebound;
+        Binding(*expression.Body(), rebound);
+        for (auto& [name, code] : frame_.values) {  // its part by the outer, its exact value kept
+            const auto was = before.find(name);
+            code = was != before.end() && !rebound.count(name) ? was->second : Outward(code);
+        }
         out.part = std::move(out.outer);
         out.outer.clear();
         out.moves.reset();
@@ -4813,9 +4900,13 @@ private:
         std::vector<Code>               parts;
         std::vector<bool>               any(names.size());
         const Setting<Tape*>            taping(tape_, tape);
+        const Frame                     frame = frame_;  // each pass binds its own
         if (tape) ++tapes_;
         std::string with;
         for (const std::string& name : names) with += (with.empty() ? "" : " or ") + name;
+        std::vector<std::string> around = graded_;
+        around.insert(around.end(), names.begin(), names.end());
+        const Setting<std::vector<std::string>> graded(graded_, std::move(around));
         const std::size_t n  = points[0].cells.size();
         const auto        at = [&](std::size_t i, std::size_t j) {
             if (i > j) std::swap(i, j);
@@ -4851,6 +4942,8 @@ private:
                     places.erase(names[w]);
                     if (index == names[w]) index.clear();
                 }
+                frame_ = frame;
+                frame_.graded.insert(names.begin(), names.end());
                 const Setting<std::map<std::string, Value>> hidden(places_, places);
                 const Setting<std::string>                  indexed(index_, index);
                 const Setting<Expansion*>                   binding(expansion_, &bound);
@@ -4875,11 +4968,17 @@ private:
                 if (!tape) parts.push_back(part ? *part : Literal(Value(body.size)));
                 any[v] = any[v] || part;
             }
+        // Past the grad, a local keeps its value and the parts of the grads around it (C322).
+        for (auto& [name, local] : frame_.values)
+            local = {local.size,  local.cells, local.constant,
+                     local.whole, {},          hessian ? std::vector<Code>() : local.outer,
+                     {},          0,           false};
+        frame_.graded = frame.graded;
         // NaN where the value differentiated is, in a header that writes NaN,
         // as one does where that value writes it and no part reads it (C113),
         // in any walk: each moves by its own name, and the interpreter refuses
         // all where one jumps (C341).
-        for (const Cell& c : values.cells) aware_ |= WritesNan(c.text);
+        for (const Cell& c : values.cells) aware_ |= MayNan(c.text);  // a temporary's too
         const std::string nan = aware_ ? Nan(Shared(values)) : "";
         std::vector<Code> outs;
         for (std::size_t v = 0, first = 0; v < names.size(); ++v) {
@@ -7209,6 +7308,8 @@ private:
     const Scope<Value>*              scope_;  // where the names being read are sought
     const Scope<Value>*              own_ = nullptr;  // the scope after a point, for one name
     Expansion*                       expansion_ = nullptr;  // the call being compiled, if one is
+    Frame                            frame_;  // the locals the code being compiled sees
+    std::vector<std::string> graded_;         // the names of the grads it is under, outermost first
     int                              expanded_  = 0;        // how deep calls are
     int                              calls_     = 0;        // how many were compiled
     std::vector<std::shared_ptr<const Scope<Value>>> held_;    // what expansions name
