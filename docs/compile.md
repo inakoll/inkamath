@@ -145,7 +145,7 @@ all the step keeps.
 | `-ffinite-math-only`, which `-ffast-math` implies | Not for a header that writes NaN: GCC removes the tests that carry NaN, and Clang warns of each NaN the header writes. |
 | `-ffp-contract` | Where the compiler fuses a multiply and an add, it rounds once where the definitions round twice: often closer to exact, but the step then depends on how it is built, so build what `--check` writes the way the step itself is built. Loops are bit for bit with cells written out only without it. |
 | `-fno-slp-vectorize` | Under Clang before 23.1: it can miscompile some headers' NaN tests at -O2 (llvm 925e284), and Clang 19 does on the tests. |
-| `-O0` | Builds in seconds and runs about four times slower than at -O2: a transformer step of 13 names builds in 14 s and takes 1.9 ms a step, against 66 s and 0.45 ms at -O2, so -O0 pays for a short run. |
+| `-O0` | Builds faster than at -O2 and runs slower. |
 
 Loops in the generated code cut the -O2 build by 40 per cent; what is left
 goes mostly to what is still written cell by cell: the loads and stores between
