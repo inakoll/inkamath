@@ -1897,13 +1897,13 @@ private:
         definitions_.BeginEvaluation();
         const typename ReferenceStack<Value>::Within within(definitions_, scope_);
         const typename ReferenceStack<Value>::Frame  frame(definitions_);
-        std::vector<const std::map<std::string, Code>*> calls;
+        std::vector<const std::map<std::string, Code>*> calls{&frame_.values};  // the locals last
         for (const Expansion* call = expansion_; call; call = call->outer)
             calls.push_back(&call->values);
-        calls.push_back(&frame_.values);  // shadowed by grad's names
         for (auto call = calls.rbegin(); call != calls.rend(); ++call)
             for (const auto& [name, code] : **call)
-                if (code.constant || every)
+                if ((code.constant || every) &&
+                    (*call != &frame_.values || !frame_.graded.count(name)))
                     definitions_.BindValue(name, code.constant ? *code.constant : Value(Number(0)));
         for (const auto& [name, value] : places_) definitions_.BindValue(name, value);
         if (every && !index_.empty()) definitions_.BindValue(index_, Value(Number(0)));
@@ -4590,7 +4590,6 @@ private:
         return Reasoned([&] { return AsIndex<Value>(*code.constant); });
     }
 
-    // A temporary where it is not a name or a number (DESIGN.md, locals compiled).
     PExpression<Value> visit(EqualExpression<Value>* local) override {
         Reasoned([&] { EvaluationVisitor<Value>::Unparametrized(*local); });
         const std::string& name = local->Name();
@@ -4600,7 +4599,7 @@ private:
             throw Reason(name + " is grad's variable, so a local cannot define it");
         if (!local->m_e1()->Children().empty()) throw Reason("a local by cells, for now");
         Code code = Emit(local->m_e2());
-        for (Cell& cell : code.cells) cell.atom = cell.atom && cell.level == primary;
+        for (Cell& cell : code.cells) cell.atom &= cell.level == primary;  // a name or a number
         frame_.refused.erase(name);
         return Answer(frame_.values.insert_or_assign(name, SharedAll(code)).first->second);
     }
