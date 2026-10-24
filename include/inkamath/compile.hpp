@@ -51,6 +51,7 @@ public:
             int         period = 1, phase = 0;  // term m at step period*m + phase
             int         start = 0;              // the step of its first term, at another rate
             bool        unnamed = false;          // of an instance a model writes unnamed
+            bool        session = false;          // the session's, read by the model
         };
         std::string              header;
         int                      first;      // the index of the first step
@@ -387,6 +388,7 @@ private:
         std::string present;  // of an inner optional input, where its argument is present
         Extent                                  size{0, 0};  // none until known
         bool                                    based = false, compiling = false, compiled = false;
+        bool session = false;                           // the session's, read by the model
         std::map<std::string, std::set<int>>    reads;  // lags, by the sequence read
         Reads deferred;  // read only where the left of an 'and' or 'or' has not decided
         int                                     depth = 1;
@@ -4144,6 +4146,11 @@ private:
         if (!reading_ && !basing_) throw Reason(key + "_...: a term read outside a general clause");
         if (definition && !IsSequence(*definition)) throw Reason(key + " is not a sequence");
         Sequence& read = sequences_[key];
+        // One the model does not define, the session's, is computed in its step too.
+        if (definition && !read.definition) {
+            Define(key, *definition);
+            read.session = true;
+        }
         if (!definition) {
             Unreserved(key);
             if (!read.size.rows) read.size = Extent{};
@@ -7088,7 +7095,7 @@ private:
                 [&](const std::string& label) { return name.rfind(label + ".", 0) == 0; });
             compiled.sequences.push_back({name, sequence.size, sequence.period, sequence.phase,
                                           sequence.period * sequence.first + sequence.phase,
-                                          unnamed});
+                                          unnamed, sequence.session});
             if (clauses_ && (!sequence.guarded.empty() || !sequence.taken.empty()))
                 compiled.guarded.push_back(name);
         }

@@ -231,3 +231,17 @@ clashed = named(m_n = n, t0_n = n)
 # An instance named as a function of <math.h>: its program, named after it,
 # declared a type 'j1' over the function (C346).
 j1 = dot(x_n = [n; 1])
+
+# A model reading the session's sequence and an instance of the session's
+# computes them in its own step, and the check asks them of the session:
+# reading 'ramp_n' or 'fan.y_n', the compiler died dividing by a shape it
+# had none of (C411).
+#
+#     peer: 100 steps from 0, against exact values
+#     <name>: within 0, for each of fan.x, fan.y and ramp
+#     peer.y: within 0
+ramp_n = n
+glance(v_n) = {
+    y_n = ramp_n + v_n + fan.y_n
+}
+peer = glance(v_n = 2*n)

@@ -241,6 +241,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          inputs:fan inputs:grid
                          inputs:chan inputs:twirl inputs:duo inputs:mean3 inputs:mean2
                          inputs:track inputs:twain inputs:nestv inputs:fed inputs:x inputs:clashed inputs:j1
+                         inputs:peer
                          estimate:tie
                          estimate:chaos estimate:dyad estimate:flat estimate:halved
                          estimate:steep estimate:giant estimate:spaced elementary:els trig:tri atan:bea
