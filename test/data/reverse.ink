@@ -31,7 +31,7 @@
   4,  4;
   6,  6]
 
-# README's, section 4.
+# docs/language.md's, section 4.
 >> grad_(v = [1; 2]) v'*v
 [2;
  4]

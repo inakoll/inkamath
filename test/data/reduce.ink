@@ -289,8 +289,8 @@ g(u) = argmin_(j=1)^2 u[j]
 >> tex ?g
 g(u) = \operatorname*{arg\,min}_{j=1}^{2} u_{j}
 
-# README's: a classifier's accuracy over a batch, each row's logits, its
-# prediction their first largest; written before as prod_(v=1)^c (Z[b,v] <=
+# docs/language.md's: a classifier's accuracy over a batch, each row's logits,
+# its prediction their first largest; written before as prod_(v=1)^c (Z[b,v] <=
 # Z[b,y[b]]), which takes a tied target as predicted. Rows 1 and 2 tie.
 >> acc(Z[b<=m, j<=c], y) = sum_(b=1)^m (argmax_(v=1)^c Z[b,v] == y[b])/m
 acc(Z[b<=m, j<=c], y) = sum_(b=1)^m (argmax_(v=1)^c Z[b,v] == y[b])/m

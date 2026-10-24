@@ -99,8 +99,8 @@ error: sin needs real numbers, not ~(1+i)
 >> sin([1 2])
 error: sin needs single values, not a 1x2 matrix; write it by its cells
 
-# abs is README's two guards, each taking re(x), after one for a complex
-# number; its value is exact of an exact number.
+# abs is docs/language.md's two guards, each taking re(x), after one for a
+# complex number; its value is exact of an exact number.
 >> ?abs
 abs(x) | im(x) < 0 or im(x) > 0 = absz(re(x), im(x), 2^ilogb(max(abs(re(x)), abs(im(x)))))
 abs(x) | x < 0 = -re(x)

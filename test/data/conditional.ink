@@ -21,7 +21,7 @@
 #
 #   A guard is more specific than an index, an index more specific than
 #   neither: guarded clauses first in written order, then the base clause for
-#   that index, then the unguarded general clause. This keeps README.md
+#   that index, then the unguarded general clause. This keeps docs/language.md
 #   section 4's rule that a base case beats the general clause whatever the
 #   order of definition.
 #

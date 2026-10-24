@@ -53,8 +53,8 @@ pc(x) = x^3
 [-2, 0, 6]
 
 # With respect to a vector, a column or a row, the Hessian, n by n: the
-# Jacobian by cells of the gradient, README section 4, its cell (j, i) the
-# cell (i, j).
+# Jacobian by cells of the gradient, docs/language.md section 4, its cell (j, i)
+# the cell (i, j).
 >> f(v) = v[1]^2*v[2] + v[2]^3
 f(v) = v[1]^2*v[2] + v[2]^3
 

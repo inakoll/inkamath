@@ -1,4 +1,4 @@
-# Indexed references and general terms (README.md section 4).
+# Indexed references and general terms (docs/language.md section 4).
 
 >> f_0=1+2
 f_0=1+2

@@ -18,7 +18,7 @@ The header
 
 `--compile model.ink -o model.h` writes the sequences a file defines as a C
 header over doubles. `--compile mix.ink mix -o mix.h` compiles the model `mix`
-that `mix.ink` defines ([section 5](../README.md#5-models-and-files)), read as
+that `mix.ink` defines ([section 5](language.md#5-models-and-files)), read as
 `use` reads the file: its inputs are the step's arguments, in the order of its
 signature, one whose size the signature states a pointer to its cells, row by
 row, and its parameters, with their defaults, the only fields; a name nothing
@@ -97,7 +97,7 @@ What compiles
 | A `grad` by several names | a struct of its parts, as an instance is, `m.g.W[0]` being `g.W_n`, the body written once and swept back once | [`gradmany.ink`](../test/compile/gradmany.ink) trains a two-layer network by one grad of its four weights |
 | A tensor | an array as C keeps one, `double O[B][T][D]`, slice after slice, met slice by slice as the interpreter meets it | [`tensor.ink`](../test/compile/tensor.ink) runs multi-head attention over a batch and trains a layer on minibatches by `grad` |
 | A `grad` with respect to a tensor | — | [`tensorgrad.ink`](../test/compile/tensorgrad.ink) |
-| A block literal, `[A, 0; -C, 1]` | laid out as the interpreter lays it out ([section 2](../README.md#2-matrices)), each block's cells written into their place | [`blocks.ink`](../test/compile/blocks.ink) packs a doubling algorithm's iterates into one term |
+| A block literal, `[A, 0; -C, 1]` | laid out as the interpreter lays it out ([section 2](language.md#2-matrices)), each block's cells written into their place | [`blocks.ink`](../test/compile/blocks.ink) packs a doubling algorithm's iterates into one term |
 | Two matrices compared whole, `R'*R == I3` | as the equalities of their cells | [`orthogonal.ink`](../test/compile/orthogonal.ink) has a rational rotation the step takes out of SO(3) at its first step, which the interpreter never does |
 | A sequence read at `x_(2*m)`, or held at `y_(floor(n/2))` | at another rate ([Rates](#rates-and-optional-inputs)) | [`rates.ink`](../test/compile/rates.ink) |
 | An optional input, `z_n?` | followed in the step by its flag ([Optional inputs](#optional-inputs)) | [`optional.ink`](../test/compile/optional.ink) |
@@ -374,7 +374,7 @@ lib.ink_init(m); lib.ink_run(m, y, 3, out)    # u.value is out[2]
 
 inkamath solves no optimisation, but it writes what a solver is given: a
 model's dynamics and their Jacobians by cells
-([section 4](../README.md#4-sequences)), compiled and held to the interpreter by
+([section 4](language.md#4-sequences)), compiled and held to the interpreter by
 `--check`, are terms the host reads after each step, `m.A[0]` and `m.B[0]`, to
 build the QP that OSQP or HPIPM solves for an MPC. The solver, its tolerance
 and its failure stay the host's.

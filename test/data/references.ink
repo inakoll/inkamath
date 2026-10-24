@@ -1,4 +1,5 @@
-# References: identifiers name expressions, not values (README.md section 3).
+# References: identifiers name expressions, not values (docs/language.md,
+# section 3).
 
 >> a = 1
 a = 1
@@ -12,7 +13,7 @@ a = 2
 >> b
 4
 
-# Parameters, positional and named (README.md section 3).
+# Parameters, positional and named (docs/language.md section 3).
 >> f(x, y)=x^2+y
 f(x, y)=x^2+y
 

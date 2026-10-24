@@ -5,9 +5,9 @@
 
 # The signature marks an input optional, 'z_n?'. A guard that reads it where
 # it is absent does not hold, and the clause after is tried, as for a limit
-# that runs out (README section 4); absence is data, not a rounding, so the
-# clause after is exact. Here the last value seen, held: an idiom the user
-# writes, its guard the measurement's own acceptance test.
+# that runs out (docs/language.md section 4); absence is data, not a rounding,
+# so the clause after is exact. Here the last value seen, held: an idiom the
+# user writes, its guard the measurement's own acceptance test.
 >> est(z_n?) = {
 ..     x_0 = 0
 ..     x_n | z_n >= 0 = z_n

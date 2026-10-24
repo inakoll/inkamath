@@ -118,7 +118,7 @@ S_n = chol(F*S_(n-1)*(F*S_(n-1))' + Q)
 >> tex ?S
 S_n = \operatorname{chol}(F\,S_{n-1}\,(F\,S_{n-1})^\mathsf{T} + Q)
 
-# README's section 2, its example once chol is in the prelude.
+# docs/language.md's section 2, its example once chol is in the prelude.
 >> chol([4 2 -2; 2 10 1/2; -2 1/2 9/4])
 [ 2,   0, 0;
   1,   3, 0;

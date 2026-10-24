@@ -7,8 +7,8 @@
 # exact values; cli.cmake holds both. The shifts by hand are the oracle,
 # each compiled and checked before the form was built.
 
-# README section 5's plant, the explicit Euler step as the method writes it,
-# driven by a ramp.
+# docs/language.md section 5's plant, the explicit Euler step as the method
+# writes it, driven by a ramp.
 plant(dt = 1/2, u_n) = {
     x_0 = 0
     x_(n+1) = x_n + dt*(u_n - x_n)
@@ -135,8 +135,8 @@ shiftedsampled(x_n) = {
 tally = sampled(x_n = n)
 shiftedtally = shiftedsampled(x_n = n)
 
-# README section 5's optional input, the last value seen held: where z is
-# absent, the report quotes the clauses as written, as the interpreter shows
+# docs/language.md section 5's optional input, the last value seen held: where z
+# is absent, the report quotes the clauses as written, as the interpreter shows
 # them, where their shift by hand's quotes the shift.
 kept(z_n?) = {
     x_0 = 0

@@ -1,6 +1,6 @@
 /* fallback.ink's models compiled, against values computed with Python's
- * fractions and README section 4's stopping rule (DESIGN.md, a clause for
- * a limit that does not converge). */
+ * fractions and docs/language.md section 4's stopping rule (DESIGN.md, a clause
+ * for a limit that does not converge). */
 #include "fallback_mpc.h"
 #include "fallback_newton.h"
 #include "fallback_paired.h"
