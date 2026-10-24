@@ -217,9 +217,9 @@ peakat(x_n) = {
     A_n = argmax_(t=0)^n x_t
 }
 
-# Last indexes other than the index less a constant, and a first one that
-# is not a constant: a window is written from a constant, sum_(k=0)^2
-# x_(n-k), as fir.ink's is.
+# Last indexes other than the index less a constant, an enclosing sum's
+# for now, and a first one that is not a constant: a window is written
+# from a constant, sum_(k=0)^2 x_(n-k), as fir.ink's is.
 ahead(x_n) = {
     y_n = sum_(t=0)^(n+1) x_t
 }

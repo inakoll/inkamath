@@ -3672,9 +3672,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
       `test/compile/reddi.ink` does; so too terms reading it as an inner
       sum's last index, `sum_(t=0)^n sum_(s=0)^n x_s*x_t`, the outer's terms
       each the inner's total at n, not at t;
-    - another last index, `n + 1`, `2*n`, or an enclosing sum's, `sum_(t=0)^n
-      sum_(s=0)^t x_s`: `a sum whose last index is neither a constant nor n
-      less a constant`; a first index not a constant, `sum_(t=n-2)^n x_t`:
+    - another last index, `n + 1`, `2*n`: `a sum whose last index is
+      neither a constant nor n less a constant`; an enclosing sum's,
+      `sum_(t=0)^n sum_(s=0)^t x_s`: `a sum up to an enclosing sum's
+      index, for now`, which a total of totals would compile and no model
+      has asked for; a first index not a constant, `sum_(t=n-2)^n x_t`:
       `a sum whose first index is not a constant`, a window being written
       from a constant, `sum_(k=0)^2 x_(n-k)`, as `fir.ink`'s is. "A product"
       for a product. Where no index is seen, today's words;
