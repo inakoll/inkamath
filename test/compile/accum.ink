@@ -132,6 +132,22 @@ recearly(x_n) = {
 ey = early(x_n = 1/(n+1))
 recey = recearly(x_n = 1/(n+1))
 
+# A first term read before the stream where a history gives it, as late's
+# below is refused where none does: R_0 is y_-1.
+hist(x_n) = {
+    y_n | n < 0 = 1/2
+    y_n = y_(n-1)/2 + x_n
+    R_n = sum_(t=0)^n y_(t-1)
+}
+rechist(x_n) = {
+    y_n | n < 0 = 1/2
+    y_n = y_(n-1)/2 + x_n
+    R_0 = y_(-1)
+    R_n = R_(n-1) + y_(n-1)
+}
+hy = hist(x_n = 1/(n+1))
+rechy = rechist(x_n = 1/(n+1))
+
 # In an instance another model reads: the total is the instance's, a mean
 # square.
 inner(x_n) = {

@@ -3728,7 +3728,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   Specified in `test/compile/accum.ink`: `reg`, a regret `ogd`, AdaGrad's
   `ada`, a survival function's product `surv`, a fit's normal equations
   `gram`, two totals one of them 2x2, `every`, `moments` by cells,
-  `early` and `outer`, whose instance of `inner` keeps the total, each
+  `early`, `hist`, whose first term is a history's, and `outer`, whose instance of `inner` keeps the total, each
   beside its recurrence by hand, `rec` and its name, the totals by hand
   named run, and an instance of each; then a model for each
   refusal. And in `test/cli.cmake`'s `spec` part, run by `cli_spec`: now,
