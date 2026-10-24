@@ -409,3 +409,15 @@ peaked(x_n) = {
     d_n = grad_(t = x_n) grad_(s = 1) s*max(t, 0)^(1/2)
 }
 maxed = peaked(x_n = n/2 - 3/4)
+
+# A comparison under grad in a guard is in grad's value, and jumps: 'gated'
+# took s_10 = 0 where the interpreter refuses it, "a comparison jumps at y =
+# 0" (C414).
+#
+#     gated: 100 steps from 0, against exact values
+#     gated.s: within 0
+gating(x_n) = {
+    s_n | grad_(y = x_n) ((y > 0) + y*y) > 1 = 1
+    s_n = 0
+}
+gated = gating(x_n = n - 10)

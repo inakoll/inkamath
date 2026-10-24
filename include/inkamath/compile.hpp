@@ -4734,6 +4734,8 @@ private:
         std::vector<Code> points, parts;
         for (std::size_t v = 0; v < expression->Variables().size(); ++v)
             points.push_back(Emit(expression->Point(v)));
+        // Its body is a value, in a guard too, where a comparison jumps (C414).
+        const Setting<bool> valued(guarding_, false);
         Asked([&] { Reasoned([&] { Derivative<Value>(definitions_).Names(*expression, true); }); },
               true);
         const bool hessian =
