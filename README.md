@@ -6,9 +6,9 @@ compiler of its definitions to C (`--compile`) and a check of that C against
 the interpreter (`--check`). It evaluates exact rational arithmetic, complex
 numbers in doubles, matrices and rank-3 tensors of expressions, user-defined
 functions and models, sequences defined by recurrence, series, and derivatives
-(`grad`). Begun by 2010 (`LICENSE.txt`) and written mostly in 2014, it has since
-been rebuilt around exact numbers as the reference semantics and generated C
-checked against them (`DESIGN.md`).
+(`grad`). First written offline around 2007–2008 and imported from Google Code
+around 2014 (`LICENSE.txt`), it has since been rebuilt around exact numbers as
+the reference semantics and generated C checked against them (`DESIGN.md`).
 
 The idea it is built around is that **an identifier names an expression, not a
 value**. The expression is re-evaluated every time the name is used, so a
