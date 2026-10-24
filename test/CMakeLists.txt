@@ -291,7 +291,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          fallback:faraway fallback:voided fallback:covered fallback:ored
                          fallback:spelled fallback:joined fallback:routed fallback:returned
                          fallback:respelled fallback:preceded fallback:defaulted fallback:sentried
-                         fallback:partway pendloop:cart motorloop:motor inner:robot:600
+                         fallback:partway pendloop:cart motorloop:motor pidloop:ctl inner:robot:600
                          lcg:lcgs optional:seen optional:leaned
                          optional:steeped optional:first hessian:k hessian:z hessian:c
                          accum:ol:300)
@@ -422,6 +422,9 @@ set_tests_properties(check_cart_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^cart: 100 steps from 0, against exact values until 0 and inexact ones from there\ncart\\.s: within 0${about}\ncart\\.u: within 0${about}\n$")
 set_tests_properties(check_motor_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^motor: 100 steps from 0, against exact values until 14 and inexact ones from there\nmotor\\.x: within 3\\.6e-15${about}\nmotor\\.e: within 3\\.3e-16${about}\nmotor\\.u: within 1\\.4e-14${about}\n$")
+# README's getting started, compile/pidloop.ink, its report as README shows it.
+set_tests_properties(check_ctl_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^ctl: 100 steps from 0, against exact values\nctl\\.e: within 1\\.1e-16\nctl\\.d: within 1\\.1e-15\nctl\\.s: within 3\\.3e-16\nctl\\.u: within 3\\.3e-16\n$")
 # compile/inner.ink's robot, each flag exact and the guards audited; what
 # libm's tanh decides, by its form: 0 or below 1e-15 by the fail pattern, as
 # a pattern holds no more than 9 groups.
