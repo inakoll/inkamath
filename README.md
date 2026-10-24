@@ -330,6 +330,7 @@ exports what the host calls (on Windows, each `__declspec(dllexport)`). For
 `pid.ink`:
 
 ```c
+/* pid_host.c: what a shared library of pid.h exports. */
 #include <stddef.h>
 #include "pid.h"
 
