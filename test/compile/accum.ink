@@ -245,10 +245,14 @@ gramfrom(x_n) = {
     G_n = sum_(t=1)^n u_t*u_t'
 }
 
-# Under grad and at a slower rate, for now.
+# Under grad and at a slower rate, sampled before the sum or after it, for
+# now.
 slope(x_n) = {
     g_n = grad_(w = 1) sum_(t=0)^n w*x_t
 }
 slow(x_n) = {
     y_m = x_(2*m) + sum_(t=0)^m x_(2*t)
+}
+slowafter(x_n) = {
+    y_m = sum_(t=0)^m x_t + x_(2*m)
 }

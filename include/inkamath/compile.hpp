@@ -5266,6 +5266,7 @@ private:
         SeriesExpression<Value>*     series;
         std::map<std::string, Value> places;
         int                          lag;
+        std::string                  upto;
         ParametersCall<Value>        now        = {};  // its term at n
         Reference<Value>             definition = {};
     };
@@ -5296,7 +5297,7 @@ private:
         });
         if (found == totals_.end()) {
             const std::string key = scope_->Qualified("s" + std::to_string(totals_.size()) + "_");
-            found                 = totals_.try_emplace(key, within_, &series, places_, c).first;
+            found = totals_.try_emplace(key, within_, &series, places_, c, upto).first;
             Accumulator&             total = found->second;
             const auto               n     = std::make_shared<RefExpression<Value>>(index_);
             EvaluationVisitor<Value> evaluator(definitions_);
@@ -5311,11 +5312,7 @@ private:
             total.definition.home      = scope_;
             sequences_[key].definition = &total.definition;
         }
-        const Code code  = Term(found->first, &found->second.definition, found->second.now);
-        const int  every = std::max(reading_->period, sequences_.at(found->first).period);
-        if (every > 1)
-            throw Reason(upto + " in a sequence computed every " + std::to_string(every) +
-                         ", for now");
+        const Code  code  = Term(found->first, &found->second.definition, found->second.now);
         const auto& bases = reading_->bases;
         for (int n = bases.empty() ? 0 : bases.begin()->first; !code.Scalar() && n < a + c; ++n)
             if (!bases.count(n))
@@ -5482,6 +5479,10 @@ private:
         for (const Reads* some : {&sequence.reads, &sequence.deferred})
             for (const auto& [read, lags] : *some) {
                 const int period = sequences_.at(read).period;
+                if (read != name && totals_.count(read) && std::max(period, sequence.period) > 1)
+                    throw Refusal(name, totals_.at(read).upto + " in a sequence computed every " +
+                                            std::to_string(std::max(period, sequence.period)) +
+                                            ", for now");
                 if (read != name && period > 1 && sequence.period > 1) throw another(read);
                 if (read != name && period > 1)
                     throw Refusal(name, read + "_(...): read every step, and " + read +
