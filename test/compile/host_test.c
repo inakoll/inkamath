@@ -1,4 +1,4 @@
-/* README's host file for pid.h, taken from README itself: ink_run over N
+/* docs/compile.md's host file for pid.h, taken from it: ink_run over N
  * steps gives what N calls of ink_step give, and each offset is its field's. */
 #include "pid.h"
 
