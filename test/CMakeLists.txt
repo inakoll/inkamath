@@ -94,6 +94,15 @@ foreach(part 1 2 3 4)
                      -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
     set_tests_properties(cli_${part} PROPERTIES TIMEOUT ${cli_timeout})
 endforeach()
+# A cumulative sum compiled as an accumulator (DESIGN.md), specified before
+# it is built: cli.cmake's spec part, skipped while it is refused as today.
+add_test(NAME cli_spec
+         COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=spec
+                 -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli_spec -DCASE_TIMEOUT=${cli_case_timeout}
+                 -DCC=${CMAKE_C_COMPILER} -DCC_ID=${CMAKE_C_COMPILER_ID}
+                 -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
+set_tests_properties(cli_spec PROPERTIES TIMEOUT ${cli_timeout} SKIP_REGULAR_EXPRESSION
+    "compile_accum: the sum up to n refused, as today")
 # bench's workloads, each a transcript bench/run.cmake measures, replayed so
 # that one gone stale fails here rather than at its next measure. The
 # slowest, under the sanitizers, take 7 s; train.ink is data, no transcript.

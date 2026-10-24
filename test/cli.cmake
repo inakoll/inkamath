@@ -68,6 +68,100 @@ endfunction()
 # Read by cases in every part.
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
+# Specified, not yet built (DESIGN.md, a cumulative sum compiled as an
+# accumulator): each model of compile/accum.ink and its recurrence by hand
+# compiled, reg's and every's totals as specified, an instance of each
+# checked to its recurrence's report but for the name and the lines of run,
+# ol at 300 steps in double and in float, and the refusals. Skipped while
+# the sum is refused as today, and only then.
+if(PART STREQUAL "spec")
+    file(MAKE_DIRECTORY "${OUT}")
+    set(story "${CMAKE_CURRENT_LIST_DIR}/compile/accum.ink")
+    execute_process(COMMAND "${EXE}" --compile "${story}" reg -o reg.h
+                    WORKING_DIRECTORY "${OUT}" OUTPUT_VARIABLE out ERROR_VARIABLE err
+                    RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
+    if("${out}${code}" STREQUAL "1" AND "${err}" STREQUAL
+       "inkamath: cannot compile R: a sum or a product whose bounds are not constants\n")
+        message("compile_accum: the sum up to n refused, as today")
+        return()
+    endif()
+    foreach(model IN ITEMS reg ogd ada surv gram every moments early)
+        foreach(written IN ITEMS ${model} rec${model})
+            set(args --compile ${story} ${written} -o ${written}.h)
+            check(compile_accum_${written})
+            strict(compile_accum_${written} ${written}.h)
+        endforeach()
+    endforeach()
+    holds(compile_accum_reg reg.h "    double s0_[2];\n"
+          "    m_->s0_[0] = m_->index_ == 0 ? m_->e[0] : m_->s0_[1] + m_->e[0];\n"
+          "    m_->R[0] = m_->s0_[0];\n")
+    holds(compile_accum_every every.h "    double s0_[2];\n"
+          "    m_->s0_[0] = m_->index_ == 0 ? 0.0 : m_->index_ == 1 ? m_->x[1] : m_->s0_[1] + m_->x[1];\n"
+          "    m_->y[0] = floor((double)m_->index_ / 2.0) * 2.0 == (double)m_->index_ ? m_->s0_[0] : -1.0;\n")
+
+    set(refused_adam "v: a sum up to t whose terms read t; write it as a recurrence")
+    set(refused_peak "M: a maximum up to n, for now")
+    set(neither "y: a sum whose last index is neither a constant nor n less a constant")
+    set(refused_ahead "${neither}")
+    set(refused_twice "${neither}")
+    set(refused_nested "${neither}")
+    set(refused_window "y: a sum whose first index is not a constant")
+    set(refused_late "R: R_0 reads x_-1, before the stream, where x has no history")
+    set(refused_slope "g: a sum up to n under grad, for now")
+    set(refused_slow "y: a sum up to m in a sequence computed every 2, for now")
+    foreach(model IN ITEMS adam peak ahead twice nested window late slope slow)
+        set(args --compile ${story} ${model})
+        set(stdout "cannot compile ${refused_${model}}\n")
+        set(exit 1)
+        check(compile_accum_${model})
+    endforeach()
+
+    if(NOT CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
+        return()
+    endif()
+    # An instance's report, built uncontracted as test/CMakeLists.txt builds a
+    # check (C97), and its exit.
+    function(reported name instance steps)
+        set(args --check ${story} ${instance} --steps ${steps} ${ARGN} -o ${name}.c)
+        check(check_accum_${name})
+        execute_process(COMMAND "${CC}" -std=c11 -O2 -ffp-contract=off ${name}.c -o ${name} -lm
+                        WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
+                        ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
+        if(failed)
+            message(SEND_ERROR "check_accum_${name}: ${name}.c does not build\n${errors}")
+        endif()
+        execute_process(COMMAND "${OUT}/${name}" WORKING_DIRECTORY "${OUT}"
+                        OUTPUT_VARIABLE report RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
+        set(report_${name} "${report}" PARENT_SCOPE)
+        set(code_${name} "${code}" PARENT_SCOPE)
+    endfunction()
+    # The instance's report is its recurrence's but for the name and run's lines.
+    function(compared name instance steps)
+        reported(${name} ${instance} ${steps} ${ARGN})
+        reported(rec${name} rec${instance} ${steps} ${ARGN})
+        string(REPLACE "rec${instance}" "${instance}" twin "${report_rec${name}}")
+        string(REGEX REPLACE "\n${instance}\\.run:[^\n]*" "" twin "${twin}")
+        if(NOT code_${name} EQUAL 0 OR NOT code_rec${name} EQUAL 0 OR
+           NOT "${report_${name}}" STREQUAL "${twin}" OR
+           NOT "${twin}" MATCHES "^${instance}: ${steps} steps from 0")
+            message(SEND_ERROR "check_accum_${name}: exit ${code_${name}}\n${report_${name}}--- where rec${instance}'s, exit ${code_rec${name}}, is\n${report_rec${name}}")
+        endif()
+        set(report_${name} "${report_${name}}" PARENT_SCOPE)
+    endfunction()
+    foreach(instance IN ITEMS m ag sv ls ev mm ey)
+        compared(${instance} ${instance} 100)
+    endforeach()
+    compared(ol ol 300)
+    compared(olf ol 300 --float)
+    # By Python: the header's operations in doubles against fractions.
+    foreach(line "fs: within 0" "x: within 1\\.1e-16" "f: within 5\\.6e-17" "R: within 3\\.6e-14")
+        if(NOT "${report_ol}" MATCHES "\nol\\.${line}\n")
+            message(SEND_ERROR "check_accum_ol: no line ol.${line} in\n${report_ol}")
+        endif()
+    endforeach()
+    return()
+endif()
+
 # The cases run as four tests of about equal time under the sanitizers: PART
 # 1 up to charpoly's refusal, 2 from it, 3 from eig's, 4 from the frequency
 # response's, and all where PART is not given.
