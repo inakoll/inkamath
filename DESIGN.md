@@ -3600,9 +3600,146 @@ that exploring seven domains asked of the interpreter, by how many asked.
   check program and header byte for byte. 25 lines of sources written where
   about 20 were planned, 14 more in all: `main.cpp` 16 more, `check.hpp` 2
   fewer. 16,282 lines in all, 16,286 after C280.
-- **A cumulative sum compiled as an accumulator**, `sum_(t=1)^n e(t)`:
-  refused as "a sum whose bounds are not constants", where a regret or a
-  running loss is exactly that (Reddi et al. 2018).
+- **A cumulative sum compiled as an accumulator**, `sum_(t=0)^n e_t`:
+  refused as "a sum or a product whose bounds are not constants", where a
+  regret, a running loss or AdaGrad's sum of squared gradients is exactly
+  that (Reddi, Kale and Kumar 2018, section 2). `test/data/reddi.ink`
+  writes the regret as the paper does; `test/compile/reddi.ink` writes it
+  `R_0 = 0`, `R_t = R_(t-1) + ...` by hand, as every compiled model must.
+  The interpreter answers `m.R_3`, 0.375, of
+
+      reg(x_n) = {
+          e_n = (x_n - 1/2)^2
+          R_n = sum_(t=0)^n e_t
+      }
+      m = reg(x_n = n/4)
+
+  and the step cannot.
+
+  Decided:
+  - **The shape**: a sum or a product in a sequence's clause whose first
+    index is a constant a and whose last is the clause's index less a whole
+    constant c from 0, `n` or `n - 1`, spelled as any lag is, a forward
+    clause's shifted index included. Its terms are any expression of the
+    sum's index t that compiles there: terms read at t or t less a
+    constant, `(x_t - y_t)^2`, t itself, parameters, constants, a cell's
+    place, an unrolled sum's index, calls on them. Of any size, a matrix
+    included, `G_n = sum_(t=0)^n u_t*u_t'`; anywhere in the clause, inside
+    a larger expression or a guarded clause, `v_t = (sum_(i=1)^t
+    g_i^2)/t`. A constant last index is unrolled, as now.
+  - **Kept as the recurrence a reader writes**: the total is a sequence of
+    the step's own, `s0_`, `s1_` in the order compiled, one for each sum
+    and each place it is compiled at, a cell or an unrolled sum's term, of
+    its terms' size. Its term at n is the sum at n: before a + c none, so 0,
+    1 for a product; at a + c its first term itself; after, its term at n -
+    1 plus, or times, the sum's term at n - c. Where a + c < 0 its term at 0
+    is the sum there unrolled, as with constant bounds, reading what a
+    history gives (`early`, `sum_(t=-2)^n x_t`). So it is `R_0 = e_0`, `R_n
+    = R_(n-1) + e_n` written by hand, compiled by the same machinery: its
+    terms before a + c base clauses in the chain, ordered before its
+    readers, a window in the struct, `double s0_[2]`, its NaN, its split and
+    a parameter assigned while it runs all a sequence's, and the header's
+    comment naming it by its sum. In `reg`'s step:
+
+          m_->s0_[0] = m_->index_ == 0 ? m_->e[0] : m_->s0_[1] + m_->e[0];
+          m_->R[0] = m_->s0_[0];
+
+    It is computed at every step, read or not: `every` reads its sum at
+    even steps only, `sum_(t=0)^(n-1) x_t`, which reads nothing at 0.
+  - **The same doubles**: the total at n adds the same terms in the same
+    order as that sum unrolled, left to right from its first, and as the
+    recurrence by hand, so the two steps agree bit for bit, a zero's sign
+    aside where the one by hand starts from 0 plus its first term.
+  - **`--check`** holds it as any sequence, the step's double against the
+    interpreter's exact sum within a billionth of one plus it. Rounding
+    accumulates step by step, as in the recurrence, and the report says how
+    far: `ol`, a regret of online gradient descent, is `ol.R: within
+    2.2e-15` at 100 steps and `within 3.6e-14` at 300 (Python, the
+    header's operations in doubles against fractions). No tolerance and no
+    line of the report is new; the recurrence by hand reports the same and
+    is the oracle. The interpreter sums each term afresh, n^2/2 terms for n
+    steps: 0.7 s at 3,000 of `reg`, which `--steps 100000` would feel.
+  - **Refused**, each in one sentence:
+    - terms that read the clause's index, as Adam's second moment in the
+      paper's sum, `v_t = (1 - b2)*sum_(i=1)^t b2^(t-i)*g_i^2`, whose every
+      term moves with t, so that no total kept from step to step is it:
+      `a sum up to t whose terms read t; write it as a recurrence`, which
+      `test/compile/reddi.ink` does;
+    - another last index, `n + 1`, `2*n`, or an enclosing sum's, `sum_(t=0)^n
+      sum_(s=0)^t x_s`: `a sum whose last index is neither a constant nor n
+      less a constant`; a first index not a constant, `sum_(t=n-2)^n x_t`:
+      `a sum whose first index is not a constant`, a window being written
+      from a constant, `sum_(k=0)^2 x_(n-k)`, as `fir.ink`'s is. "A product"
+      for a product. Where no index is seen, today's words;
+    - a reduction, `a maximum up to n, for now`, `an argmax up to n, for
+      now`: a running maximum is a recurrence too, which no model has asked
+      for;
+    - under grad, `a sum up to n under grad, for now`, whose parts would be
+      a second total; at another rate, `a sum up to m in a sequence
+      computed every 2, for now`;
+    - a first term read before the stream, in today's words: `R_0 reads
+      x_-1, before the stream, where x has no history`. Its terms read
+      their own sequence at t as the loop check reads any term, and after
+      the clause's as any read after it is.
+  - **Unchanged**: the interpreter, `tex`, and every golden, header, report
+    and cli case. `test/compile/reddi.ink` keeps its regret by hand: as the
+    sum it adds `f(t, x_t) - f(t, -1)` as one term where the recurrence adds
+    and subtracts, so its reports may move in their last digits, a change of
+    its own.
+
+  Rejected:
+  - **The refusal kept, with a better message**: `a sum up to n: write its
+    total as a recurrence, R_0 = e_0 and R_n = R_(n-1) + e_n`, about 6
+    lines, the shape recognised as above and the words, against about 70.
+    What it leaves the user: a named sequence and two clauses for every such
+    sum, a + c + 1 base clauses where a + c > 0, a sum inside a larger
+    expression taken out by name, and a model the interpreter reads as the
+    paper writes it while the compiler takes it only rewritten, in the very
+    file meant to show what the equation became (MANIFESTO, the notation is
+    the paper's). What it gives: the interpreter linear on the rewritten
+    model too. For the owner to weigh.
+  - **A field updated in place**, `m_->s0_ = m_->s0_ + ...`, one double and
+    no copy: a second kind of state beside sequences, its order, split and
+    NaN rules written again.
+  - **The clause's own term as the total** where the sum is its whole right
+    side and its only clause: a header of a second form, to save a copy.
+  - **A loop to n at every step**: no static bound, and n terms a step.
+  - **Kahan or pairwise summation**: the step would part from the order the
+    interpreter and the recurrence by hand add in, and `--check` already
+    measures what plain addition costs; `kahan.ink` writes it by hand.
+  - **Terms reading t through a factor taken out**, `b2^(t-i)` as `b2^t`
+    times `b2^-i`: algebra the compiler does not do (Deferred, symbolic
+    simplification), and b2^-i overflows.
+
+  About 70 lines of `compile.hpp`, estimated from reading it, not on a
+  prototype: the shape and its refusals 22, the terms compiled at n - c 8,
+  the total as a sequence, its bases, chain, size, reads and key by place
+  30, its name in the header's comment 5, its terms before a + c reading
+  nothing 5. None in `check.hpp`, the parser or the interpreter. Past 105
+  the implementation stops and reports. 20,774 lines at a7e18e9 by `wc -l
+  include/inkamath/*.hpp src/*`. README's `--compile` paragraph gains,
+  after `fir.ink`: "A sum or a product up to the index, or the index less
+  a constant, `sum_(t=1)^n e_t`, is kept as a running total, a sequence of
+  the step's own, `s0_`, as a recurrence written by hand would be:
+  `test/compile/accum.ink` has a regret."
+
+  Specified in `test/compile/accum.ink`: `reg`, a regret `ogd`, AdaGrad's
+  `ada`, a survival function's product `surv`, a fit's normal equations
+  `gram`, two totals one of them 2x2, `every`, `moments` by cells and
+  `early`, each beside its recurrence by hand, `rec` and its name, the
+  totals by hand named run, and an instance of each; then a model for each
+  refusal. And in `test/cli.cmake`'s `spec` part, run by `cli_spec`,
+  skipped while `reg` is refused as today, and only then: every model and
+  its recurrence compiled and strict; `reg`'s header holding `double
+  s0_[2];` and the two lines above, `every`'s `m_->s0_[0] = m_->index_ ==
+  0 ? 0.0 : m_->index_ == 1 ? m_->x[1] : m_->s0_[1] + m_->x[1];` and its
+  y read from `m_->s0_[0]`; each instance's report its recurrence's but
+  for the name and run's lines, `ol`'s at 300 steps, in double holding
+  `ol.fs: within 0`, `ol.x: within 1.1e-16`, `ol.f: within 5.6e-17` and
+  `ol.R: within 3.6e-14`, by Python as above, and in float too; and each
+  refusal in its words. With the implementation the cases move to
+  `cli.cmake`'s parts, `cli_spec` goes, and `ol` joins the checks at 300
+  steps with its report.
 - `[done]` **The forward form, `x_(t+1) = f(x_t, u_t)`.** Refused as "t is not
   defined", so a paper's update is shifted to t-1 by hand, where
   transcriptions slip: Nesterov's momentum as Sutskever, Martens, Dahl and
