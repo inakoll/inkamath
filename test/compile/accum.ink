@@ -148,6 +148,18 @@ rechist(x_n) = {
 hy = hist(x_n = 1/(n+1))
 rechy = rechist(x_n = 1/(n+1))
 
+# In a forward clause, up to its own index t: n - 1.
+fwd(x_n) = {
+    y_0 = 0
+    y_(t+1) = sum_(s=0)^t x_s
+}
+recfwd(x_n) = {
+    y_0 = 0
+    y_(t+1) = y_t + x_t
+}
+fy = fwd(x_n = 1/(n+1))
+recfy = recfwd(x_n = 1/(n+1))
+
 # In an instance another model reads: the total is the instance's, a mean
 # square.
 inner(x_n) = {
