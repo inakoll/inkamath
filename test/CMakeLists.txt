@@ -192,11 +192,12 @@ target_link_libraries(compile_powers PRIVATE inkamath_warnings
 set_target_properties(compile_powers PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
 add_test(NAME compile_powers COMMAND compile_powers)
 
-# README's host file for pid.h, its C block taken as written there.
+# README's host file for pid.h, the C block that opens '/* pid_host.c', taken
+# as written there.
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/README.md)
 file(READ ${PROJECT_SOURCE_DIR}/README.md readme)
-if(NOT readme MATCHES "```c\r?\n([^`]*)```")
-    message(FATAL_ERROR "README.md has no C block for compile_host")
+if(NOT readme MATCHES "```c\r?\n(/\\* pid_host\\.c[^`]*)```")
+    message(FATAL_ERROR "README.md has no C block opening '/* pid_host.c' for compile_host")
 endif()
 file(CONFIGURE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/compile/pid_host.c CONTENT "${CMAKE_MATCH_1}" @ONLY)
 add_executable(compile_host compile/host_test.c ${CMAKE_CURRENT_BINARY_DIR}/compile/pid_host.c)
@@ -290,7 +291,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          fallback:faraway fallback:voided fallback:covered fallback:ored
                          fallback:spelled fallback:joined fallback:routed fallback:returned
                          fallback:respelled fallback:preceded fallback:defaulted fallback:sentried
-                         fallback:partway pendloop:cart motorloop:motor inner:robot:600
+                         fallback:partway pendloop:cart motorloop:motor pidloop:ctl inner:robot:600
                          lcg:lcgs optional:seen optional:leaned
                          optional:steeped optional:first hessian:k hessian:z hessian:c
                          accum:ol:300)
@@ -421,6 +422,9 @@ set_tests_properties(check_cart_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^cart: 100 steps from 0, against exact values until 0 and inexact ones from there\ncart\\.s: within 0${about}\ncart\\.u: within 0${about}\n$")
 set_tests_properties(check_motor_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^motor: 100 steps from 0, against exact values until 14 and inexact ones from there\nmotor\\.x: within 3\\.6e-15${about}\nmotor\\.e: within 3\\.3e-16${about}\nmotor\\.u: within 1\\.4e-14${about}\n$")
+# README's getting started, compile/pidloop.ink, its report as README shows it.
+set_tests_properties(check_ctl_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^ctl: 100 steps from 0, against exact values\nctl\\.e: within 1\\.1e-16\nctl\\.d: within 1\\.1e-15\nctl\\.s: within 3\\.3e-16\nctl\\.u: within 3\\.3e-16\n$")
 # compile/inner.ink's robot, each flag exact and the guards audited; what
 # libm's tanh decides, by its form: 0 or below 1e-15 by the fail pattern, as
 # a pattern holds no more than 9 groups.
