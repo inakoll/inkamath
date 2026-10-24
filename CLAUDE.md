@@ -19,7 +19,7 @@ If the answer is a file and a line number, that is the whole answer.
 **In code comments.** Comment *why*, never *what*. A comment that restates the
 next line is noise; delete it rather than update it. The exceptions worth
 writing: a non-obvious invariant, a workaround with a reason, a reference to
-the spec or to a section of `README.md`. Every other comment is a smell that
+the spec or to a section of `docs/`. Every other comment is a smell that
 the code should be clearer instead.
 
 **In commit messages.** One line under 72 characters, imperative mood, saying
@@ -88,7 +88,7 @@ purpose.
 
 - Every bug fix lands with a test that fails before it and passes after. For
   interpreter behaviour that means a new entry in the relevant `.ink` file.
-- New `.ink` entries are drawn from `README.md` examples where possible, so
+- New `.ink` entries are drawn from the examples in `docs/` where possible, so
   the documentation and the tests check each other.
 - Unit tests (doctest) are for the containers and helpers; the interpreter
   itself is tested through transcripts. Do not unit-test the AST node classes
