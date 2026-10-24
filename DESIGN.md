@@ -2531,9 +2531,9 @@ is already open and the experiment above took an afternoon; then the tolerance,
 and a prelude behind it. Performance sits outside that order: it is the one
 direction that can end with fewer lines than it started with.
 
----
+## Done since phase 15
 
-## Next in line
+### After phase 13's decimals
 
 After phase 13's decimals and before its step 2: three gaps found by using
 the interpreter, each one commit once specified.
@@ -2554,8 +2554,7 @@ Then phase 13 step 2, the bignum -- done, and the cost exact numbers carry
 turned out not to be a `Number`'s size (see step 2). Then phase 14, the
 evaluator, where the larger gap is.
 
-After phase 14's step 2, with the exact target deferred: the small fixes
-that exploring seven domains asked of the interpreter, by how many asked.
+### From exploring seven domains
 
 - `[done]` **Exactness ran out without a word** (C68).
 - `[done]` **A long recurrence failed at 256 deep** (C69).
@@ -3374,8 +3373,6 @@ that exploring seven domains asked of the interpreter, by how many asked.
   it is a value, C276 brackets it, `(j = k)`. In 16 lines of `latex.hpp`,
   2 of comment, and 5 removed; tex.ink's `stack` holds it, and only
   `layer`'s W and U moved.
-- **A limit exact at an exact fixed point**: k-means reaches `C_3 == C_4`
-  exactly, yet `lim C` is inexact and `frac lim C` refused.
 - `[done]` **Matrix `==` and `<>` compiled**, refused as "a comparison of matrices".
   The interpreter answers `R'*R == I3`, 1 or 0, and rotation and
   estimation models write such checks: the rigid-body exploration's
@@ -4001,8 +3998,6 @@ that exploring seven domains asked of the interpreter, by how many asked.
     not the clause's index.
   - The fold takes exact constants only: `q_(n+1) = q_(n + ~0)` is refused
     as an index approximated, as its shift by hand is.
-- **`--check` says how far a term parts**, not only where it first does: the
-  largest difference and where, as MANIFESTO asks of how a difference grows.
 - `[done]` **`atan`, `atan2`, `asin`, `acos` and `acosh` in the prelude.** Kahan's
   angle formulas cannot be written without atan. Doyle 1978's phase margin
   is the angle of L(iw) at crossover, of which only cos(PM) = -Re L could
@@ -4216,15 +4211,6 @@ that exploring seven domains asked of the interpreter, by how many asked.
   wherever |y| > |x|, not on the y axis alone (C290): atan2(4, 3), asin
   past 1/root 2 and acos within it move, acos(1/2) is correctly rounded
   now, and atan2's worst stays 1.893, at |y| < |x|.
-- **A cell at a computed whole index, compiled**: `T[k,1]` with
-  `k = floor(t/H) + 1`, an ephemeris read at the row a time falls in, is
-  refused as "a cell whose place is not a constant", so Apollo 11's coast
-  takes the Moon and the Sun as inputs, read by the interpreter, where the
-  step could read its table itself. Compile it as a C array read, NaN
-  where the index is no whole number within the table, where the
-  interpreter refuses. A gather, `X[idx[s,k], c]` with `idx` an input
-  (PointNet++, from an external review), is the same read.
-- **An instance named again**, `a = thm1.adam`, then `a.x_1`.
 - `[done]` **A constant folded from an approximated number, listed** (C395): `--compile`
   folds `(2^4000 > 2^3999)` to 0.0 and `3^3000/3^2999` to NAN silently,
   where the interpreter marks them, and its header lists nothing.
@@ -4239,8 +4225,6 @@ that exploring seven domains asked of the interpreter, by how many asked.
   inexact numbers is folded in double and written as a float, so a machine
   epsilon loop puts 2^-53 into a float header and checks "within 0". Refuse
   it, or name it in the header.
-- **`--check` names the parameters the target rounds**, so a parameter no
-  float holds (Goldberg's 4.53) is not read as the step's own error.
 - `[done]` **`--check` quotes an inexact term with its `~`**: its reports print the
   interpreter's terms bare, "where the interpreter gives
   0.10000000000000001", where the REPL marks them since C240. The check
@@ -4250,12 +4234,6 @@ that exploring seven domains asked of the interpreter, by how many asked.
   stays bare. In 17 lines of `check.hpp` and 9 removed. Only that word
   moved, in eight reports: `needled`, `outside`, and in float `steep`,
   `peak`, `rounded`, `surprise`, `needle` and `naive`.
-- **Refuse a repetition that adds nothing, in every context**: an index name
-  repeated in a size (`x_n[j<=2, j<=2]` in a model's input,
-  `M[j<=n, j<=n]` in a signature), a parameter or default written twice, a
-  size stated twice. Accepting such a repetition is an artifact of the
-  implementation, not a meaning, and hides the slip it usually is (`j, j`
-  meant `j, k`). Low priority.
 - `[done]` **Temporaries in a limit's function.** C140 shares a step's nested
   calls, but a limit's function has no temporaries, so its terms are
   written out whole: a Riccati limit through `ric(ric(P))` is 163 MB of
@@ -5232,18 +5210,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   calls with the name past the instance's. 13 lines, 25 added and 12
   removed in `check.hpp`, 1 of them comment, 3 over the prototype's;
   18,567 lines in all, 18,554 at 28bbb18.
-- **`--check`'s remainder of a limit assumes linear convergence**: C36's
-  step*r/(1-r) reads the ratio of two steps, pessimistic for Newton's
-  quadratic convergence, whose last step is far below the one before.
 - `[done]` **`tex` of a local definition**, refused as "tex cannot show a local
   definition": print it as written, `(z = …)`, as Robertson's Newton
   iteration names its iterate. A local by cells, which a paper would not
   write inline, is refused as one, "tex cannot show a local by cells". In
   6 lines of `latex.hpp`, 1 of comment, and 2 removed; tex.ink's `nr` and
   `lc` hold it, and no other answer moved.
-- **The first index where a condition holds**, as a query: where the
-  explicit step's stability limit -2/lam passes h, found by bisecting
-  terms by hand. Minor.
 - `[done]` **An exact root of a perfect power**: `25^(1/2)` is `~5` and
   `(4/9)^(1/2)` `~0.666666667`, where the root is a rational, so every
   truss whose lengths come from its coordinates goes inexact and
@@ -5373,15 +5345,6 @@ that exploring seven domains asked of the interpreter, by how many asked.
   about 30, 6 of them comment: `number.hpp` 40, `compile.hpp` 1. 16,071
   lines in all, with integration; 45 after C285's 3 and C286's 1,
   `number.hpp` 43 and `compile.hpp` 2, and 16,075 in all.
-- **Plain definitions remembered**, specified as the language change
-  phase 14 called it when it rejected memoising them (*Rejected: memoising
-  a plain definition*). A plain definition is computed again at each read, so a
-  stiffness matrix with its supports struck by cells, reading an assembled
-  `K` at each, assembles K again for every cell; passing K as a parameter,
-  `bc(K, fx)`, evaluates it once and was ten times faster exploring finite
-  elements, an idiom no paper writes. The cost is phase 14's: a remembered
-  value skips its body's steps, so `sum_(k=1)^400 A*A` would answer where it
-  gives up.
 - `[done]` **A base clause reading another sequence's base at its own index**:
   with `v_0 = 0`, `a_0 = v_0`, `a_n = v_(n-1)` and `v_n = a_n`, the
   interpreter answers and `--compile` refuses a, "it and the terms it reads
@@ -5561,136 +5524,6 @@ that exploring seven domains asked of the interpreter, by how many asked.
   slice to a subscript and to the bounds. The compiler refuses a tensor
   value, a tensor literal, three indices and a definition by three indices
   alike, `cannot compile y: a tensor`. 222 lines of sources.
-
-- `[partly done]` **The evaluator's speed, specified** before any of it is
-  built: phase 14's step 1 resumed, with no change to the language. Training a
-  logistic regression by `grad` on 200 rows read from a file takes 1.9 s, by
-  the gradient written by hand 0.28 s, and a file of thousands of rows is now
-  writable. Six workloads are in `bench/`, each a transcript, so that a faster
-  wrong answer fails rather than measures: `deep`, `d_200000` filled from its
-  base; `limit`, 3000 limits of `s(a)_n = s(a)_(n-1)*~0.5 + a`, each argument
-  a new sequence; `harmonic`, 400 harmonic numbers exactly; `matrix`, 100
-  products of 20x20 matrices defined by their cells, one of them of fractions;
-  and `hand` and `grad`, 20 steps of the training above, which end on the same
-  weights. Their data is `bench/train.ink`, committed, with the Python that
-  wrote it in its comment, so nothing is generated at build time. `cmake
-  --build build --target bench` replays each under callgrind, or by the clock,
-  best of five, without valgrind; it is not a test, so nothing gates on it.
-  The baseline is master at 43e9fb5, GCC 13.3, RelWithDebInfo, a shared 2.1
-  GHz Xeon:
-
-  | | instructions | clock | where they go |
-  |---|---|---|---|
-  | `deep` | 835M | 86 ms | flat: 4,200 a term, no function over 5% |
-  | `limit` | 1,123M | 127 ms | 20% building memo keys as strings |
-  | `harmonic` | 860M | 75 ms | the bignum: gcd and allocation |
-  | `matrix` | 862M | 136 ms | 65% the products, 33% `A` and `B` rebuilt cell by cell for each |
-  | `hand` | 2,475M | 246 ms | 86% rebuilding `X` and `y` |
-  | `grad` | 19,003M | 1,762 ms | 38% the same literals, 27% `grad`'s dispatch |
-
-  The profile ordered the work again. `X[r]` evaluates the whole literal `X`
-  to take one row of it, so a step of training is quadratic in the rows, and
-  that, not the tree walk, is most of the training's time. The order, each
-  step measured on the workloads before the next:
-
-  1. **A literal of numbers built once**, kept in its node at its first
-     evaluation that succeeds, and a constant to `grad`. A prototype of 14
-     lines took `hand` to 426M and `grad` to 11,862M, moved nothing else, and
-     left every golden as it was. It reads no name, so it never took a step,
-     and caching it moves no budget. Not folded when parsed: `tex` and the
-     compiler read the literal as written, and `[1/0]` fails where it is read,
-     every time.
-  2. **`grad` dispatched by one virtual call** rather than a chain of up to
-     twenty `dynamic_cast`s per node, which with the type names they compare
-     are 42% of what `grad` has left after step 1. No node class derives from
-     another, so the chain's order decides nothing.
-  3. **A memo key compared without building a string**: an argument's value
-     encoded, its extent written out by `to_string`, at every call. Equality
-     stays exact, so two calls share an entry where they do today.
-  4. **A row or cell of a named matrix read without copying it.** After step
-     1 a read still copies all of `X`, so training stays quadratic; this makes
-     it linear. Reading the file is quadratic too, outside the evaluator:
-     `Statements` counts the brackets of the whole statement again at each
-     line of a literal, so `use train` alone is 85M, a fifth of what step 1
-     leaves of `hand`, and 4,823M for 1,600 rows. Counting each line's
-     brackets as it is read, three lines, took that to 66M in a trial.
-  5. **Slots, then closures**, for the flat remainder of `deep`, `limit` and
-     `matrix`'s cells, as step 1 planned: slots were measured at six per cent
-     at most and come with the symbol table closures need. A slot belongs
-     to a scope rather than to a node, and only to a name its body never
-     binds: an instance's body is one tree read from every instance, and
-     `g(x) = (x > 0 and (c = 2)) + c` reads its own `c` or the global one
-     by the branch it took.
-
-  The targets, in instructions against the table: `hand` a fifth after step
-  1 and a tenth after step 4; `grad` 7,500M after step 2; `limit` 950M after
-  step 3; after step 5, `deep` and `limit` a third of what they take when
-  step 4 lands, the low end of the 3-10x quoted above since a `Number` costs
-  what it costs, and `matrix` 700M, its cells a third and its products as
-  they are. No step may make any workload more than one per cent worse,
-  which is what `harmonic` is for. Each commit gives its
-  workloads' counts before and after; the clock is reported beside them and
-  is evidence only where callgrind agrees. A step that misses its target is
-  recorded here with its numbers, not forced.
-
-  What must not move: every golden, the README and every expected header,
-  byte for byte, and every test, under the sanitizers too. The budget takes
-  a step at every reference and every term a series or `grad` walks, as
-  now, so a line gives up at the same step and nests as deep before it
-  fails; a cache that skips steps is a language change. The deepest line the
-  limits accept still fits the stack, in MSVC's Debug build and under the
-  sanitizers (C20, C63): a visitor or a closure changes what a level costs,
-  so a walk a step rewrites is tested at the limit. The memo remembers
-  the same calls and only those, evicts in the same two generations, is
-  cleared where it is now, and stores nothing that threw. An error is the
-  same message, and the first one raised: operands are evaluated in the
-  order they are today. `?`, `tex`, `--compile` and `--check` read the
-  parsed tree, which stays; closures are beside it and cleared with the
-  memo.
-
-  Rejected: memoising a plain definition, one line that would have done
-  most of step 1 and `matrix`'s cells besides; but a hit skips the steps
-  its body took, so `sum_(k=1)^400 A*A`, which today gives up after a
-  million steps, would answer. That is a language change and would be
-  specified as one. A scalar unwrapped stays dropped, as step 1 measured.
-  Benchmarks in ctest would gate on noise, and by the clock alone on layout.
-
-  Built to step 4, and stopped before step 5. The baseline was measured
-  again on the tensors' value type, and each step judged against it; the
-  clock is the best of five:
-
-  | | baseline | final | clock |
-  |---|---|---|---|
-  | `deep` | 859M | 861M | 84 to 80 ms |
-  | `limit` | 1,181M | 878M | 138 to 104 ms |
-  | `harmonic` | 864M | 863M | 75 to 74 ms |
-  | `matrix` | 937M | 937M | 137 to 135 ms |
-  | `hand` | 2,760M | 93M | 285 to 12 ms |
-  | `grad` | 20,155M | 5,689M | 1,827 to 540 ms |
-  | `read` | 85M | 10M | 11 to 3 ms |
-
-  The file read came first: a statement's brackets are counted line by
-  line, and `read`, `train.ink` alone, is a seventh workload so that the
-  quadratic shows if it comes back; 1,600 rows went from 4,153M to 58M.
-  Step 1 kept a literal whose cells are all numbers, its padding included,
-  in its node: `hand` 357M and `grad` 11,966M. Step 2 picks `grad`'s rule
-  by the node's exact `typeid`, each node class `final` so that none is
-  missed: `grad` 7,533M, 33M short of its target, since libstdc++ compares
-  two different types by their names. Step 3 keys the memo by the arguments
-  themselves, compared bit for bit as the string was; the key owns the
-  call's arguments, since copying them cost `deep` nearly five per cent:
-  `limit` 878M. Step 4 reads a cell or a row of a name defined by a literal
-  of numbers where step 1 keeps it, for the step the name's evaluation
-  takes: `hand` 93M and `grad` 5,689M.
-
-  Step 5 is stopped. Finding a name is now 1.7% of `deep` and 1.2% of
-  `limit`, which is all a slot can save, and a slot that survives both
-  conflicts above still asks the frame first, which is most of a lookup
-  now. Closures are a rewrite of the evaluator, and of every walk tested at
-  the depth limit, for what is left of `deep` and `limit`: flat, the
-  scalar `Matrix` around each `Number` and the memo, no function over 5%.
-  `matrix` is its products, 65%, and `A` and `B` rebuilt cell by cell,
-  33%, which only the memo rejected above would remove.
 
 - `[done]` **`grad` of a definition by cells**, so that attention trains more
   than `W^V` and `W^O`. Softmax, a ReLU on each cell and a layer norm are
@@ -9245,24 +9078,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   program and header byte for byte. 72 lines of sources where about 50
   were planned: `check.hpp` 68, `reference.hpp` 3, `reference_stack.hpp`
   1. 15,656 lines in all.
-- **A comparison taken as a value, straddled.** `g_n = y_n >= 1/2 - w` is
-  `tie` with no clause, and keeps its "about 1" with no word of why after
-  the straddle above. Hearing it is a hook in the evaluator's every
-  comparison, told apart from a guard's, paired by order within an ask as a
-  function's guard is, and a wording for an expression no clause quotes:
-  more than the five lines it was allowed, so left for its own entry.
-- **A straddle that changes how many calls a run makes.** Since C253 a
-  run's calls of a function are paired with the interpreter's only where
-  it made as many, as a call remembered by its arguments is not heard: in
-  `x_n = lim t(y_n)` with `t(a)_k = t(a)_(k-1) + H(a - (1/2 - w))/2^k`,
-  tie's straddle in H, the run moved up rounds H's argument two ways and
-  calls H twice where the interpreter calls it once, and nothing is said.
-  Hearing a remembered call, or pairing calls by their arguments, would say
-  it.
 
-After transcribing a small convolutional network (Goodfellow, Bengio and
-Courville 2016, §9.5; LeCun et al. 1998, §II.B), its training compiled and
-checked: what it asked of the compiler, each with its smallest change.
+### From a convolutional network
 
 - `[done]` **A compiled gradient with respect to a tensor**, "a derivative with
   respect to a tensor, for now": the seed of three indices *Tensors
@@ -9361,22 +9178,11 @@ checked: what it asked of the compiler, each with its smallest change.
   10 s at GCC -O2, as specified. Every golden and recorded header byte for
   byte. 6 lines added and 8 removed in `compile.hpp`, as planned: 16,252
   lines in all, 16,254 at 8b5279d.
-- **A read between slow sequences of one period and phase**, refused since
-  C233 as one at another rate read by another: a minibatch as time, each
-  term of the weights reading two consecutive samples, trains its weights
-  as slow sequences that read each other at `m-1`. Where both tick at the
-  same steps, the read is a lag in the reader's own terms, as its own
-  history is; about 15 lines in `Rate`, the hold at the input's rate still
-  the answer for another period.
 - `[done]` **A tensor term under a guard that is not a constant**, `A_n[b,o,p] |
   Z_n[b,o,p] > 0`, "a tensor's cells under a guard that is not a constant,
   for now": a batched ReLU as a term rather than a call. Tested at run time
   cell by cell as a matrix term's guards are, `--check` naming the clause by
   slice, row and column: C404.
-- **Single values met by a matrix compiled**, a per-channel bias `T + [1/2;;
-  -1/2]`, "a tensor whose slices are single values met by a matrix, for
-  now": each slice's value stretched over the other's cells in `Cellwise`, as
-  the interpreter's arithmetic does; a few lines.
 - `[done]` **`grad` through a local**, "grad cannot differentiate a local
   definition yet": `(z = Q*P) ...` written once in a loss must be a call
   instead. The CNN exploration passed every layer's parameters down, or
@@ -9796,12 +9602,6 @@ checked: what it asked of the compiler, each with its smallest change.
   byte for byte, the reports of all 232 check programs, regenerated before
   and after, identical, and `train` 38,617 bytes to 40,041 as measured.
   16,266 lines in all, 16,252 at d041418.
-- **No disturbed runs where the exact run is exact throughout**, an
-  oracle change: `--check` runs the interpreter three times more, its
-  roundings and limits disturbed, and a run with no inexact term has none
-  to disturb. On the forward-mode header's prototype, `saliency`'s 100
-  steps take 7.7 s of `--check`, 0.16 of them compiling, and the three
-  runs three quarters of the rest.
 - `[done]` **A maximum, minimum or argmax over an index**, `max_(i=1)^n` as a sum
   is written: max-pooling over a window is nested `max` calls today, and a
   transformer's held-out accuracy had to be written `prod_(v=1)^nv
@@ -9953,9 +9753,6 @@ checked: what it asked of the compiler, each with its smallest change.
   noun is. `reduce.ink` holds 87 entries. 175 lines net, 206 added and 31
   removed: the node 56, the compiler 43, grad 52, the parser 15, the
   evaluator 6, tex 3; 18,510 in all.
-- **The compiled sum's thousand terms**: a LeNet-sized layer's dot product
-  over a batch would pass `max_terms`, which bounds an unrolled sum written
-  as lines of C, not a loop.
 - `[done]` **A gradient with respect to several names at once**, the nabla's
   `∇_θ`: training a transformer took 13 grads of 15 arguments, one per
   weight, each an evaluation and a sweep of its own. At a206c5d,
@@ -10178,9 +9975,6 @@ checked: what it asked of the compiler, each with its smallest change.
   compiler, in 15 lines, 2 of comment, and 4 removed. Only that message moved, in
   matrices.ink and tensor.ink; `compile_unmet` in `test/cli.cmake` holds
   the compiler's.
-- **Layer norm by cells, a README example**: the exploration wrote five
-  definitions, row statistics split out by hand; `transformer.ink` needs
-  two. Deferred with the README.
 - `[done]` **A bare number is exact, and a truth read from a double is
   not** (C240, C241). `~` says only that the digits shown are not all of the value, so
   `~0.5`, `dhinf(1/2, 1, 1)` and `rho([0 1; 0 0])` print `0.5`, `2` and `0`,
@@ -10990,26 +10784,8 @@ checked: what it asked of the compiler, each with its smallest change.
   alone, beside another build: `reverse_memo.ink` 49 to 51 s down to 35 to
   38, its 120 kept and its comment's figure updated; `fastgrad.ink` 11.5
   down to 8.3, and `fastgrad_long.ink` 27 to 28 down to 21 to 22.
-- **A jet without its heap vector**, a part inline for one grad: after
-  grad's cost per term the largest share left, copies of jets in half the
-  sanitizer build's samples, but every function of `derivative.hpp` takes
-  one, hundreds of lines. What `reverse_memo.ink` would need to rejoin
-  `reverse.ink`. The exploration of the interpreter compiled, queued, may
-  subsume it.
-- **Forward mode's "no path"**: a pass cannot tell a cell no path
-  reaches from a part computed to be exactly 0, so C324's products leave
-  both out and a `~` marks both, and the inexact-~0 case stays NaN:
-  `grad_(v = [800 1]) grad_(w = 1) w*v[1,2]/(1/exp(v[1,1]))` is
-  `[-nan, -nan]` for reverse mode's `[-nan, ~inf]`, expk's `~` making the
-  pass's exact 0 a ~0 that meets exp's inf. Keeping an exact 0 through
-  `~` gives `[-nan, ~inf]` and moves gradcells.ink:495 to reverse mode's
-  `[1, ~inf]`, but drops a mark reverse mode keeps: `grad_(t = 1)
-  ~(t - t)` would be 0 for ~0. A fix gives a seed's 0 cells no part at
-  all, which touches C73's checks of whether a part is there.
 
-After exploring rotations and rigid bodies (Sola 2017; Featherstone 2008)
-and transcribing the contact-aided invariant EKF (Hartley et al. 2020): what
-they asked, each with its smallest change.
+### From rotations, rigid bodies and the invariant EKF
 
 - `[done]` **Recursion from the tip**, a sequence with parameters read ahead to a
   guard. Featherstone writes each backward pass over a chain as a sequence
@@ -11448,13 +11224,11 @@ they asked, each with its smallest change.
   2,983 bytes for 3,172. No report moves; of the check programs,
   `sums.ink`'s `summed` alone. 21 lines of `compile.hpp`, 38 added and 17
   removed, 6 of them comment.
-- **Products by a literal 0.0 kept for NaN, and block-sparse matrices
-  multiplied dense**: 5.1k of the 12-state filter's 21k products, its header
-  638 KB. Does not join *Shared at every value written twice*: dropped,
-  a zero's sign and an infinity's NaN go, which the interpreter keeps.
 - `[done]` **A parameter with no default compiled as a single value** is named by
   its refusal where read, but not through a function's parameter, as the
   filter's `blk(X_n)` reads `X0`. Follow the call's argument: C362.
+
+### From the external review of 2026-10-12
 
 After an external review of README, MANIFESTO and the conformance suite
 (2026-10-12): its directions, ranked. Its open questions are in
@@ -12600,8 +12374,7 @@ After an external review of README, MANIFESTO and the conformance suite
   `or` that never read its limit, `ored`, lost its value's status: a
   correct answer outweighs two lines, and the first-read order four.
 
-After a second review (2026-10-13), which took the Jacobian by cells and
-the clause for a limit that does not converge as done, the order from here:
+### From the second review of 2026-10-13
 
 - `[done]` **`--check` lists each guard that reads a limit, with the clause
   taken where it runs out**, so that a reviewer can audit the fallback's
@@ -12615,11 +12388,6 @@ the clause for a limit that does not converge as done, the order from here:
 - `[done]` *A split step's scratch in the model struct*, above. Increments
   4 and 5 of the loops stay deferred on its measures, by the owner, `tf`'s
   stack 18,960 bytes after it.
-- The gather, integer and optional inputs, and exact discretisation, below;
-  optional inputs and exact discretisation `[done]`.
-
-- **A gather and integer inputs**: their open questions first. The gather
-  is *A cell at a computed whole index, compiled*.
 - `[done]` **Optional inputs**, MANIFESTO's open question: how a signature declares
   an input present on some steps only, and what the static check then
   proves of what reads it. The end-to-end exploration's robot carried its
@@ -12975,15 +12743,6 @@ the clause for a limit that does not converge as done, the order from here:
   every step, as interpreted: the model without one of its sensors, the
   robot's filter with no fix, where it is refused today, "e.z is an input
   nothing gives"; about 10 to 15 lines: C399, in 11.
-- **A definition the host implements**, as the C-hook study sketched:
-  `--compile nav.ink nav --host qp` names it, with no syntax; the header
-  declares `int nav_qp(const double H[4], const double f[2], double
-  out_[2])`, 1 where it answered, and a guard reading it asks its status
-  of kind *fails*, as one reading a limit asks *runs out*. `--check`
-  interposes, holds each answer to the inkamath definition within a
-  tolerance and checks that both fail together. About 200 lines; deferred
-  until an entry needs it, likely one calling a QP solver, OSQP or HPIPM,
-  from the step.
 - `[done]` **grad's order, `grad_(x = a)^n body`, and second derivatives compiled.**
   A Lagrangian's mass matrix, a Newton step and a KKT system's Hessian need
   second derivatives. The interpreter has them by nesting, with respect to
@@ -13138,31 +12897,14 @@ the clause for a limit that does not converge as done, the order from here:
   `test/compile/motorloop.ink` and `pendloop.ink`, Van Loan's block a
   fixed-count series. An unbounded `expm` dropped by the owner, and the
   prelude not needed.
-- **A short tutorial path** through the conformance models, README being a
-  reference manual where its readers are students.
-- Not taken: **the epistemic level carried internally now**, with nothing
-  to read it before a C API (`CLAUDE.md` §2); its question is in MANIFESTO.
 
-Its robotics entries, each where it forces something new:
+### The second review's robotics entries
 
-- **An EKF on SO(3)**, its exp map a fixed-count partial sum: F and H as
-  Jacobians by cells.
 - `[done]` **A small MPC with a fallback clause**: the non-convergence
   clause, `test/compile/fallback.ink`'s `planned`.
-- **A visual-inertial filter over merged timestamped events**: inputs
-  present on some steps only.
-- **Range-image ground segmentation and label propagation**: reductions
-  over an index; at a sensor's size, loops.
-- **PointNet**, then one **PointNet++ set-abstraction layer** whose
-  indices the host computes: max over points, then the gather and integer
-  inputs; at real scale, loops.
 
-After a study of hosting a compiled model from Python, and an external
-review:
+### From hosting a compiled model from Python
 
-- **Structured diagnostics**: `--check` and `--compile` failures in a form
-  a program reads, with shapes, whether a value was approximated, and
-  source locations, for agents and CI. Found by an external review.
 - `[done]` **A tolerance floor for small limits**: below 1 the tolerance is the
   absolute 1e-10, so `lim N(2/10^20)` is 19% off. A floor scaled by where
   the walk starts, perhaps; a design question first. Ruled by the owner:
@@ -13198,17 +12940,13 @@ review:
   - the agent experiment's design, outside the repository, when the
     owner chooses.
 
-After a §9 exploration of the CTM tutorials' motor speed and inverted
-pendulum (`test/data/ctms.ink`, `test/compile/pendloop.ink` and
-`motorloop.ink`), its friction:
+### From the CTM motor speed and inverted pendulum
 
 - `[done]` **Polynomial helpers in the prelude** beside `charpoly`: `conv`,
   `polyval` (below) and padding to a length, which every transfer function
   needs, padding being a block literal, `[0; q]`.
 - `[done]` **Complex `roots` by Durand-Kerner**, in the interpreter only
   (below).
-- **`care` and `dare` beside `hinf`**: the sign of the Hamiltonian and the
-  doubling algorithm, which each test now carries in five to seven lines.
 - `[done]` **`lim`'s refusal for a limit that does not converge states the ratio it
   measured** and suggests a fixed count instead: "w did not converge
   within 100 terms (last term ~1.63508193, its steps in a ratio of 0.98);
@@ -13218,11 +12956,8 @@ pendulum (`test/data/ctms.ink`, `test/compile/pendloop.ink` and
   were. Only that message moved: README's two, in approximated.ink,
   robot_loop.ink, sequences.ink, tolerance.ink and unconverged.ink, and
   `crawl`'s and `blast`'s reports.
-- **README teaches the zero-order hold by Van Loan's block** with a
-  fixed-count series, and the Riccati equation by doubling.
-- On hold, by the owner: **a tutorial chapter from these two series**,
-  which the exploration found enough for *a short tutorial path*. No CTM
-  tutorial is ported, for attribution.
+
+### From the CTM tutorials
 
 After a §9 transcription of the CTM tutorials (branch `ctms`), which wrote
 a product of polynomials or a value of one on nearly every page:
@@ -13588,6 +13323,311 @@ for, which `eig` refuses complex:
   to 9, all 722 real roots printed real, every root within 4.9e-9 of
   mpmath's, and none refused.
 
+### From the end-to-end robot loop
+
+- `[done]` **"No clause of x applies" names neither the instance nor the index.**
+  It names the term, `no clause of bot.g.z_301 applies`, in 6 lines and 5
+  removed. Only that message moved: in approximated.ink, eig.ink,
+  history.ink, inner.ink and optinputs.ink, and in `trim`'s and `held`'s
+  reports, which name `trim.r` and `held.r`.
+- `[done]` **MANIFESTO's *Data* line on an LCG needs a qualifier**: with glibc's
+  constants, the products pass 2^53 and a run in doubles parts from the
+  exact one at step 2.
+
+---
+
+## Next in line
+
+After phase 14's step 2, with the exact target deferred: the small fixes
+that exploring seven domains asked of the interpreter, by how many asked.
+
+- **A limit exact at an exact fixed point**: k-means reaches `C_3 == C_4`
+  exactly, yet `lim C` is inexact and `frac lim C` refused.
+- **`--check` says how far a term parts**, not only where it first does: the
+  largest difference and where, as MANIFESTO asks of how a difference grows.
+- **A cell at a computed whole index, compiled**: `T[k,1]` with
+  `k = floor(t/H) + 1`, an ephemeris read at the row a time falls in, is
+  refused as "a cell whose place is not a constant", so Apollo 11's coast
+  takes the Moon and the Sun as inputs, read by the interpreter, where the
+  step could read its table itself. Compile it as a C array read, NaN
+  where the index is no whole number within the table, where the
+  interpreter refuses. A gather, `X[idx[s,k], c]` with `idx` an input
+  (PointNet++, from an external review), is the same read.
+- **An instance named again**, `a = thm1.adam`, then `a.x_1`.
+- **`--check` names the parameters the target rounds**, so a parameter no
+  float holds (Goldberg's 4.53) is not read as the step's own error.
+- **Refuse a repetition that adds nothing, in every context**: an index name
+  repeated in a size (`x_n[j<=2, j<=2]` in a model's input,
+  `M[j<=n, j<=n]` in a signature), a parameter or default written twice, a
+  size stated twice. Accepting such a repetition is an artifact of the
+  implementation, not a meaning, and hides the slip it usually is (`j, j`
+  meant `j, k`). Low priority.
+- **`--check`'s remainder of a limit assumes linear convergence**: C36's
+  step*r/(1-r) reads the ratio of two steps, pessimistic for Newton's
+  quadratic convergence, whose last step is far below the one before.
+- **The first index where a condition holds**, as a query: where the
+  explicit step's stability limit -2/lam passes h, found by bisecting
+  terms by hand. Minor.
+- **Plain definitions remembered**, specified as the language change
+  phase 14 called it when it rejected memoising them (*Rejected: memoising
+  a plain definition*). A plain definition is computed again at each read, so a
+  stiffness matrix with its supports struck by cells, reading an assembled
+  `K` at each, assembles K again for every cell; passing K as a parameter,
+  `bc(K, fx)`, evaluates it once and was ten times faster exploring finite
+  elements, an idiom no paper writes. The cost is phase 14's: a remembered
+  value skips its body's steps, so `sum_(k=1)^400 A*A` would answer where it
+  gives up.
+- `[partly done]` **The evaluator's speed, specified** before any of it is
+  built: phase 14's step 1 resumed, with no change to the language. Training a
+  logistic regression by `grad` on 200 rows read from a file takes 1.9 s, by
+  the gradient written by hand 0.28 s, and a file of thousands of rows is now
+  writable. Six workloads are in `bench/`, each a transcript, so that a faster
+  wrong answer fails rather than measures: `deep`, `d_200000` filled from its
+  base; `limit`, 3000 limits of `s(a)_n = s(a)_(n-1)*~0.5 + a`, each argument
+  a new sequence; `harmonic`, 400 harmonic numbers exactly; `matrix`, 100
+  products of 20x20 matrices defined by their cells, one of them of fractions;
+  and `hand` and `grad`, 20 steps of the training above, which end on the same
+  weights. Their data is `bench/train.ink`, committed, with the Python that
+  wrote it in its comment, so nothing is generated at build time. `cmake
+  --build build --target bench` replays each under callgrind, or by the clock,
+  best of five, without valgrind; it is not a test, so nothing gates on it.
+  The baseline is master at 43e9fb5, GCC 13.3, RelWithDebInfo, a shared 2.1
+  GHz Xeon:
+
+  | | instructions | clock | where they go |
+  |---|---|---|---|
+  | `deep` | 835M | 86 ms | flat: 4,200 a term, no function over 5% |
+  | `limit` | 1,123M | 127 ms | 20% building memo keys as strings |
+  | `harmonic` | 860M | 75 ms | the bignum: gcd and allocation |
+  | `matrix` | 862M | 136 ms | 65% the products, 33% `A` and `B` rebuilt cell by cell for each |
+  | `hand` | 2,475M | 246 ms | 86% rebuilding `X` and `y` |
+  | `grad` | 19,003M | 1,762 ms | 38% the same literals, 27% `grad`'s dispatch |
+
+  The profile ordered the work again. `X[r]` evaluates the whole literal `X`
+  to take one row of it, so a step of training is quadratic in the rows, and
+  that, not the tree walk, is most of the training's time. The order, each
+  step measured on the workloads before the next:
+
+  1. **A literal of numbers built once**, kept in its node at its first
+     evaluation that succeeds, and a constant to `grad`. A prototype of 14
+     lines took `hand` to 426M and `grad` to 11,862M, moved nothing else, and
+     left every golden as it was. It reads no name, so it never took a step,
+     and caching it moves no budget. Not folded when parsed: `tex` and the
+     compiler read the literal as written, and `[1/0]` fails where it is read,
+     every time.
+  2. **`grad` dispatched by one virtual call** rather than a chain of up to
+     twenty `dynamic_cast`s per node, which with the type names they compare
+     are 42% of what `grad` has left after step 1. No node class derives from
+     another, so the chain's order decides nothing.
+  3. **A memo key compared without building a string**: an argument's value
+     encoded, its extent written out by `to_string`, at every call. Equality
+     stays exact, so two calls share an entry where they do today.
+  4. **A row or cell of a named matrix read without copying it.** After step
+     1 a read still copies all of `X`, so training stays quadratic; this makes
+     it linear. Reading the file is quadratic too, outside the evaluator:
+     `Statements` counts the brackets of the whole statement again at each
+     line of a literal, so `use train` alone is 85M, a fifth of what step 1
+     leaves of `hand`, and 4,823M for 1,600 rows. Counting each line's
+     brackets as it is read, three lines, took that to 66M in a trial.
+  5. **Slots, then closures**, for the flat remainder of `deep`, `limit` and
+     `matrix`'s cells, as step 1 planned: slots were measured at six per cent
+     at most and come with the symbol table closures need. A slot belongs
+     to a scope rather than to a node, and only to a name its body never
+     binds: an instance's body is one tree read from every instance, and
+     `g(x) = (x > 0 and (c = 2)) + c` reads its own `c` or the global one
+     by the branch it took.
+
+  The targets, in instructions against the table: `hand` a fifth after step
+  1 and a tenth after step 4; `grad` 7,500M after step 2; `limit` 950M after
+  step 3; after step 5, `deep` and `limit` a third of what they take when
+  step 4 lands, the low end of the 3-10x quoted above since a `Number` costs
+  what it costs, and `matrix` 700M, its cells a third and its products as
+  they are. No step may make any workload more than one per cent worse,
+  which is what `harmonic` is for. Each commit gives its
+  workloads' counts before and after; the clock is reported beside them and
+  is evidence only where callgrind agrees. A step that misses its target is
+  recorded here with its numbers, not forced.
+
+  What must not move: every golden, the README and every expected header,
+  byte for byte, and every test, under the sanitizers too. The budget takes
+  a step at every reference and every term a series or `grad` walks, as
+  now, so a line gives up at the same step and nests as deep before it
+  fails; a cache that skips steps is a language change. The deepest line the
+  limits accept still fits the stack, in MSVC's Debug build and under the
+  sanitizers (C20, C63): a visitor or a closure changes what a level costs,
+  so a walk a step rewrites is tested at the limit. The memo remembers
+  the same calls and only those, evicts in the same two generations, is
+  cleared where it is now, and stores nothing that threw. An error is the
+  same message, and the first one raised: operands are evaluated in the
+  order they are today. `?`, `tex`, `--compile` and `--check` read the
+  parsed tree, which stays; closures are beside it and cleared with the
+  memo.
+
+  Rejected: memoising a plain definition, one line that would have done
+  most of step 1 and `matrix`'s cells besides; but a hit skips the steps
+  its body took, so `sum_(k=1)^400 A*A`, which today gives up after a
+  million steps, would answer. That is a language change and would be
+  specified as one. A scalar unwrapped stays dropped, as step 1 measured.
+  Benchmarks in ctest would gate on noise, and by the clock alone on layout.
+
+  Built to step 4, and stopped before step 5. The baseline was measured
+  again on the tensors' value type, and each step judged against it; the
+  clock is the best of five:
+
+  | | baseline | final | clock |
+  |---|---|---|---|
+  | `deep` | 859M | 861M | 84 to 80 ms |
+  | `limit` | 1,181M | 878M | 138 to 104 ms |
+  | `harmonic` | 864M | 863M | 75 to 74 ms |
+  | `matrix` | 937M | 937M | 137 to 135 ms |
+  | `hand` | 2,760M | 93M | 285 to 12 ms |
+  | `grad` | 20,155M | 5,689M | 1,827 to 540 ms |
+  | `read` | 85M | 10M | 11 to 3 ms |
+
+  The file read came first: a statement's brackets are counted line by
+  line, and `read`, `train.ink` alone, is a seventh workload so that the
+  quadratic shows if it comes back; 1,600 rows went from 4,153M to 58M.
+  Step 1 kept a literal whose cells are all numbers, its padding included,
+  in its node: `hand` 357M and `grad` 11,966M. Step 2 picks `grad`'s rule
+  by the node's exact `typeid`, each node class `final` so that none is
+  missed: `grad` 7,533M, 33M short of its target, since libstdc++ compares
+  two different types by their names. Step 3 keys the memo by the arguments
+  themselves, compared bit for bit as the string was; the key owns the
+  call's arguments, since copying them cost `deep` nearly five per cent:
+  `limit` 878M. Step 4 reads a cell or a row of a name defined by a literal
+  of numbers where step 1 keeps it, for the step the name's evaluation
+  takes: `hand` 93M and `grad` 5,689M.
+
+  Step 5 is stopped. Finding a name is now 1.7% of `deep` and 1.2% of
+  `limit`, which is all a slot can save, and a slot that survives both
+  conflicts above still asks the frame first, which is most of a lookup
+  now. Closures are a rewrite of the evaluator, and of every walk tested at
+  the depth limit, for what is left of `deep` and `limit`: flat, the
+  scalar `Matrix` around each `Number` and the memo, no function over 5%.
+  `matrix` is its products, 65%, and `A` and `B` rebuilt cell by cell,
+  33%, which only the memo rejected above would remove.
+
+- **A comparison taken as a value, straddled.** `g_n = y_n >= 1/2 - w` is
+  `tie` with no clause, and keeps its "about 1" with no word of why after
+  the straddle above. Hearing it is a hook in the evaluator's every
+  comparison, told apart from a guard's, paired by order within an ask as a
+  function's guard is, and a wording for an expression no clause quotes:
+  more than the five lines it was allowed, so left for its own entry.
+- **A straddle that changes how many calls a run makes.** Since C253 a
+  run's calls of a function are paired with the interpreter's only where
+  it made as many, as a call remembered by its arguments is not heard: in
+  `x_n = lim t(y_n)` with `t(a)_k = t(a)_(k-1) + H(a - (1/2 - w))/2^k`,
+  tie's straddle in H, the run moved up rounds H's argument two ways and
+  calls H twice where the interpreter calls it once, and nothing is said.
+  Hearing a remembered call, or pairing calls by their arguments, would say
+  it.
+
+After transcribing a small convolutional network (Goodfellow, Bengio and
+Courville 2016, §9.5; LeCun et al. 1998, §II.B), its training compiled and
+checked: what it asked of the compiler, each with its smallest change.
+
+- **A read between slow sequences of one period and phase**, refused since
+  C233 as one at another rate read by another: a minibatch as time, each
+  term of the weights reading two consecutive samples, trains its weights
+  as slow sequences that read each other at `m-1`. Where both tick at the
+  same steps, the read is a lag in the reader's own terms, as its own
+  history is; about 15 lines in `Rate`, the hold at the input's rate still
+  the answer for another period.
+- **Single values met by a matrix compiled**, a per-channel bias `T + [1/2;;
+  -1/2]`, "a tensor whose slices are single values met by a matrix, for
+  now": each slice's value stretched over the other's cells in `Cellwise`, as
+  the interpreter's arithmetic does; a few lines.
+- **No disturbed runs where the exact run is exact throughout**, an
+  oracle change: `--check` runs the interpreter three times more, its
+  roundings and limits disturbed, and a run with no inexact term has none
+  to disturb. On the forward-mode header's prototype, `saliency`'s 100
+  steps take 7.7 s of `--check`, 0.16 of them compiling, and the three
+  runs three quarters of the rest.
+- **The compiled sum's thousand terms**: a LeNet-sized layer's dot product
+  over a batch would pass `max_terms`, which bounds an unrolled sum written
+  as lines of C, not a loop.
+- **Layer norm by cells, a README example**: the exploration wrote five
+  definitions, row statistics split out by hand; `transformer.ink` needs
+  two. Deferred with the README.
+- **A jet without its heap vector**, a part inline for one grad: after
+  grad's cost per term the largest share left, copies of jets in half the
+  sanitizer build's samples, but every function of `derivative.hpp` takes
+  one, hundreds of lines. What `reverse_memo.ink` would need to rejoin
+  `reverse.ink`. The exploration of the interpreter compiled, queued, may
+  subsume it.
+- **Forward mode's "no path"**: a pass cannot tell a cell no path
+  reaches from a part computed to be exactly 0, so C324's products leave
+  both out and a `~` marks both, and the inexact-~0 case stays NaN:
+  `grad_(v = [800 1]) grad_(w = 1) w*v[1,2]/(1/exp(v[1,1]))` is
+  `[-nan, -nan]` for reverse mode's `[-nan, ~inf]`, expk's `~` making the
+  pass's exact 0 a ~0 that meets exp's inf. Keeping an exact 0 through
+  `~` gives `[-nan, ~inf]` and moves gradcells.ink:495 to reverse mode's
+  `[1, ~inf]`, but drops a mark reverse mode keeps: `grad_(t = 1)
+  ~(t - t)` would be 0 for ~0. A fix gives a seed's 0 cells no part at
+  all, which touches C73's checks of whether a part is there.
+
+After exploring rotations and rigid bodies (Sola 2017; Featherstone 2008)
+and transcribing the contact-aided invariant EKF (Hartley et al. 2020): what
+they asked, each with its smallest change.
+
+- **Products by a literal 0.0 kept for NaN, and block-sparse matrices
+  multiplied dense**: 5.1k of the 12-state filter's 21k products, its header
+  638 KB. Does not join *Shared at every value written twice*: dropped,
+  a zero's sign and an infinity's NaN go, which the interpreter keeps.
+
+After a second review (2026-10-13), which took the Jacobian by cells and
+the clause for a limit that does not converge as done, the order from here:
+
+- The gather, integer and optional inputs, and exact discretisation, below;
+  optional inputs and exact discretisation `[done]`.
+
+- **A gather and integer inputs**: their open questions first. The gather
+  is *A cell at a computed whole index, compiled*.
+- **A definition the host implements**, as the C-hook study sketched:
+  `--compile nav.ink nav --host qp` names it, with no syntax; the header
+  declares `int nav_qp(const double H[4], const double f[2], double
+  out_[2])`, 1 where it answered, and a guard reading it asks its status
+  of kind *fails*, as one reading a limit asks *runs out*. `--check`
+  interposes, holds each answer to the inkamath definition within a
+  tolerance and checks that both fail together. About 200 lines; deferred
+  until an entry needs it, likely one calling a QP solver, OSQP or HPIPM,
+  from the step.
+- **A short tutorial path** through the conformance models, README being a
+  reference manual where its readers are students.
+- Not taken: **the epistemic level carried internally now**, with nothing
+  to read it before a C API (`CLAUDE.md` §2); its question is in MANIFESTO.
+
+Its robotics entries, each where it forces something new:
+
+- **An EKF on SO(3)**, its exp map a fixed-count partial sum: F and H as
+  Jacobians by cells.
+- **A visual-inertial filter over merged timestamped events**: inputs
+  present on some steps only.
+- **Range-image ground segmentation and label propagation**: reductions
+  over an index; at a sensor's size, loops.
+- **PointNet**, then one **PointNet++ set-abstraction layer** whose
+  indices the host computes: max over points, then the gather and integer
+  inputs; at real scale, loops.
+
+After a study of hosting a compiled model from Python, and an external
+review:
+
+- **Structured diagnostics**: `--check` and `--compile` failures in a form
+  a program reads, with shapes, whether a value was approximated, and
+  source locations, for agents and CI. Found by an external review.
+
+After a §9 exploration of the CTM tutorials' motor speed and inverted
+pendulum (`test/data/ctms.ink`, `test/compile/pendloop.ink` and
+`motorloop.ink`), its friction:
+
+- **`care` and `dare` beside `hinf`**: the sign of the Hamiltonian and the
+  doubling algorithm, which each test now carries in five to seven lines.
+- **README teaches the zero-order hold by Van Loan's block** with a
+  fixed-count series, and the Riccati equation by doubling.
+- On hold, by the owner: **a tutorial chapter from these two series**,
+  which the exploration found enough for *a short tutorial path*. No CTM
+  tutorial is ported, for attribution.
+
 After the §9 end-to-end exploration of a robot loop (an IMU at 100 Hz, a
 position fix at 10 Hz that fails, an MLP correction, a Kalman filter and an
 LQR), whose defects are C376 to C379, 49 lines, 19,288 to 19,337 at
@@ -13606,16 +13646,9 @@ LQR), whose defects are C376 to C379, 49 lines, 19,288 to 19,337 at
   evidence for MANIFESTO's clock question.
 - **`lim_n` is unusable**, `lim` being reserved, and a file name must be
   letters then digits, so `use e2e` is refused.
-- `[done]` **"No clause of x applies" names neither the instance nor the index.**
-  It names the term, `no clause of bot.g.z_301 applies`, in 6 lines and 5
-  removed. Only that message moved: in approximated.ink, eig.ink,
-  history.ink, inner.ink and optinputs.ink, and in `trim`'s and `held`'s
-  reports, which name `trim.r` and `held.r`.
-- `[done]` **MANIFESTO's *Data* line on an LCG needs a qualifier**: with glibc's
-  constants, the products pass 2^53 and a run in doubles parts from the
-  exact one at step 2.
 
 From a usability review of README as a first reader meets it:
 
 - **`--compile` without `-o` prints nothing when every definition compiles**;
   one line saying so would help. A behaviour change, not made with the docs.
+

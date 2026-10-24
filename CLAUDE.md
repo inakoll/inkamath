@@ -167,7 +167,8 @@ worktree of its own, as four agents, one after the other:
    independent route, errors in the spec fixed in commits of their own,
    design objections reported rather than acted on.
 3. **Implementation**, until the spec passes. The spec then becomes a golden
-   and the entry `[done]`, with its departures and lines of sources. Past
+   and the entry `[done]`, with its departures and lines of sources. An
+   entry marked `[done]` moves to "Done since phase 15". Past
    one and a half times the spec's cost in lines, it stops and reports
    instead of finishing: the overrun is a decision, not a fact. A decision
    on an overrun weighs each behaviour on its own merit: none is dropped only
