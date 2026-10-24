@@ -345,17 +345,17 @@ lu = 4
 >> r(1)
 4
 
->> clear lu
-clear lu
+>> rp(x) | (lu = 9) > 10 = 1
+rp(x) | (lu = 9) > 10 = 1
 
->> rp(x) | (x = 9) > 10 = 1
-rp(x) | (x = 9) > 10 = 1
-
->> rp(x) = x
-rp(x) = x
+>> rp(x) = lu + x
+rp(x) = lu + x
 
 >> rp(2)
-2
+6
+
+>> clear lu
+clear lu
 
 >> rs_n | (lu = n) > 5 = 1
 rs_n | (lu = n) > 5 = 1
