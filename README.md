@@ -7,9 +7,8 @@ the interpreter (`--check`). It evaluates exact rational arithmetic, complex
 numbers in doubles, matrices and rank-3 tensors of expressions, user-defined
 functions and models, sequences defined by recurrence, series, and derivatives
 (`grad`). First written offline around 2007–2008 and imported from Google Code
-around 2014 ([`LICENSE.txt`](LICENSE.txt)), it has since been rebuilt around
-exact numbers as the reference semantics and generated C checked against them
-([`DESIGN.md`](DESIGN.md)).
+around 2014, it has since been rebuilt around exact numbers as the reference
+semantics and generated C checked against them ([`DESIGN.md`](DESIGN.md)).
 
 The idea it is built around is that **an identifier names an expression, not a
 value**. The expression is re-evaluated every time the name is used, so a
@@ -546,7 +545,7 @@ term, so it may answer where the interpreter says it does not converge.
 A header's functions are `static inline`, so a host that calls a shared
 library, Python's say, needs a small C file that includes the header and
 exports what the host calls (on Windows, each `__declspec(dllexport)`). For
-`pid.ink`:
+the getting started's `pid.h`:
 
 ```c
 /* pid_host.c: what a shared library of pid.h exports. */
@@ -560,7 +559,6 @@ void ink_step(pid* m, double y) { pid_step(m, y); }
 void ink_run(pid* m, const double* y, long n, double* u) {
     for (long k = 0; k < n; ++k) { pid_step(m, y[k]); u[k] = m->u[0]; }
 }
-/* An optional input z_n? takes its flag after it: track_step(m, z[k], ok[k]). */
 const size_t ink_u = offsetof(pid, u), ink_kp = offsetof(pid, kp);
 ```
 
@@ -580,17 +578,15 @@ y, out = (C.c_double * 3)(0, 0.1, 0.2), (C.c_double * 3)()
 lib.ink_init(m); lib.ink_run(m, y, 3, out)    # u.value is out[2]
 ```
 
-An optional input's flag is one more `int`, a `C.c_int` in `argtypes`; a
-driver that says absent by NaN converts in its own C, `track_step(m, z,
-!isnan(z))`, where the choice is seen. Declare each function's `argtypes`:
-without them an address held as a
-Python int, as numpy's `a.ctypes.data` is, is passed as a C int and cut to
-32 bits. A call from Python costs about 0.7 µs, twenty times a small
-model's step, 31 to 34 ns for
-[`test/compile/kalman.ink`](test/compile/kalman.ink): for such a model,
+The step of a model `track` with an optional input `z_n?` takes the input's
+flag after it, `track_step(m, z, ok)`: one more `int`, a `C.c_int` in
+`argtypes`. A driver that says absent by NaN converts in its own C,
+`track_step(m, z, !isnan(z))`, where the choice is seen. Declare each
+function's `argtypes`: without them an address held as a Python int, as
+numpy's `a.ctypes.data` is, is passed as a C int and cut to 32 bits. A call
+from Python costs about 0.7 µs, twenty times a small model's step, 31 to 34
+ns for [`test/compile/kalman.ink`](test/compile/kalman.ink): for such a model,
 batch the steps in C, as `ink_run` does, 37 to 81 ns a step from Python.
-`compile_host` builds this file as written here and holds `ink_run` to
-`ink_step`.
 
 inkamath solves no optimisation, but it writes what a solver is given: a
 model's dynamics and their Jacobians by cells (section 4), compiled and held
@@ -604,8 +600,9 @@ under the line it answers. It is the check the tests make of
 `test/data/*.ink`, for any transcript.
 
 Interpreter behaviour is pinned by golden transcripts in `test/data/*.ink`,
-which are literal sessions — every example in this file is one of them, so the
-documentation and the tests check each other. Regenerate with
+which are literal sessions. This file's sessions are replayed as one by a test
+of their own, so the documentation and the interpreter check each other.
+Regenerate the goldens with
 `cmake --build build --target record_goldens` and read the diff: it is the
 record of what your change did.
 
@@ -1193,13 +1190,13 @@ with the condition it applies under — the `|` of set-builder notation, read
 whose guard holds is the one evaluated; the others are not:
 
 ```
->> abs(x) | x < 0 = 0-x
-abs(x) | x < 0 = 0-x
+>> mag(x) | x < 0 = 0-x
+mag(x) | x < 0 = 0-x
 
->> abs(x) | x >= 0 = x
-abs(x) | x >= 0 = x
+>> mag(x) | x > 0 = x
+mag(x) | x > 0 = x
 
->> abs(0-3)
+>> mag(0-3)
 3
 ```
 
@@ -1256,8 +1253,8 @@ inside(x) = 0 < x and x < 1
 If no clause applies, the interpreter says so rather than inventing a value:
 
 ```
->> abs(i)
-error: a comparison needs real numbers, not ~(i)
+>> mag(0)
+error: no clause of mag applies
 ```
 
 A default written last is a paper's "otherwise", and means the same:
@@ -1894,7 +1891,8 @@ they answer what the definitions answer. Measured against mpmath, at worst
 `exp` is 1.31 units off, `log` 2.94, `tanh` 2.97, `sin` 2.43, `cos` 2.45,
 `atan` 1.44, `atan2` 1.89, `asin` 2.61, `acos` 2.61 and `acosh` 3.57, log's
 own error near its fold ([`test/prelude_test.cpp`](test/prelude_test.cpp)).
-[`test/data/models.ink`](test/data/models.ink) is the whole of it.
+[`test/data/models.ink`](test/data/models.ink) is the transcript of models,
+instances and files.
 
 Data comes in as a file of definitions like any other, written by whatever
 holds it. From Python, a matrix is one literal, its decimals read exactly as
@@ -1905,6 +1903,7 @@ def ink(name, rows):
     cells = ";\n    ".join(", ".join(repr(float(v)) for v in row) for row in rows)
     return name + " = [" + cells + "]\n"
 
+rows = [[0.1, 2], [3.5, -1]]    # or a numpy array's .tolist()
 with open("data.ink", "w") as f:
     f.write(ink("X", rows))
 ```
@@ -1923,9 +1922,9 @@ it.
 b = a+a
 ```
 
-`b` was defined at the top of this file, when `a` was `1`. Section 2 redefined
-`a` as a matrix, so `b` is a matrix now — the binding is to the expression, not
-to the number it once produced:
+`b` was defined at the top of this file, when `a` was `1`. The quick overview
+redefined `a` as a matrix, so `b` is a matrix now — the binding is to the
+expression, not to the number it once produced:
 
 ```
 >> b
