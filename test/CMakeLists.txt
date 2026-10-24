@@ -94,15 +94,6 @@ foreach(part 1 2 3 4)
                      -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
     set_tests_properties(cli_${part} PROPERTIES TIMEOUT ${cli_timeout})
 endforeach()
-# A cumulative sum compiled as an accumulator (DESIGN.md), specified before
-# it is built: cli.cmake's spec part, skipped while it is refused as today.
-add_test(NAME cli_spec
-         COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=spec
-                 -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli_spec -DCASE_TIMEOUT=${cli_case_timeout}
-                 -DCC=${CMAKE_C_COMPILER} -DCC_ID=${CMAKE_C_COMPILER_ID}
-                 -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
-set_tests_properties(cli_spec PROPERTIES TIMEOUT ${cli_timeout} SKIP_REGULAR_EXPRESSION
-    "compile_accum: the sum up to n refused, as today")
 # bench's workloads, each a transcript bench/run.cmake measures, replayed so
 # that one gone stale fails here rather than at its next measure. The
 # slowest, under the sanitizers, take 7 s; train.ink is data, no transcript.
@@ -295,7 +286,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          fallback:respelled fallback:preceded fallback:defaulted fallback:sentried
                          fallback:partway pendloop:cart motorloop:motor inner:robot:600
                          lcg:lcgs optional:seen optional:leaned
-                         optional:steeped optional:first hessian:k hessian:z hessian:c)
+                         optional:steeped optional:first hessian:k hessian:z hessian:c
+                         accum:ol:300)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -377,6 +369,9 @@ set_tests_properties(check_equal_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^equal: ${straddled}\nequal\\.y: within 5\\.6e-17${about}\nequal\\.y: where lim h runs out, 'y_n \\| lim h\\(u_n\\) == lim h\\(u_n\\) = lim h\\(u_n\\)' falls to 'y_n = 0'\n$")
 set_tests_properties(check_folded_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^folded: ${straddled}\nfolded\\.g: at 0 a disturbed run takes 'g_n \\| lim half\\(1\\) >= 1/2 - 1/10\\^11 = 1' and the interpreter 'g_n = 0'\\; the guard of the first is 1\\.9e-11 from its threshold\nfolded\\.g: within 0\\; the interpreter's terms about 1 from the exact ones, past the tolerance from 0\n$")
+# A regret kept as a running total (compile/accum.ink), as its recurrence by hand reports it.
+set_tests_properties(check_ol_300_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^ol: 300 steps from 0, against exact values\nol\\.fs: within 0\nol\\.x: within 1\\.1e-16\nol\\.f: within 5\\.6e-17\nol\\.R: within 3\\.6e-14\n$")
 # compile/steps.ink, each over its --steps n: runaway at 1000 fails as wild does.
 set(coast "coast\\.v: within 0\ncoast\\.y: within 0\n$")
 set_tests_properties(check_coast_1001_report PROPERTIES PASS_REGULAR_EXPRESSION

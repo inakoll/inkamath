@@ -134,7 +134,12 @@ local of a thread with a small stack; `sizeof` the struct counts it.
 is what it compiles to; `test/compile/kalman.ink` is a Kalman filter over
 matrices.
 `test/compile/pid_clamped.ink` limits its output with guards, and
-`test/compile/fir.ink` is a filter written as a sum; `test/compile/kalman2.ink`
+`test/compile/fir.ink` is a filter written as a sum. A sum or a product up to
+the index, or the index less a constant, `sum_(t=1)^n e_t`, is kept as a
+running total, a sequence of the step's own, `s0_`, as a recurrence written by
+hand would be: `test/compile/accum.ink` has a regret. Refused: terms that read
+the index itself, as Adam's `b2^(t-i)` does, a last index other than the index
+less a constant, and for now a maximum up to it. `test/compile/kalman2.ink`
 inverts a matrix at every step, and `test/compile/heat.ink` once, in `update`;
 `test/compile/adc.ink` rounds with `floor` and tests with `and` and `or`, and
 `test/compile/net.ink` is a small network whose terms are defined by cells.

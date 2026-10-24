@@ -3600,7 +3600,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   check program and header byte for byte. 25 lines of sources written where
   about 20 were planned, 14 more in all: `main.cpp` 16 more, `check.hpp` 2
   fewer. 16,282 lines in all, 16,286 after C280.
-- **A cumulative sum compiled as an accumulator**, `sum_(t=0)^n e_t`:
+- `[done]` **A cumulative sum compiled as an accumulator**, `sum_(t=0)^n e_t`:
   refused as "a sum or a product whose bounds are not constants", where a
   regret, a running loss or AdaGrad's sum of squared gradients is exactly
   that (Reddi, Kale and Kumar 2018, section 2). `test/data/reddi.ink`
@@ -3764,6 +3764,37 @@ that exploring seven domains asked of the interpreter, by how many asked.
   refusal in its words. With the implementation the cases move to
   `cli.cmake`'s parts, `cli_spec` goes, and `ol` joins the checks at 300
   steps with its report.
+
+  Built as specified: every case passes as written, `cli_spec`'s part is
+  `cli.cmake`'s last, its skip gone, and `ol` is checked at 300 steps in
+  `test/CMakeLists.txt` with its report. No golden, expected header,
+  report or other cli case moves. The total's definition is the
+  interpreter's own: its general clause is the sum itself, which the step
+  compiles in that clause as its term at n - 1 plus the sum's at n - c, so
+  that what init folds below 0 is the interpreter's sum there, `early`'s
+  s0_ at -1 its 1. Departures, each the implementation's:
+  - **Its history's shape**: of a matrix, a 0 of its terms' size, an
+    identity for a product, set once its term is compiled, its general
+    clause compiled before its history for that.
+  - **At another rate**, refused in the same words wherever the sample is,
+    after the sum too, where its terms' own samples would make the total
+    the slow one.
+  - **What a refusal names**: the sequence whose clause reads the total,
+    for a refusal inside the total's clause and for a read before the
+    stream, `R: R_0 reads x_-1`.
+  - **The header's comment**: `s0_ (k <= 1) for R's sum`; the totals are
+    numbered across the model, an instance's `k.s0_` among them.
+  - **Inside a limit's walk**, `sum_(q=0) sum_(j=0)^q`, the inner sum's
+    index is not the clause's, and today's words stand (`cli.cmake`'s
+    `compile_sums_refused`).
+
+  101 lines of `compile.hpp`, 111 added and 10 removed, 4 of them
+  comment, where about 68 were estimated: the shape and its refusals 33,
+  the terms at n - c 11, the total as a sequence, its definition, history
+  and chain 47, kept out of the sequences `--check` asks for and its reader
+  named in refusals 5, its name in the header's comment 5. Within the 102
+  the spec set: the estimate missed what clang-format makes of building
+  two clauses and a comparison by hand. 20,875 lines in all.
 - `[done]` **The forward form, `x_(t+1) = f(x_t, u_t)`.** Refused as "t is not
   defined", so a paper's update is shifted to t-1 by hand, where
   transcriptions slip: Nesterov's momentum as Sutskever, Martens, Dahl and
