@@ -582,11 +582,11 @@ cannot compile w: grad of a tensor with respect to a matrix is a Jacobian, which
 set(exit 1)
 check(compile_tensorgrad_refused)
 
-# C313: the compiler compiles no local, so under grad it refuses one that
-# evaluation does not reach, where it would hide the global t.
+# C313: under grad, an empty sum's local hides nothing, so the global t read
+# after it is searched as the interpreter's is, and refused in its words.
 file(WRITE "${OUT}/c313.ink" "x = 100\nt = x^2\ny_n = grad_(x = 2) ((sum_(k=1)^0 (t = k*x)) + t)\n")
 set(args --compile c313.ink)
-set(stdout "cannot compile y: a local definition\n")
+set(stdout "cannot compile y: t reads the global x, which grad's x does not reach\n")
 set(stderr "")
 set(exit 1)
 check(compile_c313)
