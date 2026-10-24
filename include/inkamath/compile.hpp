@@ -6084,10 +6084,31 @@ private:
                                             ", before the stream, where " +
                                             Unfolded(seed.read, seed.at));
         }
-        for (const Early& early : earlies_)
+        for (std::size_t id = 0; id < earlies_.size(); ++id)
             for (const auto& [name, sequence] : sequences_)
-                if (&sequence == early.reader && Needed(early))
-                    Cover(name, sequence, early.reads, sequences_.at(early.name).start + early.lag);
+                if (const Early& early = earlies_[id]; &sequence == early.reader && Needed(early))
+                    Cover(name, sequence, early.reads, sequences_.at(early.name).start + early.lag,
+                          Kept(sequence, "\x04" + std::to_string(id) + "\x05"));
+    }
+
+    // What a mark stands for, read by the general clause alone, is read
+    // only where no guard holds (C413).
+    std::vector<Check> Kept(const Sequence& sequence, const std::string& mark) const {
+        const auto in = [&](const std::string& text) {
+            return text.find(mark) != std::string::npos;
+        };
+        std::vector<Check> holds;
+        if (std::ranges::none_of(sequence.general, in) ||
+            std::ranges::any_of(sequence.guarded, [&](const Guarded& g) {
+                return in(g.condition) || std::ranges::any_of(g.cells, in);
+            }))
+            return holds;
+        for (const Guarded& guarded : sequence.guarded) {
+            const auto& p = sequence.definition->Clauses()[guarded.clause].parameters;
+            holds.push_back(
+                {{}, p.guard(), false, sequence.definition->home, p.index_name(), {}, 0});
+        }
+        return holds;
     }
 
     // init's lines for what histories give, once every read has asked.
@@ -6542,7 +6563,9 @@ private:
              at             = text.find('\x02', at)) {
             const std::size_t end = text.find('\x03', at);
             const Check&      kept = checks_.at(std::stoul(text.substr(at + 1, end - at - 1)));
-            Cover(name, sequence, kept.reads, std::numeric_limits<int>::max(), {kept});
+            std::vector<Check> keep = Kept(sequence, text.substr(at, end - at + 1));
+            keep.push_back(kept);
+            Cover(name, sequence, kept.reads, std::numeric_limits<int>::max(), keep);
             const int   from = From(kept.reads);
             std::string check;
             for (int n = sequence.start; n < from && check.empty(); ++n)

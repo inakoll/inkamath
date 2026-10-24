@@ -475,3 +475,16 @@ celling(x_n) = {
     R_n = S_(n-1)[2] + T_(n-2)[1]
 }
 rowed = celling(x_n = n - 1)
+
+# A guard that holds keeps what the general clause alone reads before the
+# stream: 'tallied' takes run_0 from its guard, and was refused, "run_0 reads
+# x_-1, before the stream, where x has no history", for u_-1 (C413).
+#
+#     tallied: 100 steps from 0, against exact values
+#     tallied.<name>: within 0, for each of run and u
+tallying(x_n) = {
+    u_n = 2*x_n
+    run_n | n < 1 = 0
+    run_n = run_(n-1) + u_(n-1)
+}
+tallied = tallying(x_n = n)
