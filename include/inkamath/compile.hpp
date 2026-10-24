@@ -5994,8 +5994,9 @@ private:
     // or that it has none.
     std::string Unfolded(const std::string& read, int at) const {
         const auto why = unfolded_.find({read, at});
-        return why != unfolded_.end() ? read + "'s history " + why->second
-                                      : read + " has no history";
+        return why != unfolded_.end()
+                   ? (totals_.count(read) ? "it " : read + "'s history ") + why->second
+                   : read + " has no history";
     }
 
     // A parameter a term can read, which the host may assign after init has
@@ -6088,11 +6089,17 @@ private:
                     if (!Ticks(reader, n) || reader.bases.count(n) || Folded(read, n - lag) ||
                         kept_at(n) || Optional(read))
                         continue;
-                    const std::string& who = totals_.count(name) ? totals_.at(name).reader : name;
+                    const std::string& who   = totals_.count(name) ? totals_.at(name).reader : name;
+                    const auto         total = totals_.find(read);
+                    const std::string  term  = total == totals_.end()
+                                                   ? read + "_" + std::to_string(n - lag)
+                                                   : total->second.reader + "'s " +
+                                                       total->second.series->Noun() + " up to " +
+                                                       std::to_string(n - lag - total->second.lag);
                     throw Refusal(who, who + "_" +
                                            std::to_string(Floor(n - reader.phase, reader.period)) +
-                                           " reads " + read + "_" + std::to_string(n - lag) +
-                                           ", before the stream, where " + Unfolded(read, n - lag));
+                                           " reads " + term + ", before the stream, where " +
+                                           Unfolded(read, n - lag));
                 }
             }
         }

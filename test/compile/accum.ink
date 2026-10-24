@@ -233,9 +233,13 @@ window(x_n) = {
     y_n = sum_(t=n-2)^n x_t
 }
 
-# A first term read before the stream, refused as any such read is.
+# A first term read before the stream, refused as any such read is, where
+# the term is read or where the total is folded below 0.
 late(x_n) = {
     R_n = sum_(t=0)^n x_(t-1)
+}
+earlier(x_n) = {
+    R_n = sum_(t=-1)^n x_t
 }
 
 # Matrices where the sum is empty: the interpreter's G_0 is a single 0,
