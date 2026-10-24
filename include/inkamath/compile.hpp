@@ -1706,6 +1706,8 @@ private:
     // What a refusal names: a part's grad, the definition, which is what is set
     // aside.
     std::string Refused(const std::string& name) const {
+        if (const auto total = totals_.find(name); total != totals_.end())
+            return total->second.reader;
         return sequences_.at(name).parts.empty() ? name : name.substr(0, name.rfind('.'));
     }
 
@@ -1734,11 +1736,13 @@ private:
         // One reading its own term where no base clause gives a shape takes the
         // unguarded one's, compiled first (C377).
         const auto& clauses = sequence.definition->Clauses();
-        const bool shaped = !sequence.size.rows && std::ranges::any_of(clauses, [&](const auto& c) {
-            const std::string& own = sequence.definition->Name();
-            return c.parameters.guarded() &&
-                   (Mentions(*c.expression, own) || Mentions(*c.parameters.guard(), own));
-        });
+        const bool  shaped =
+            !sequence.size.rows &&
+            (totals_.count(name) || std::ranges::any_of(clauses, [&](const auto& c) {
+                 const std::string& own = sequence.definition->Name();
+                 return c.parameters.guarded() &&
+                        (Mentions(*c.expression, own) || Mentions(*c.parameters.guard(), own));
+             }));
         bool       settled = false, general = false;
         for (const bool guarded : {!shaped, shaped}) {
             for (const Clause<Value>& clause : clauses) {
@@ -5203,6 +5207,7 @@ private:
     // the lags it gives are constants.
     PExpression<Value> visit(SeriesExpression<Value>* expression) override {
         if (!expression->Upper()) return Sum(expression);
+        if (const auto total = Running(*expression)) return Answer(*total);
         const Code lower =
             Known(expression->Lower(), "a sum or a product whose bounds are not constants");
         const Code upper =
@@ -5250,6 +5255,92 @@ private:
             return value;
         };
         return Answer(constant ? Parted(Exact(exact), PartOf(total), {&total}) : total);
+    }
+
+    // A sum or a product up to the clause's index less a constant c, kept as
+    // a sequence of the step's own, as a recurrence by hand is (DESIGN.md):
+    // 's0_n | n < a + c = 0', and 's0_n' the sum, which its own clause
+    // compiles as its term at n - 1 plus the sum's at n - c. One for each place.
+    struct Accumulator {
+        std::string                  reader;
+        SeriesExpression<Value>*     series;
+        std::map<std::string, Value> places;
+        int                          lag;
+        std::string                  upto;
+        ParametersCall<Value>        now        = {};  // its term at n
+        Reference<Value>             definition = {};
+    };
+    std::optional<Code> Running(SeriesExpression<Value>& series) {
+        const auto own = totals_.find(within_);
+        if (own != totals_.end() && own->second.series == &series) return Accumulated(own->second);
+        if (limit_ || index_.empty() || places_.count(index_) || !Mentions(*series.Upper(), index_))
+            return std::nullopt;
+        const std::string what = std::string(series.Indexes() ? "an " : "a ") + series.Noun();
+        const std::string upto = what + " up to " + index_;
+        if (own != totals_.end()) throw Reason(what + " up to an enclosing sum's index, for now");
+        if (series.Reduction() || !grad_.empty())
+            throw Reason(upto + (grad_.empty() ? "" : " under grad") + ", for now");
+        if (Mentions(*series.Body(), index_))
+            throw Reason(upto + " whose terms read " + index_ + "; write it as a recurrence");
+        int c = -1;
+        try {
+            c = -Offset(series.Upper(), index_);
+        } catch (const Reason&) {
+        }
+        if (c < 0)
+            throw Reason(what + " whose last index is neither a constant nor " + index_ +
+                         " less a constant");
+        const int a = Whole(Known(series.Lower(), what + " whose first index is not a constant"));
+        auto      found = std::ranges::find_if(totals_, [&](const auto& total) {
+            const Accumulator& t = total.second;
+            return t.series == &series && t.definition.home == scope_ && t.places == places_;
+        });
+        if (found == totals_.end()) {
+            const std::string key = scope_->Qualified("s" + std::to_string(totals_.size()) + "_");
+            found = totals_.try_emplace(key, within_, &series, places_, c, upto).first;
+            Accumulator&             total = found->second;
+            const auto               n     = std::make_shared<RefExpression<Value>>(index_);
+            EvaluationVisitor<Value> evaluator(definitions_);
+            const auto               below = std::make_shared<CompareExpression<Value>>(
+                Comparison::Less, n, std::make_shared<ValExpression<Value>>(Value(Number(a + c))));
+            total.now = {nullptr, n};
+            total.definition.add_expression(
+                key, {nullptr, n, evaluator, below},
+                std::make_shared<ValExpression<Value>>(Value(Number(series.Product()))));
+            total.definition.add_expression(key, {nullptr, n, evaluator},
+                                            PExpression<Value>(PExpression<Value>(), &series));
+            total.definition.home      = scope_;
+            sequences_[key].definition = &total.definition;
+        }
+        const Code  code  = Term(found->first, &found->second.definition, found->second.now);
+        const auto& bases = reading_->bases;
+        for (int n = bases.empty() ? 0 : bases.begin()->first; !code.Scalar() && n < a + c; ++n)
+            if (!bases.count(n))
+                throw Reason(upto + " empty at " + std::to_string(n) + ", a single " +
+                             (series.Product() ? "1" : "0") + " there and a " +
+                             code.size.Described() + " after");
+        return code;
+    }
+    Code Accumulated(Accumulator& total) {
+        Code term;
+        {
+            const Setting<std::map<std::string, Value>> places(places_, total.places);
+            const Setting<int>                          lagged(shift_, total.lag);
+            const Setting<std::string>                  bound(index_, total.series->Index());
+            const Setting<std::string>                  text(
+                index_text_, total.lag ? "(double)(m_->index_ - " + std::to_string(total.lag) + ")"
+                                                        : index_text_);
+            term = Emit(total.series->Body());
+        }
+        if (!term.Scalar())  // its history of its terms' size
+            total.definition.add_expression(
+                within_, total.definition.Clauses()[0].parameters,
+                std::make_shared<ValExpression<Value>>(
+                    total.series->Product() ? Value::Identity(term.size) : Value(term.size)));
+        sequences_.at(within_).size = term.size;
+        const Setting<int> back(shift_, 1);
+        const Code         before = Term(within_, &total.definition, total.now);
+        return total.series->Product() ? Product(before, term) : Broadcast(before, term, Added);
     }
     // A reduction's term, as the interpreter ranks it; under grad, for now, refused.
     static const Code& Ranked(const SeriesExpression<Value>& series, const Code& term) {
@@ -5388,6 +5479,10 @@ private:
         for (const Reads* some : {&sequence.reads, &sequence.deferred})
             for (const auto& [read, lags] : *some) {
                 const int period = sequences_.at(read).period;
+                if (read != name && totals_.count(read) && std::max(period, sequence.period) > 1)
+                    throw Refusal(name, totals_.at(read).upto + " in a sequence computed every " +
+                                            std::to_string(std::max(period, sequence.period)) +
+                                            ", for now");
                 if (read != name && period > 1 && sequence.period > 1) throw another(read);
                 if (read != name && period > 1)
                     throw Refusal(name, read + "_(...): read every step, and " + read +
@@ -5899,8 +5994,9 @@ private:
     // or that it has none.
     std::string Unfolded(const std::string& read, int at) const {
         const auto why = unfolded_.find({read, at});
-        return why != unfolded_.end() ? read + "'s history " + why->second
-                                      : read + " has no history";
+        return why != unfolded_.end()
+                   ? (totals_.count(read) ? "it " : read + "'s history ") + why->second
+                   : read + " has no history";
     }
 
     // A parameter a term can read, which the host may assign after init has
@@ -5993,10 +6089,17 @@ private:
                     if (!Ticks(reader, n) || reader.bases.count(n) || Folded(read, n - lag) ||
                         kept_at(n) || Optional(read))
                         continue;
-                    throw Refusal(
-                        name, name + "_" + std::to_string(Floor(n - reader.phase, reader.period)) +
-                                  " reads " + read + "_" + std::to_string(n - lag) +
-                                  ", before the stream, where " + Unfolded(read, n - lag));
+                    const std::string& who   = totals_.count(name) ? totals_.at(name).reader : name;
+                    const auto         total = totals_.find(read);
+                    const std::string  term  = total == totals_.end()
+                                                   ? read + "_" + std::to_string(n - lag)
+                                                   : total->second.reader + "'s " +
+                                                       total->second.series->Noun() + " up to " +
+                                                       std::to_string(n - lag - total->second.lag);
+                    throw Refusal(who, who + "_" +
+                                           std::to_string(Floor(n - reader.phase, reader.period)) +
+                                           " reads " + term + ", before the stream, where " +
+                                           Unfolded(read, n - lag));
                 }
             }
         }
@@ -6536,8 +6639,12 @@ private:
         for (const std::string& name : fields) {
             const Sequence&   sequence = sequences_.at(name);
             const int         depth    = sequence.depth;
+            const auto        total    = totals_.find(name);
             const std::string term =
-                depth > 1 ? name + "\x01(k\x01<=\x01" + std::to_string(depth - 1) + ")" : name;
+                (depth > 1 ? name + "\x01(k\x01<=\x01" + std::to_string(depth - 1) + ")" : name) +
+                (total == totals_.end()
+                     ? ""
+                     : " for " + total->second.reader + "'s " + total->second.series->Noun());
             if (sequence.period == 1) {
                 terms.push_back(term);
                 continue;
@@ -7082,6 +7189,7 @@ private:
         Compiled compiled{out, earliest, inputs, {}, {}, {}, unnamed_, fallen_};
         for (const std::string& name : inputs) compiled.cells.push_back(Cells(name));
         for (const std::string& name : order) {
+            if (totals_.count(name)) continue;  // which the interpreter does not name
             const Sequence& sequence = sequences_.at(name);
             const bool      unnamed  = std::any_of(
                 labels_.begin(), labels_.end(),
@@ -7224,6 +7332,7 @@ private:
     std::map<const Expression<Value>*, Code> lifted_;  // an unbounded sum's arguments, by part
     int                              temporary_count_ = 0;
     std::map<std::string, Value>     places_;             // a cell's row and column, by their names
+    std::map<std::string, Accumulator>       totals_;             // by key
     Code        code_;
     Tape* tape_  = nullptr;  // the grad's being compiled in reverse mode
     std::size_t                        depth_ = 0;        // the grads around, a nest's 2
