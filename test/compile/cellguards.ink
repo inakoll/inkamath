@@ -174,6 +174,42 @@ cut(c = 1/10) = {
 }
 crest = cut()
 
+# 'relus', a batched ReLU as a term rather than a call, its guard reading a
+# term's cell by its slice, row and column, tested at run time cell by cell
+# as a matrix term's are (C404). Z_n's cells are x, -x - 1, 1 - x and x, x
+# being (-1)^n*n/4, so A_n's are each the larger of its own and 0, every one
+# a multiple of 1/4 below 64, and the step is exact:
+#
+#     relus: 100 steps from 0, against exact values
+#     relus.Z: within 0
+#     relus.A: within 0
+batched(x_n) = {
+    Z_n[b<=2, i<=2, j<=1] = (-1)^(b + i)*x_n + b - i
+    A_n[b<=2, i<=2, j<=1] | Z_n[b,i,j] > 0 = Z_n[b,i,j]
+    A_n[b<=2, i<=2, j<=1] = 0
+}
+relus = batched(x_n = (-1)^n*n/4)
+
+# 'sliced', drift.ink's rift with its thresholds the slices of a tensor: in
+# the second a tenth, whose compiled terms fall below it from the first step,
+# and in the first three tenths, which drift above theirs and so hold no
+# guard. --check names the cell whose compiled guard takes another clause by
+# its slice, row and column, then the first value of each sequence to part:
+#
+#     sliced: 100 steps from 0, against exact values
+#     sliced.g[2,1,1]: at 1 the compiled step takes 'g_n[b<=2, i<=1, j<=1] | d_n[b,i,j] < c*(5 - 2*b) = 1' and the interpreter 'g_n[b<=2, i<=1, j<=1] = 0'; the guard of the first is exactly on its threshold
+#     sliced.d[1,1,1]: <d> at 8, where the interpreter gives 0.29999999999999999
+#     sliced.g[2,1,1]: 1 at 1, where the interpreter gives 0
+#
+# its program failing.
+slicing(c = 1/10) = {
+    d_0 = [3*c;; c]
+    d_n = 10*d_(n-1) - 9*[3*c;; c]
+    g_n[b<=2, i<=1, j<=1] | d_n[b,i,j] < c*(5 - 2*b) = 1
+    g_n[b<=2, i<=1, j<=1] = 0
+}
+sliced = slicing()
+
 # 'mask', a guard on cells reading a parameter: k is a field the host may
 # assign and M is computed from it where the parameters are, as any value
 # reading them. Before, the guard folded k's value into M and k was compiled

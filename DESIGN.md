@@ -1917,6 +1917,9 @@ closures need one anyway, and can bring it.
 | C399 `[fixed]` | **An inner optional input its instance left out was refused compiled.** With `last(z_n?)` holding the last value seen, `alone(w_n)` writing `f = fw(w_n = w_n)` left f's z out, which fw forwards to f.e, and `--check` was refused, "cannot compile e.d: e.z is an input nothing gives", and so was a file's `el = last()`, where the interpreter answers z absent at every step, and before the stream but where a history gives it: f.e.x holds 0. Left out, the input is a sequence of the step whose cells are NaN and flag 0 at every step, its window and history as a given one's, its size the one its model states; forwarded, it passes that flag, as an optional input does. No golden, expected header or other generated text moves. In 15 lines of `compile.hpp`, 1 of comment, and 4 removed; `compile/inner.ink`'s `lo`, its report and its header, `compile_inner_alone`, hold it, and `el` compiles with the file. Found by the implementation of an inner instance's optional input, a departure. |
 | C400 `[fixed]` | **A name spelling a word C++ keeps was no C++.** `m(x_n, new = 1) = { y_n = new*x_n }` compiled to `double new;`, which g++ refuses as C++, "expected unqualified-id before 'new'", where the headers are said to build strict as C++ (C393); so did a sequence `class`, an input `this`, an instance `friend` and a header written to `template.h`. Only C's keywords and macros were refused. C++'s are refused now as C's are, "new is a word C++ keeps for itself", and as a header's name, "'template' is a name C++ keeps": the keywords and alternative tokens of C++23 that are not C's, those with a `_` and `and` and `or`, which the language keeps, reaching a header through its file's name alone. A check program, built as C alone, refuses them with its model. A model's own name reaches no C, nor a limit's argument bare, `arg_public`. In 26 lines, 6 of comment, and 8 removed; `compile_c400` in `test/cli.cmake` holds it, a model named `template` built strict. No header or golden moves. |
 | C401 `[fixed]` | **Below 1 `lim` was 1e-10 off, however small the limit.** Its tolerance was absolute below 1, so a limit near 1e-10 was walked only to within about its own size: Newton's root of 2/10^20 was 1.6873769e-10 for 1.41421356e-10, 19% off, where the walk, halving down to it, met the stop a term before it turned, and `(1 - 2^-k)/10^8` 0.8% off. A step and C36's remainder are measured in each cell against the cell itself now, a step to an exact 0 infinite; the first term within the old measure, against max(1, \|cell\|), is kept and answered where the walk does not get within the new one in 100 terms, a walk to 0 or 10^-30 + 2^-k, or meets a term refused or NaN past it, so every limit that stopped still stops, on that term or a later one within 1e-10 of itself, and above 1 nothing changes; a matrix beside a cell walking to 0 is answered so in every cell. The compiled walk does the same, C353's noise rule in both measures, and grad's walk keeps a term where every part is within the old measure, each part compared with its own term before even past its close. A walk to 0 now takes 100 terms: 12 limits of the goldens and 3 of 291 check instances. tolerance.ink holds it, `lim q*10^8` ~0.9921875 to ~1, `lim N(2/10^20)`, a sum, and a refused term and a NaN past the kept one; `compile/newton.ink`'s `minute` the compiled walk, in double and float. Moved: 13 reports, a limit below 1 walked further: `lim half(1)` a term later, 2.9e-11 from 1/2 for 5.8e-11, in tie, knee, both, acc, parted, unasked, founded, folded and float knee, its margins with it, knee's kink moved to 5e-11 below 1/2 to straddle still; equal.y within 5.6e-17 for 1.1e-16, summed.R 4.3e-15 for 4.4e-15, and kinetic.y and jacobian.y 1.4e-17 for 0, a cell near 1e-5 stepping by ulps the step takes for 0 (C353) and the interpreter does not. `cli_2`'s `float_gate` and `cli_4`'s `compile_hoisted` excerpts, the walk's text. In 76 lines, 9 of comment: 20,785 to 20,861. |
+| C402 `[fixed]` | **A base clause reading another sequence's base at its own index was refused where later that one reads it.** With `v_0 = 1`, `a_0 = 2*v_0 + x_0`, `a_n = v_(n-1)/2 + x_n` and `v_n = a_n - v_(n-1)/4`, the step orders the sequences once for every index, v before a for a_0 and a before v for v_n, and `--compile` refused a, "it and the terms it reads need each other", where the interpreter gives a_0 = 2; Newmark's start, `a_0 = M^-1*(f_0 - K*u_0)`, is one. Where no order has such a base before its reader, the step keeps the order of the general clauses and computes the base ahead of its reader too, at its index alone, `if (m_->index_ == 0) { m_->v[0] = 1.0; }`, and what that base reads at its index and is not computed yet ahead of it in turn; a base that reads its reader is refused as before. An order that exists is kept, so no golden, expected header or check program moves. In 67 lines of `compile.hpp`, 7 of comment, and 15 removed, 8 of them moved; `compile/seeded.ink`'s `started` holds it. Found exploring finite elements. |
+| C403 `[fixed]` | **A cycle guarded on some of its sequences only was refused where it read an input.** With C364's cycle, b's guard left out, `a_n \| n < 0 = 1`, `a_n = b_(n-1)/2`, `b_n = c_(n-1)/2`, `c_n \| n < 0 = 1` and `c_n = a_(n-1)/2 + x_n`, the interpreter gives a_0 = 1/4, b_-1 being c_-2/2, and `--compile` refused a, "a_0 reads b_-1, before the stream, where b has no history": init folded a recurrence's term before the stream only where no input could change it, and x reaches b through a. With b alone guarded, `a_n = b_(n-1)/2` and `b_n = a_(n-1)/2 + x_n`, a was refused before that, "its shape depends on itself": compiled first, a reads b, whose general clause reads a, whose shape only a's own clause gives. Init now folds such a term where no parameter can change it, the interpreter answering it with no input given, so one that reads an input there is refused for that, "b's history gives none: x_-1 is an input, and nothing defines it", as C351's; and a sequence compiling whose guards gave it a shape, read by one that has none yet, is compiled first, so the cycle closes on its window. No golden, expected header or check program moves. In 19 lines of `compile.hpp`, 5 of comment, and 4 removed; `compile/history.ink`'s `semi` and `loose` hold it, and `test/cli.cmake`'s `history_reached` the refusal. |
+| C404 `[fixed]` | **A tensor term under a guard that is not a constant was refused.** A batched ReLU as a term, `A_n[b<=2, i<=2, j<=1] \| Z_n[b,i,j] > 0 = Z_n[b,i,j]` with `A_n[b<=2, i<=2, j<=1] = 0`, was refused, "a tensor's cells under a guard that is not a constant, for now", where the interpreter answers: `--check` heard the interpreter's guards of a cell by its row and column alone, so that two slices' cells were one. The interpreter now tells it the slice too, and the step tests each cell's chain at run time as a matrix term's, keeping each cell's clause, which `--check` names by slice, row and column, `sliced.g[2,1,1]: at 1 the compiled step takes 'g_n[b<=2, i<=1, j<=1] \| d_n[b,i,j] < c*(5 - 2*b) = 1' and the interpreter 'g_n[b<=2, i<=1, j<=1] = 0'`. No golden, expected header or check program moves; `test/cli.cmake`'s `compile_tensor_refused` loses m's refusal, m now compiling. In 23 lines, 2 of comment, and 21 removed: `check.hpp` 15 for 11, `reference.hpp` 4 for 3, `reference_stack.hpp` 3 for 3 and `compile.hpp` 1 for 4; `compile/cellguards.ink`'s `relus` and `sliced` hold it. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -5152,7 +5155,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   elements, an idiom no paper writes. The cost is phase 14's: a remembered
   value skips its body's steps, so `sum_(k=1)^400 A*A` would answer where it
   gives up.
-- **A base clause reading another sequence's base at its own index**:
+- `[done]` **A base clause reading another sequence's base at its own index**:
   with `v_0 = 0`, `a_0 = v_0`, `a_n = v_(n-1)` and `v_n = a_n`, the
   interpreter answers and `--compile` refuses a, "it and the terms it reads
   need each other". The step orders the sequences once for every index, and
@@ -5162,7 +5165,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   step emitted twice; the read base inlined at a seed of the same index,
   reworking `Seeded` and `Rated`'s placeholders per cell; or a constant
   base folded, which covers Newmark's only where `f_0` and `u_0` are
-  constants.
+  constants. Fixed by a fourth, the base alone computed ahead of its reader
+  where no order has it before: C402.
 - `[done]` **A definition as LaTeX**, `tex ?name`, a word at the start of a line as
   `frac` is, and reserved as it is. It renders what was parsed, not what was
   typed: the clauses for one index a line each, then those for every index,
@@ -9137,11 +9141,11 @@ checked: what it asked of the compiler, each with its smallest change.
   same steps, the read is a lag in the reader's own terms, as its own
   history is; about 15 lines in `Rate`, the hold at the input's rate still
   the answer for another period.
-- **A tensor term under a guard that is not a constant**, `A_n[b,o,p] |
+- `[done]` **A tensor term under a guard that is not a constant**, `A_n[b,o,p] |
   Z_n[b,o,p] > 0`, "a tensor's cells under a guard that is not a constant,
   for now": a batched ReLU as a term rather than a call. Tested at run time
   cell by cell as a matrix term's guards are, `--check` naming the clause by
-  slice, row and column.
+  slice, row and column: C404.
 - **Single values met by a matrix compiled**, a per-channel bias `T + [1/2;;
   -1/2]`, "a tensor whose slices are single values met by a matrix, for
   now": each slice's value stretched over the other's cells in `Cellwise`, as
@@ -10762,10 +10766,10 @@ they asked, each with its smallest change.
 - `[done]` **A halving recursion with a base runs away** at large indices:
   `w(x/2)_(k-1)` read at 1000 takes over 60 s to compile, and read ahead
   with a base at 1000, 35 s. Found reviewing *recursion from the tip*: C363.
-- **A cycle guarded on some of its sequences only**, where the input reaches
+- `[done]` **A cycle guarded on some of its sequences only**, where the input reaches
   the term read before the stream, is refused, "b has no history" or "its
   shape depends on itself", two sequences as three; the interpreter
-  answers. Found fixing C364.
+  answers. Found fixing C364: C403.
 - `[done]` **A sequence with parameters read at `lim`'s walking index**, a series
   written as on paper: its partial sums under `lim`, its term a sequence of
   its own.
