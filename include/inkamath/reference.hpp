@@ -1183,8 +1183,8 @@ private:
         }
         // A guard, told to --check where the clause is every term's, or a
         // function's outside the prelude.
-        bool Holds(const Reference& definition, const Clause<T>& clause, int index, int, int row,
-                   int col) {
+        bool Holds(const Reference& definition, const Clause<T>& clause, int index, int slice,
+                   int row, int col) {
             typename ReferenceStack<T>::Tentative locals(evaluator.stack(),
                                                          clause.parameters.binds());
             // A guard that reads a limit that runs out does not hold, and the
@@ -1209,7 +1209,8 @@ private:
             const ParametersDefinition<T>& p    = clause.parameters;
             if (evaluator.stack().guards &&
                 (p.general() || (!p.indexed() && definition.home != &evaluator.stack().Builtins())))
-                evaluator.stack().guards(definition, clause, index, row, col, held, evaluator);
+                evaluator.stack().guards(definition, clause, index, slice, row, col, held,
+                                         evaluator);
             return held;
         }
         // A cell's frame, put back after it (C406).

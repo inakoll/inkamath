@@ -242,12 +242,11 @@ speck = one(X_n = [n;;])
 # words where it has them: two indices of a tensor, a tensor's power, tensors
 # of different numbers of slices, a literal whose slices differ; in the
 # compiler's words for a matrix, which a tensor is a stack of, a comparison;
-# and for now, a tensor in a limit, a tensor's cells under a guard that is
-# not a constant, as one that reads the index, whose clause --check could not
-# follow cell by cell, and a tensor whose slices are single values met by a
-# matrix, which the interpreter stretches.
+# and for now, a tensor in a limit and a tensor whose slices are single values
+# met by a matrix, which the interpreter stretches.
 # T and U are the session's constants, so fields, and y and P, which
-# test/cli.cmake's compile_tensor_refused refused, compile:
+# test/cli.cmake's compile_tensor_refused refused, compile, as m does since
+# its cells are tested at run time under a guard that is not a constant (C404):
 #
 #     T = [1 2; 3 4;; 5 6; 7 8]
 #     U = [1 2; 3 4;; 5 6; 7 8;; 9 10; 11 12]
@@ -274,7 +273,6 @@ speck = one(X_n = [n;;])
 #     cannot compile d: a 2x2x2 tensor and a 3x2x2 tensor have different numbers of slices
 #     cannot compile f: the slices of a tensor have one size, not 1x2 and 1x3
 #     cannot compile g: a tensor in a limit, for now
-#     cannot compile m: a tensor's cells under a guard that is not a constant, for now
 #     cannot compile q: a tensor whose slices are single values met by a matrix, for now
 #     cannot compile r: a tensor whose slices are single values met by a matrix, for now
 #

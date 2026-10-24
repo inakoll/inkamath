@@ -451,7 +451,6 @@ cannot compile c: a comparison needs single values, not a 2x2x2 tensor
 cannot compile d: a 2x2x2 tensor and a 3x2x2 tensor have different numbers of slices
 cannot compile f: the slices of a tensor have one size, not 1x2 and 1x3
 cannot compile g: a tensor in a limit, for now
-cannot compile m: a tensor's cells under a guard that is not a constant, for now
 cannot compile q: a tensor whose slices are single values met by a matrix, for now
 cannot compile r: a tensor whose slices are single values met by a matrix, for now
 ")
@@ -1416,6 +1415,10 @@ file(WRITE "${OUT}/cycled.ink" "cycling(x_n) = {\n    a_n | n < 0 = 1\n    a_n =
      "    b_n | n < 0 = 1\n    b_n = c_(n-1)/2\n    c_n | n < 0 = 1\n    c_n = a_(n-1)/2 + x_n\n}\n")
 set(args --compile cycled.ink cycling)
 check(history_cycled)
+# C403: a cycle guarded on some of its sequences only, whose term before the
+# stream reads the input, is refused for it rather than for having no history.
+refused(reached "x_n) = {\n    a_n | n < 0 = 1\n    a_n = b_(n-1)/2\n    b_n = a_(n-1)/2 + x_n"
+        "a: a_0 reads b_-1, before the stream, where b's history gives none: x_-1 is an input, and nothing defines it")
 # And a long one, each term computed again at each read, read twice: 7.6 s at
 # 14, past 100 at 18.
 set(text "long(x_n) = {\n    s0_n | n < 0 = 1\n")
