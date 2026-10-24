@@ -3727,9 +3727,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
 
   Specified in `test/compile/accum.ink`: `reg`, a regret `ogd`, AdaGrad's
   `ada`, a survival function's product `surv`, a fit's normal equations
-  `gram`, two totals one of them 2x2, `every`, `moments` by cells and
-  `early`, each beside its recurrence by hand, `rec` and its name, the
-  totals by hand named run, and an instance of each; then a model for each
+  `gram`, two totals one of them 2x2, `every`, `moments` by cells,
+  `early` and `outer`, whose instance of `inner` keeps the total, each
+  beside its recurrence by hand, `rec` and its name, the totals by hand
+  named run, and an instance of each; then a model for each
   refusal. And in `test/cli.cmake`'s `spec` part, run by `cli_spec`: now,
   each instance's terms its twin's in the interpreter, up to the steps it
   is checked at, since a report cannot tell a wrong twin from its sum's

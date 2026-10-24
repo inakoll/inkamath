@@ -132,6 +132,26 @@ recearly(x_n) = {
 ey = early(x_n = 1/(n+1))
 recey = recearly(x_n = 1/(n+1))
 
+# In an instance another model reads: the total is the instance's, a mean
+# square.
+inner(x_n) = {
+    S_n = sum_(t=0)^n x_t
+}
+outer(u_n) = {
+    k = inner(x_n = u_n^2)
+    y_n = k.S_n/(n + 1)
+}
+recinner(x_n) = {
+    S_0 = x_0
+    S_n = S_(n-1) + x_n
+}
+recouter(u_n) = {
+    k = recinner(x_n = u_n^2)
+    y_n = k.S_n/(n + 1)
+}
+ms = outer(u_n = 1/(n+1))
+recms = recouter(u_n = 1/(n+1))
+
 # Refused. Adam's second moment as the same paper writes it (section 2):
 # its terms read t, so no total kept from step to step is the sum at t.
 adam(b2 = 999/1000, g_n) = {
