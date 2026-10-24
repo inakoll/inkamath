@@ -38,10 +38,8 @@ public:
     }
 
     // What grad refuses by the names its body reads, before any value: the
-    // compiler asks it too (DESIGN.md, grad compiled), and refuses a local
-    // there, reached or not, as it compiles none (C313).
-    void Names(const GradExpression<T>& grad, bool compiled = false) {
-        const Setting<bool> refusing(compile_, compiled);
+    // compiler asks it too (DESIGN.md, grad compiled).
+    void Names(const GradExpression<T>& grad) {
         for (const std::string& name : grad.Variables()) {
             Unreached(grad.Body(), name, grad.Variables());
             if (!Mentions(*grad.Body(), name))
@@ -64,6 +62,7 @@ public:
     }
 
 private:
+    friend class CompileC;  // which searches the globals it reads under grad (C313)
     struct Tape;
     // What reverse mode cannot do as forward mode does: forward mode does it.
     struct Forward {};
@@ -1576,7 +1575,6 @@ private:
             return;
         }
         if (const auto* local = dynamic_cast<const EqualExpression<T>*>(e.get())) {
-            if (compile_) throw std::runtime_error("a local definition");
             Scan(local->m_e2(), name, bound, within, seen);
             bound.insert(local->Name());
             return;
@@ -1815,7 +1813,6 @@ private:
     bool                                                  filling_ = false;
     bool                                                  chosen_  = false;
     bool                                                  rounded_ = false;
-    bool                                                  compile_ = false;
     std::size_t                                           stepped_ = 0;
     std::size_t                                           complex_ = 0;  // grads at a complex point
     const Guarded*                                        guarded_ = nullptr;

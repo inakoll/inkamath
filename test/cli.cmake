@@ -492,14 +492,92 @@ cannot compile w: grad of a tensor with respect to a matrix is a Jacobian, which
 set(exit 1)
 check(compile_tensorgrad_refused)
 
-# C313: the compiler compiles no local, so under grad it refuses one that
-# evaluation does not reach, where it would hide the global t.
+# C313: under grad, an empty sum's local hides nothing, so the global t read
+# after it is searched as the interpreter's is, and refused in its words.
 file(WRITE "${OUT}/c313.ink" "x = 100\nt = x^2\ny_n = grad_(x = 2) ((sum_(k=1)^0 (t = k*x)) + t)\n")
 set(args --compile c313.ink)
-set(stdout "cannot compile y: a local definition\n")
+set(stdout "cannot compile y: t reads the global x, which grad's x does not reach\n")
 set(stderr "")
 set(exit 1)
 check(compile_c313)
+
+# Locals compiled (DESIGN.md): each model of compile/locals.ink compiled
+# beside its twin, rk's step a temporary per stage, an instance of each
+# checked to its twin's report but for the twin's stages, and the refusals in
+# their words.
+set(story "${CMAKE_CURRENT_LIST_DIR}/compile/locals.ink")
+foreach(model IN ITEMS rk osc twice across root sens)
+    foreach(written IN ITEMS ${model} staged${model})
+        set(args --compile ${story} ${written} -o ${written}.h)
+        check(compile_locals_${written})
+    endforeach()
+    strict(compile_locals_${model} ${model}.h)
+endforeach()
+holds(compile_locals_rk rk.h
+      "    const double t0_ = 0.0 - m_->x[1];\n"
+      "    const double t1_ = 0.0 - (m_->x[1] + m_->h / 2.0 * t0_);\n"
+      "    const double t2_ = 0.0 - (m_->x[1] + m_->h / 2.0 * t1_);\n"
+      "    const double t3_ = 0.0 - (m_->x[1] + m_->h * t2_);\n"
+      "    m_->x[0] = m_->index_ == 0 ? 1.0 : m_->x[1] + m_->h / 6.0 * (t0_ + 2.0 * t1_ + 2.0 * t2_ + t3_);\n")
+file(READ "${OUT}/rk.h" header)
+if(header MATCHES "k[1-4]")
+    message(SEND_ERROR "compile_locals_rk: rk.h keeps a stage\n${header}")
+endif()
+
+set(args --compile ${story} refused)
+set(stdout "cannot compile a: a local by cells, for now
+cannot compile b: t, bound on the right of 'and' or 'or', read after it, for now
+cannot compile c: t, carried past a term of a sum without an upper bound, for now
+cannot compile d: t is not defined
+cannot compile f: t, carried past a term of a sum without an upper bound, for now
+cannot compile g: k is the sum's index, so a local cannot define it
+cannot compile h: x is grad's variable, so a local cannot define it
+cannot compile i: a local cannot take parameters
+cannot compile j: t, bound in a term's index, for now
+cannot compile k: grad cannot differentiate a power whose exponent changes with x, unless its base is e
+cannot compile l: a local cannot take an index
+")
+set(exit 1)
+check(compile_locals_refused)
+
+if(CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
+    foreach(instance IN ITEMS r o tw ac rt se)
+        foreach(written IN ITEMS ${instance} staged${instance})
+            set(args --check ${story} ${written} -o ${written}.c)
+            check(check_locals_${written})
+            execute_process(COMMAND "${CC}" -std=c11 -O2 ${written}.c -o ${written} -lm
+                            WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
+                            ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
+            if(failed)
+                message(SEND_ERROR "check_locals_${written}: ${written}.c does not build\n${errors}")
+            endif()
+            execute_process(COMMAND "${OUT}/${written}" WORKING_DIRECTORY "${OUT}"
+                            OUTPUT_VARIABLE report_${written} RESULT_VARIABLE code_${written}
+                            TIMEOUT ${CASE_TIMEOUT})
+        endforeach()
+        # The twin's stages are sequences of its own, and an estimate's
+        # digits the disturbed runs', which differ where the operations do.
+        string(REPLACE "staged${instance}" "${instance}" staged "${report_staged${instance}}")
+        string(REGEX REPLACE "\n${instance}\\.k[1-4]: [^\n]*" "" staged "${staged}")
+        foreach(report staged report_${instance})
+            string(REGEX REPLACE "about [0-9.e+-]+ from" "about <e> from" ${report} "${${report}}")
+        endforeach()
+        if(NOT code_${instance} EQUAL 0 OR NOT code_staged${instance} EQUAL 0 OR
+           NOT "${report_${instance}}" STREQUAL "${staged}" OR
+           NOT "${staged}" MATCHES "^${instance}: 100 steps from 0, against ")
+            message(SEND_ERROR "check_locals_${instance}: exit ${code_${instance}}\n${report_${instance}}--- where staged${instance}'s, exit ${code_staged${instance}}, is\n${staged}")
+        endif()
+    endforeach()
+    # Exact in doubles, as worked by hand in the story.
+    set(exact_tw "^tw: 100 steps from 0, against exact values\ntw\\.a: within 0\ntw\\.v: within 0\ntw\\.w: within 0\ntw\\.y: within 0\ntw\\.z: within 0\n$")
+    set(exact_ac "^ac: 100 steps from 0, against exact values\nac\\.e: within 0\nac\\.g: within 0\nac\\.y: within 0\n$")
+    set(exact_se "\nse\\.e: within 0\nse\\.j: within 0\nse\\.m: within 0\nse\\.o: within 0\nse\\.p: within 0\nse\\.q: within 0\nse\\.r: within 0\nse\\.s: within 0\nse\\.v: within 0\n")
+    foreach(instance IN ITEMS tw ac se)
+        if(NOT "${report_${instance}}" MATCHES "${exact_${instance}}")
+            message(SEND_ERROR "check_locals_${instance}: not within 0 as worked by hand\n${report_${instance}}")
+        endif()
+    endforeach()
+endif()
 
 # The prelude's mod refuses a matrix to divide by, as the interpreter does,
 # rather than compile the product of matrices it would be.
@@ -1295,6 +1373,68 @@ set(args --compile sizes.ink)
 set(stdout "cannot compile w: tr takes M[j<=n, k<=n], not a 2x3 matrix\n")
 set(exit 1)
 check(compile_signature_refused)
+
+# A sum up to the index compiled as a running total (DESIGN.md, a cumulative
+# sum compiled as an accumulator): each twin of compile/accum.ink held to its
+# sum, each model and its recurrence by hand compiled, reg's and every's
+# totals as specified, and the refusals; part 3 checks an instance of each to
+# its recurrence's report but for the name and the lines of run, ol at 300
+# steps in double and in float.
+set(story "${CMAKE_CURRENT_LIST_DIR}/compile/accum.ink")
+# Each instance is its twin term for term in the interpreter, up to the
+# steps it is checked at. A twin that is not, R_0 = 0 for e_0 in
+# recreg, checks as its sum does, and the reports below cannot tell.
+foreach(term IN ITEMS m.R ol.R ag.v sv.S ls.G ls.b ev.y dv.R dv.D dv.A mm.mo ey.y hy.R fy.y ms.k.S ms.y)
+    string(REGEX REPLACE "\\..*" "" instance "${term}")
+    set(last 99)
+    if(instance STREQUAL "ol")
+        set(last 299)
+    endif()
+    file(WRITE "${OUT}/twin.in" "prod_(k=0)^${last} (${term}_k == rec${term}_k)\n")
+    execute_process(COMMAND "${EXE}" "${story}" -i INPUT_FILE "${OUT}/twin.in"
+                    OUTPUT_VARIABLE out ERROR_VARIABLE err RESULT_VARIABLE code
+                    TIMEOUT ${CASE_TIMEOUT})
+    string(REGEX MATCH "[^\n]*\n$" answer "${out}")
+    if(NOT "${code}" STREQUAL "0" OR NOT "${answer}" STREQUAL "1\n")
+        message(FATAL_ERROR "compile_accum_twin: ${term} is not rec${term} up to ${last}: ${answer}${err}")
+    endif()
+endforeach()
+foreach(model IN ITEMS reg ogd ada surv gram every dr moments early hist fwd outer)
+    foreach(written IN ITEMS ${model} rec${model})
+        set(args --compile ${story} ${written} -o ${written}.h)
+        check(compile_accum_${written})
+        strict(compile_accum_${written} ${written}.h)
+    endforeach()
+endforeach()
+holds(compile_accum_reg reg.h "    double s0_[2];\n"
+      "    m_->s0_[0] = (double)m_->index_ < 0.0 ? 0.0 : m_->s0_[1] + m_->e[0];\n"
+      "    m_->R[0] = m_->s0_[0];\n")
+holds(compile_accum_every every.h "    double s0_[2];\n"
+      "    m_->s0_[0] = (double)m_->index_ < 1.0 ? 0.0 : m_->s0_[1] + m_->x[1];\n"
+      "    m_->y[0] = floor((double)m_->index_ / 2.0) * 2.0 == (double)m_->index_ ? m_->s0_[0] : -1.0;\n")
+
+set(refused_adam "v: a sum up to t whose terms read t; write it as a recurrence")
+set(refused_square "y: a sum up to n whose terms read n; write it as a recurrence")
+set(refused_peak "M: a maximum up to n, for now")
+set(refused_peakat "A: an argmax up to n, for now")
+set(neither "y: a sum whose last index is neither a constant nor n less a constant")
+set(refused_ahead "${neither}")
+set(refused_twice "${neither}")
+set(refused_nested "y: a sum up to an enclosing sum's index, for now")
+set(refused_window "y: a sum whose first index is not a constant")
+set(refused_late "R: R_0 reads x_-1, before the stream, where x has no history")
+set(refused_earlier "R: R_0 reads R's sum up to -1, before the stream, where it gives none: x_-1 is an input, and nothing defines it")
+set(refused_gramfrom "G: a sum up to n empty at 0, a single 0 there and a 2x2 matrix after")
+set(refused_slope "g: a sum up to n under grad, for now")
+set(refused_slow "y: a sum up to m in a sequence computed every 2, for now")
+set(refused_slowafter "${refused_slow}")
+foreach(model IN ITEMS adam square peak peakat ahead twice nested window late earlier gramfrom slope
+                       slow slowafter)
+    set(args --compile ${story} ${model})
+    set(stdout "cannot compile ${refused_${model}}\n")
+    set(exit 1)
+    check(compile_accum_${model})
+endforeach()
 
 if(PART EQUAL 1)
     return()
@@ -2343,6 +2483,52 @@ cannot compile f${bounds}cannot compile h: g, a function of an instance, called 
 ")
 set(exit 1)
 check(compile_sums_refused)
+
+# Part 1's running totals checked, each instance to its recurrence's report
+# (DESIGN.md, a cumulative sum compiled as an accumulator).
+set(story "${CMAKE_CURRENT_LIST_DIR}/compile/accum.ink")
+if(CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
+    # An instance's report, built uncontracted as test/CMakeLists.txt builds a
+    # check (C97), and its exit.
+    function(reported name instance steps)
+        set(args --check ${story} ${instance} --steps ${steps} ${ARGN} -o ${name}.c)
+        check(check_accum_${name})
+        execute_process(COMMAND "${CC}" -std=c11 -O2 -ffp-contract=off ${name}.c -o ${name} -lm
+                        WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
+                        ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
+        if(failed)
+            message(SEND_ERROR "check_accum_${name}: ${name}.c does not build\n${errors}")
+        endif()
+        execute_process(COMMAND "${OUT}/${name}" WORKING_DIRECTORY "${OUT}"
+                        OUTPUT_VARIABLE report RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
+        set(report_${name} "${report}" PARENT_SCOPE)
+        set(code_${name} "${code}" PARENT_SCOPE)
+    endfunction()
+    # The instance's report is its recurrence's but for the name and run's lines.
+    function(compared name instance steps)
+        reported(${name} ${instance} ${steps} ${ARGN})
+        reported(rec${name} rec${instance} ${steps} ${ARGN})
+        string(REPLACE "rec${instance}" "${instance}" twin "${report_rec${name}}")
+        string(REGEX REPLACE "\n${instance}\\.run:[^\n]*" "" twin "${twin}")
+        if(NOT code_${name} EQUAL 0 OR NOT code_rec${name} EQUAL 0 OR
+           NOT "${report_${name}}" STREQUAL "${twin}" OR
+           NOT "${twin}" MATCHES "^${instance}: ${steps} steps from 0")
+            message(SEND_ERROR "check_accum_${name}: exit ${code_${name}}\n${report_${name}}--- where rec${instance}'s, exit ${code_rec${name}}, is\n${report_rec${name}}")
+        endif()
+        set(report_${name} "${report_${name}}" PARENT_SCOPE)
+    endfunction()
+    foreach(instance IN ITEMS m ag sv ls ev dv mm ey hy fy ms)
+        compared(${instance} ${instance} 100)
+    endforeach()
+    compared(ol ol 300)
+    compared(olf ol 300 --float)
+    # By Python: the header's operations in doubles against fractions.
+    foreach(line "fs: within 0" "x: within 1\\.1e-16" "f: within 5\\.6e-17" "R: within 3\\.6e-14")
+        if(NOT "${report_ol}" MATCHES "\nol\\.${line}\n")
+            message(SEND_ERROR "check_accum_ol: no line ol.${line} in\n${report_ol}")
+        endif()
+    endforeach()
+endif()
 
 if(PART EQUAL 3)
     return()

@@ -134,7 +134,12 @@ local of a thread with a small stack; `sizeof` the struct counts it.
 is what it compiles to; `test/compile/kalman.ink` is a Kalman filter over
 matrices.
 `test/compile/pid_clamped.ink` limits its output with guards, and
-`test/compile/fir.ink` is a filter written as a sum; `test/compile/kalman2.ink`
+`test/compile/fir.ink` is a filter written as a sum. A sum or a product up to
+the index, or the index less a constant, `sum_(t=1)^n e_t`, is kept as a
+running total, a sequence of the step's own, `s0_`, as a recurrence written by
+hand would be: `test/compile/accum.ink` has a regret. Refused: terms that read
+the index itself, as Adam's `b2^(t-i)` does, a last index other than the index
+less a constant, and for now a maximum up to it. `test/compile/kalman2.ink`
 inverts a matrix at every step, and `test/compile/heat.ink` once, in `update`;
 `test/compile/adc.ink` rounds with `floor` and tests with `and` and `or`, and
 `test/compile/net.ink` is a small network whose terms are defined by cells.
@@ -163,7 +168,12 @@ own: `test/compile/loop.ink` closes a loop, `m.ctl.u[0]` and `m.plt.x[0]`,
 and `test/compile/chain.ink` nests one. A function, and an instance of a model
 without memory, are compiled where they are called, a constant folding
 through and a recursion unrolling where its guards fold:
-`test/compile/kernel.ink` has a convolution run at every step. An instance
+`test/compile/kernel.ink` has a convolution run at every step. A local is a
+temporary of the step, read from its binding on in its clause as
+interpreted: `test/compile/locals.ink` takes Runge-Kutta's stages as locals,
+each computed once. One by cells, one bound on the right of `and` or `or`
+and read after it, one bound in a term's index, and one a sum without an
+upper bound carries past a term are refused for now. An instance
 with memory written where it is read is one of its own, named after where it
 is written and the cell it is written for: `test/compile/bank.ink` is a bank
 of filters, `m.bank_smooth_1` to `_3`. The compiler refuses by name what it
