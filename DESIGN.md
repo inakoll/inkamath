@@ -9267,7 +9267,7 @@ checked: what it asked of the compiler, each with its smallest change.
   local, none for a power's base first, 8 to put back a pass's and a failed
   guard's locals, 10 for the search in order. 16,241 lines in all, 16,213
   at 02b7b9e.
-- **Locals compiled**, "a local definition": a step written with
+- `[done]` **Locals compiled**, "a local definition": a step written with
   Runge-Kutta's stages as locals is refused, and written with them as
   sequences keeps each stage in the struct, two terms of it, for nothing to
   read. Phase 8 does not move: a local binds the value of its right side
@@ -9380,6 +9380,43 @@ checked: what it asked of the compiler, each with its smallest change.
   skipped while Runge-Kutta is refused "a local definition", and only
   then. Each value is worked with exact fractions, the sensitivity being
   `gradlocal.ink`'s.
+
+  Built as specified: every case passes as written, `cli_spec`'s part is
+  a case of `cli.cmake`'s first, its skip gone, and `compile_c313` says
+  "t reads the global x, which grad's x does not reach". No golden or
+  expected header moves. A frame is the compiler's own, its locals and
+  the names of the grads it is in, set aside where a clause, a cell, a
+  call, a global or an iterate is compiled, so `Expansion::outer` is
+  untouched. Departures, each the implementation's:
+  - **Read again from where it began.** A guard, an `and` or `or` and a
+    comparison tested are compiled more than once, to know whether they
+    defer and then to test them; each later reading starts from the frame
+    the first began in and ends as it ended, or `t > (t = 5)` would read
+    the second t first.
+  - **A local read as a function or a sequence** is refused in the
+    evaluator's words, "sq takes no arguments", "t is not a sequence", and
+    `t()` is t, where the definition it shadows was called.
+  - **Grad's names are the frame's**: one hides a local of its name bound
+    before the grad, and a local cannot define it, in its body alone, so a
+    function the body calls binds one as interpreted. Folded through
+    `Asked`, a local shadows a call's value, but not grad's names.
+  - **C313 by every grad around**: a global read in a nest is searched by
+    the outer grad's names too, as the interpreter's searches chain.
+  - **Out of a nest**, a local that moves by the outer grad keeps its part
+    and loses its exact value, as the nest's own value does: a fold lost,
+    never a value.
+
+  87 lines, 123 added and 36 removed, 2 of them comment, where about 60
+  were estimated: 14 to bind and to refuse a local read as a function, 23
+  for frames, one line at each of the ten places a frame begins, 2 for
+  `Asked` and none for e, 11 to read again from where it began, 4 for
+  `and` and `or`, 16 for a sum without an upper bound, the names a term
+  binds collected before `Unmoved` and shared with `and` and `or`, 18 for
+  grad's parts and names, and 1 fewer for C313, whose search before any
+  value already followed the locals once `derivative.hpp`'s refusal went,
+  3 fewer there. Within the 90 the spec set: the estimate counted a frame
+  per kind where the code has one per place, and missed the readings
+  again. 20,913 lines in all, 20,826 at ad4ba21.
 - `[done]` **The size of a forward-mode header, measured**, before reverse
   mode is weighed (`MANIFESTO.md`). The item named two costs, measured
   with a prototype of *a compiled gradient with respect to a tensor*:

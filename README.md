@@ -163,7 +163,12 @@ own: `test/compile/loop.ink` closes a loop, `m.ctl.u[0]` and `m.plt.x[0]`,
 and `test/compile/chain.ink` nests one. A function, and an instance of a model
 without memory, are compiled where they are called, a constant folding
 through and a recursion unrolling where its guards fold:
-`test/compile/kernel.ink` has a convolution run at every step. An instance
+`test/compile/kernel.ink` has a convolution run at every step. A local is a
+temporary of the step, read from its binding on in its clause as
+interpreted: `test/compile/locals.ink` takes Runge-Kutta's stages as locals,
+each computed once. One by cells, one bound on the right of `and` or `or`
+and read after it, and one a sum without an upper bound carries past a term
+are refused for now. An instance
 with memory written where it is read is one of its own, named after where it
 is written and the cell it is written for: `test/compile/bank.ink` is a bank
 of filters, `m.bank_smooth_1` to `_3`. The compiler refuses by name what it

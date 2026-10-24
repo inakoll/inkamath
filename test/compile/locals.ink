@@ -3,8 +3,8 @@
 # name. A local is the value of its right side, a temporary of the step
 # where it is bound, read after it in the evaluator's order and gone at the
 # end of its clause, so --check gives the same report for an instance of
-# each but for the twin's own sequences; cli.cmake's spec part holds it, and
-# rk's header. The twins are the oracle, each compiled and checked before
+# each but for the twin's own sequences; cli.cmake holds it, and rk's
+# header. The twins are the oracle, each compiled and checked before
 # locals were; every value below is worked by hand or with exact fractions,
 # none recorded. Before, each model with locals was refused, 'cannot compile
 # x: a local definition'.
