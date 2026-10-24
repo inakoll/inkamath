@@ -75,6 +75,10 @@ elseif(MSVC)
     # As compile_c316: MSVC's Debug interpreter took over 60 s for twice.h.
     set(cli_case_timeout 180)
     set(cli_timeout 360)
+elseif(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    # A Debug part takes 18 to 27 s alone and ran out of 120 where two CI
+    # runs shared the runner.
+    set(cli_timeout 360)
 endif()
 # C is enabled before the cli tests, which are given its compiler (C374).
 enable_language(C)
