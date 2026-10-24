@@ -2,7 +2,7 @@
 # its right-hand side once, for the rest of the line (phase 8); under grad
 # that value carries its derivatives, as every value there does, so reading
 # the local reads them. Nothing else of phase 8 moves: left to right, not
-# visible before its binding, shadowing globals and parameters, the line its
+# visible before its binding, shadowing globals, the line its
 # extent. Expected values are sympy's, each local substituted by hand into
 # the closed form it names; none was taken from inkamath.
 
@@ -48,17 +48,23 @@ g(x) = (u = x*x) + (v = u + 1) + v
 >> grad_(x = 2) (n*x)^(n = 2)
 error: n is not defined
 
-# A local shadows a parameter from its binding on. grad's own name and a
-# sum's index it cannot: the fix that refuses them in both evaluators lands
-# before this item.
+# A local shadows a global from its binding on. A parameter it cannot
+# (C405), nor grad's own name or a sum's index: the fix that refuses them in
+# both evaluators lands before this item.
 >> h(x) = x*((x = 10) + x)
-h(x) = x*((x = 10) + x)
+error: x is a parameter of h, so the clause cannot bind it again
+
+>> hy = 1
+hy = 1
+
+>> h(x) = x*hy*((hy = 10*x) + hy)
+h(x) = x*hy*((hy = 10*x) + hy)
 
 >> h(3)
-60
+180
 
 >> grad_(x = 3) h(x)
-20
+120
 
 >> grad_(x = 2) x*((x = 5) + x)
 error: x is grad's variable, so a local cannot define it

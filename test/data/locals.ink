@@ -42,13 +42,53 @@ a = 1
 >> a
 1
 
-# ... and shadows a parameter the same way, because a call's frame is one
-# scope and a local is bound in it.
+# But not what its clause binds, a parameter, an index or a cell's place:
+# h(1) was 20, an index's local read another term or ran 256 deep, and a
+# cell's gave every cell alike (C405).
 >> h(x) = (x = 10) + x
-h(x) = (x = 10) + x
+error: x is a parameter of h, so the clause cannot bind it again
 
->> h(1)
-20
+>> hg(x) | (x = 9) > 10 = 1
+error: x is a parameter of hg, so the clause cannot bind it again
+
+>> hs(x)_n = (x = 3) + n
+error: x is a parameter of hs, so the clause cannot bind it again
+
+>> hv_n = (n = 3) + 1
+error: n is the index of hv_n, so the clause cannot bind it again
+
+>> hx_0 = 0
+hx_0 = 0
+
+>> hx_n = (n = 3) + hx_(n-1)
+error: n is the index of hx_n, so the clause cannot bind it again
+
+>> hM[j<=2] = (j = 5) + j
+error: j is a cell's place of hM, so the clause cannot bind it again
+
+>> hT[s<=2, j<=2, k<=2] = (s = 1) + k
+error: s is a cell's place of hT, so the clause cannot bind it again
+
+# An argument given by name binds nothing of the clause's.
+>> hd(x) = x
+hd(x) = x
+
+>> hc(x) = hd(x = 2) + x
+hc(x) = hd(x = 2) + x
+
+>> hc(1)
+3
+
+# A model's parameter is the model's, read by its other definitions, so a
+# local in one of them shadows it there alone.
+>> hm(s = 10, u_n) = {
+..     y_n = (s = u_n)*s
+..     z_n = s + y_n
+.. }
+hm(s = 10, u_n) = { ... }
+
+>> hm(u_n = n).z_3
+19
 
 # A local in a sequence clause lives for the evaluation of that term.
 >> s(x)_0 = 1
@@ -179,3 +219,57 @@ h2(x) = (M[j<=2] = j*x) + M
 >> (t = 2) + (M[j<=2] = j*t) + M
 [ 6;
  10]
+
+# Each cell is evaluated in a frame of its own, as each term is (C66): a
+# later cell read an earlier one's local, so the answer hung on the order of
+# the cells, [7; 7] here and refused with the guard at j == 2 (C406).
+>> N[j<=2] | j == 1 = (t = 7)
+N[j<=2] | j == 1 = (t = 7)
+
+>> N[j<=2] = t
+N[j<=2] = t
+
+>> N
+error: t is not defined
+
+>> P[j<=2] | j == 2 = (t = 7)
+P[j<=2] | j == 2 = (t = 7)
+
+>> P[j<=2] = t
+P[j<=2] = t
+
+>> P
+error: t is not defined
+
+>> tc_n[j<=2] | j == 1 = (t = n)
+tc_n[j<=2] | j == 1 = (t = n)
+
+>> tc_n[j<=2] = t
+tc_n[j<=2] = t
+
+>> tc_1
+error: t is not defined
+
+>> fc(x)[j<=2] | j == 1 = (t = x)
+fc(x)[j<=2] | j == 1 = (t = x)
+
+>> fc(x)[j<=2] = t
+fc(x)[j<=2] = t
+
+>> fc(3)
+error: t is not defined
+
+>> grad_(x = 1) fc(x)
+error: t is not defined
+
+# A cell still reads its parameters, and its own locals.
+>> fd(x)[j<=2] = (t = x*j) + t
+fd(x)[j<=2] = (t = x*j) + t
+
+>> fd(3)
+[ 6;
+ 12]
+
+>> grad_(x = 3) fd(x)
+[2;
+ 4]

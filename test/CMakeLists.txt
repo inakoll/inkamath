@@ -75,6 +75,10 @@ elseif(MSVC)
     # As compile_c316: MSVC's Debug interpreter took over 60 s for twice.h.
     set(cli_case_timeout 180)
     set(cli_timeout 360)
+elseif(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    # A Debug part takes 18 to 27 s alone and ran out of 120 where two CI
+    # runs shared the runner.
+    set(cli_timeout 360)
 endif()
 # C is enabled before the cli tests, which are given its compiler (C374).
 enable_language(C)
@@ -227,29 +231,32 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          drift:late drift:radix drift:gone
                          delay:fir newton:stiff newton:halves newton:evens newton:evened newton:twonames newton:weighed newton:minute logistic:gate sized:sized softmax:cls steady:mark
                          rnn:rnn attention:head momentum:ball adam:fit lqr:gain
-                         rates:pairs rates:odd seeded:warm cascade:servo decimate:boxcar
+                         rates:pairs rates:odd seeded:warm seeded:started cascade:servo decimate:boxcar
                          decimate:stride decimate:frame decimate:lead
                          decimate:trail decimate:polled drift:sill drift:seam history:past history:twin
                          history:lit history:rise history:ajar history:sown history:nest history:kin history:vast
                          history:twice history:relayed history:pole history:grown history:paired
                          history:looped history:stepped history:opened history:waited
-                         history:rooted history:heeded history:aliased history:floored history:cycled
+                         history:rooted history:heeded history:aliased history:floored history:cycled history:semi history:loose
                          history:tenths history:huge history:sever history:veiled history:cloaked history:two history:hid history:masked
+                         history:rowed history:tallied
                          nan:run nan:sign nan:shy nan:slope nan:pair
                          nan:lap nan:trim nan:any nan:cell nan:held nan:idle nan:imag nan:took nan:shut nan:row nan:root
                          nan:passed nan:waived nan:surd nan:kd nan:nil
                          inputs:fan inputs:grid
                          inputs:chan inputs:twirl inputs:duo inputs:mean3 inputs:mean2
                          inputs:track inputs:twain inputs:nestv inputs:fed inputs:x inputs:clashed inputs:j1
+                         inputs:peer
                          estimate:tie
                          estimate:chaos estimate:dyad estimate:flat estimate:halved
                          estimate:steep estimate:giant estimate:spaced elementary:els trig:tri atan:bea
                          grad:line grad:fall grad:hinge grad:edge grad:clip grad:steer grad:saw
                          grad:ring grad:notch grad:apart grad:smooth grad:cusp grad:over grad:flag
-                         grad:maxed
+                         grad:maxed grad:gated
                          tensor:heads tensor:whirl tensor:batch tensor:spread
                          tensor:speck cellguards:rfit cellguards:tfit cellguards:layer
                          cellguards:kink cellguards:crest cellguards:mask cellguards:order
+                         cellguards:relus cellguards:sliced
                          grad:swing thresholds:dies thresholds:beat stable:moments stable:peak
                          reddi:thm1 reddi:fixed reddi:gen
                          kahan:sums kahan:muller kahan:rounded kahan:surprise kahan:solveur
@@ -285,7 +292,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          fallback:respelled fallback:preceded fallback:defaulted fallback:sentried
                          fallback:partway pendloop:cart motorloop:motor inner:robot:600
                          lcg:lcgs optional:seen optional:leaned
-                         optional:steeped optional:first hessian:k hessian:z hessian:c)
+                         optional:steeped optional:first hessian:k hessian:z hessian:c
+                         accum:ol:300)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -367,6 +375,9 @@ set_tests_properties(check_equal_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^equal: ${straddled}\nequal\\.y: within 5\\.6e-17${about}\nequal\\.y: where lim h runs out, 'y_n \\| lim h\\(u_n\\) == lim h\\(u_n\\) = lim h\\(u_n\\)' falls to 'y_n = 0'\n$")
 set_tests_properties(check_folded_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^folded: ${straddled}\nfolded\\.g: at 0 a disturbed run takes 'g_n \\| lim half\\(1\\) >= 1/2 - 1/10\\^11 = 1' and the interpreter 'g_n = 0'\\; the guard of the first is 1\\.9e-11 from its threshold\nfolded\\.g: within 0\\; the interpreter's terms about 1 from the exact ones, past the tolerance from 0\n$")
+# A regret kept as a running total (compile/accum.ink), as its recurrence by hand reports it.
+set_tests_properties(check_ol_300_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^ol: 300 steps from 0, against exact values\nol\\.fs: within 0\nol\\.x: within 1\\.1e-16\nol\\.f: within 5\\.6e-17\nol\\.R: within 3\\.6e-14\n$")
 # compile/steps.ink, each over its --steps n: runaway at 1000 fails as wild does.
 set(coast "coast\\.v: within 0\ncoast\\.y: within 0\n$")
 set_tests_properties(check_coast_1001_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -668,7 +679,12 @@ set_tests_properties(check_order_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_crest_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^crest: 100 steps from 0, against exact values\ncrest\\.d\\[1,1\\]: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\ncrest\\.g\\[1,1\\]: 1 at 1, where the interpreter gives 0\n$")
 add_test(NAME check_crest COMMAND check_crest)
-set_tests_properties(check_crest PROPERTIES WILL_FAIL ON)
+set_tests_properties(check_relus_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^relus: 100 steps from 0, against exact values\nrelus\\.Z: within 0\nrelus\\.A: within 0\n$")
+set_tests_properties(check_sliced_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^sliced: 100 steps from 0, against exact values\nsliced\\.g\\[2,1,1\\]: at 1 the compiled step takes 'g_n\\[b<=2, i<=1, j<=1\\] \\| d_n\\[b,i,j\\] < c\\*\\(5 - 2\\*b\\) = 1' and the interpreter 'g_n\\[b<=2, i<=1, j<=1\\] = 0'\\; the guard of the first is exactly on its threshold\nsliced\\.d\\[1,1,1\\]: [0-9.e+-]+ at 8, where the interpreter gives 0\\.29999999999999999\nsliced\\.g\\[2,1,1\\]: 1 at 1, where the interpreter gives 0\n$")
+add_test(NAME check_sliced COMMAND check_sliced)
+set_tests_properties(check_crest check_sliced PROPERTIES WILL_FAIL ON)
 set_tests_properties(check_sized_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^sized: 100 steps from 0, against exact values until 0 and inexact ones from there\n(sized\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 # Its sigmoid's size inferred, compiled where it is called, gives the header
@@ -960,6 +976,10 @@ set_tests_properties(check_floored_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^floored: 100 steps from 0, against exact values\nfloored\\.y: within 0\nfloored\\.x: within 0\nfloored\\.r: within 0\nfloored\\.z: within 0\n$")
 set_tests_properties(check_cycled_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^cycled: 100 steps from 0, against exact values\ncycled\\.a: within 0\ncycled\\.b: within 0\ncycled\\.c: within 0\n$")
+set_tests_properties(check_semi_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^semi: 100 steps from 0, against exact values\nsemi\\.a: within 1\\.8e-15\nsemi\\.b: within 3\\.6e-15\nsemi\\.c: within 7\\.1e-15\n$")
+set_tests_properties(check_loose_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^loose: 100 steps from 0, against exact values\nloose\\.a: within 7\\.1e-15\nloose\\.b: within 1\\.4e-14\n$")
 set_tests_properties(check_huge_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^huge: 100 steps from 0, against exact values\nhuge\\.y: inf at 31, where the interpreter's term is too large for a double\n$")
 set_tests_properties(check_root_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -968,6 +988,8 @@ set_tests_properties(check_sever_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^sever: 100 steps from 0, against exact values until 10 and inexact ones from there\nsever\\.p\\[2,2\\]: inf at 12, where the interpreter's term is not a finite number\n$")
 set_tests_properties(check_warm_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^warm: 100 steps from 0, against exact values\n(warm\\.[a-z]+: within [0-9.e+-]+\n)+$")
+set_tests_properties(check_started_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^started: 100 steps from 0, against exact values\nstarted\\.a: within 7\\.1e-15\nstarted\\.v: within 7\\.1e-15\n$")
 set_tests_properties(check_rnn_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^rnn: 100 steps from 0, against exact values until 1 and inexact ones from there\n(rnn\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 set_tests_properties(check_head_report PROPERTIES PASS_REGULAR_EXPRESSION

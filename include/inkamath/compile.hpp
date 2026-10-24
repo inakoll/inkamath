@@ -51,6 +51,7 @@ public:
             int         period = 1, phase = 0;  // term m at step period*m + phase
             int         start = 0;              // the step of its first term, at another rate
             bool        unnamed = false;          // of an instance a model writes unnamed
+            bool        session = false;          // the session's, read by the model
         };
         std::string              header;
         int                      first;      // the index of the first step
@@ -152,7 +153,7 @@ private:
                         const std::string& source, const Model<Value>* model,
                         const Scope<Value>* instance, const std::set<std::string>& aside,
                         bool clauses = false) {
-        std::set<std::string> fixed;
+        std::set<std::string> fixed, first;
         bool                  aware = false;
         for (;;) {
             CompileC compiler(definitions, model, instance ? *instance : definitions.Session());
@@ -161,9 +162,11 @@ private:
             compiler.aside_  = aside;
             compiler.clauses_ = clauses;
             compiler.aware_   = aware;
+            compiler.first_   = first;
             try {
                 compiler.Define(compiler.root_);
                 if (model) compiler.Signature();
+                for (const std::string& name : first) compiler.Compile(name);
                 // An unnamed instance compiled on the way defines more.
                 for (bool more = true; more;) {
                     more = false;
@@ -186,6 +189,8 @@ private:
                 aware = true;
             } catch (const Fix& fix) {
                 fixed.insert(fix.names.begin(), fix.names.end());
+            } catch (const First& shaped) {
+                first.insert(shaped.name);
             }
         }
     }
@@ -227,6 +232,12 @@ private:
     // so this ends.
     struct Fix {
         std::set<std::string> names;
+    };
+    // A sequence compiling whose guards gave it a shape, where one whose shape
+    // its clause would give reads it, is compiled first, so that the cycle
+    // closes on its window (C403).
+    struct First {
+        std::string name;
     };
 
     // Why a definition cannot be compiled; Compile names the definition.
@@ -377,6 +388,7 @@ private:
         std::string present;  // of an inner optional input, where its argument is present
         Extent                                  size{0, 0};  // none until known
         bool                                    based = false, compiling = false, compiled = false;
+        bool session = false;                           // the session's, read by the model
         std::map<std::string, std::set<int>>    reads;  // lags, by the sequence read
         Reads deferred;  // read only where the left of an 'and' or 'or' has not decided
         int                                     depth = 1;
@@ -504,6 +516,13 @@ private:
             written = {};
     };
 
+    // A clause's locals (DESIGN.md, locals compiled), why one is refused, and grads' names.
+    struct Frame {
+        std::map<std::string, Code>        values;
+        std::map<std::string, std::string> refused;
+        std::set<std::string>              graded;
+    };
+
     // What an expansion gives a name, if one does.
     std::optional<Code> Expanded(const std::string& name) {
         for (Expansion* expansion = expansion_; expansion; expansion = expansion->outer) {
@@ -606,6 +625,12 @@ private:
             if (!member || child != member->Member()) Named(child, names);
     }
 
+    static void Binding(const Expression<Value>& e, std::set<std::string>& names) {
+        if (dynamic_cast<const EqualExpression<Value>*>(&e)) names.insert(e.Name());
+        for (const PExpression<Value>& child : e.Children())
+            if (child) Binding(*child, names);
+    }
+
     // The model an object names, 'conv(lap, x)' or 'gain', if it names one.
     const Reference<Value>* ModelOf(const Expression<Value>& object) const {
         const auto* ref  = dynamic_cast<const RefExpression<Value>*>(&object);
@@ -650,7 +675,8 @@ private:
         if (++expanded_ > max_expanded)
             throw Deep("nested " + std::to_string(max_expanded) +
                        " deep, which a recursion its guards do not end would pass");
-        const Setting<bool> unguarded(guarding_, false);
+        const Setting<bool>  unguarded(guarding_, false);
+        const Setting<Frame> own(frame_, {});
         return body();
     }
     static constexpr int max_expanded = 64;
@@ -728,6 +754,7 @@ private:
                 if (otherwise || (p.guarded() || base) != guard || (base && p.index() != *at) ||
                     (at && !guard && lowest && *at < lowest->parameters.index()))
                     continue;
+                const Setting<Frame> own(frame_, {});
                 if (at) expansion_->values = unbound;
                 if (at && p.general())
                     expansion_->values.insert_or_assign(p.index_name(),
@@ -761,6 +788,13 @@ private:
         return Chain(guarded, otherwise, size);
     }
 
+    static Code Outward(Code c) {
+        c.part  = std::move(c.outer);
+        c.moves = c.part.empty() ? nullptr : c.part[0].moves;
+        c.outer.clear();
+        return c;
+    }
+
     // Each cell as the step tests it: the guarded values in order, then the
     // one that always applies, else NaN, as where no clause applies (C86).
     Code Chain(const std::vector<std::pair<std::string, Code>>& guarded,
@@ -780,19 +814,13 @@ private:
         }
         // In a nest, the outer part of the clause taken, chained as the part
         // below, of each clause as a value whose part it is.
-        const auto outward = [](Code c) {
-            c.part  = std::move(c.outer);
-            c.moves = c.part.empty() ? nullptr : c.part[0].moves;
-            c.outer.clear();
-            return c;
-        };
         if ((otherwise && !otherwise->outer.empty()) ||
             std::ranges::any_of(guarded, [](const auto& g) { return !g.second.outer.empty(); })) {
             std::vector<std::pair<std::string, Code>> outers;
             for (const auto& [condition, value] : guarded)
-                outers.emplace_back(condition, outward(value));
+                outers.emplace_back(condition, Outward(value));
             const Code by =
-                Chain(outers, otherwise ? std::optional(outward(*otherwise)) : std::nullopt, size);
+                Chain(outers, otherwise ? std::optional(Outward(*otherwise)) : std::nullopt, size);
             chain.outer = by.part;
             if (!by.part.empty()) chain.outer[0].moves = by.moves;
         }
@@ -892,6 +920,7 @@ private:
             expansion.values.emplace(given, value);
             expansion.written.emplace(given, std::tuple(argument.get(), scope_, expansion_));
             if (Plain(*argument)) try {
+                    const Setting<Frame> bound(frame_, frame_);  // its locals bound above, once
                     expansion.offsets.emplace(given, Offset(argument, given));
                 } catch (const Reason&) {
                 } catch (const Fix&) {
@@ -1549,7 +1578,8 @@ private:
         const int  outer_shift  = std::exchange(shift_, 0);
         // Nor the reader's guard, which defers what it reads (C92).
         const bool outer_deferring  = std::exchange(deferring_, false);
-        const Setting<Memo> memo(memo_, {temporaries_, {}});
+        const Setting<Memo>  memo(memo_, {temporaries_, {}});
+        const Setting<Frame> own(frame_, {});
         auto       outer_parameters = std::exchange(read_parameters_, {});
         const bool          outer_approximated = std::exchange(approximated_, false);
         try {
@@ -1682,7 +1712,8 @@ private:
             if (ByCells(*sequence.definition)) return BaseTerms(name, sequence);
             for (const Clause<Value>& clause : sequence.definition->Clauses()) {
                 if (clause.parameters.general()) continue;
-                Sequence* const outer = std::exchange(basing_, &sequence);
+                const Setting<Frame> own(frame_, {});
+                Sequence* const      outer = std::exchange(basing_, &sequence);
                 const int       base  = std::exchange(base_, clause.parameters.index());
                 const Code      code  = Emit(clause.expression);
                 basing_               = outer;
@@ -1696,6 +1727,8 @@ private:
     // What a refusal names: a part's grad, the definition, which is what is set
     // aside.
     std::string Refused(const std::string& name) const {
+        if (const auto total = totals_.find(name); total != totals_.end())
+            return total->second.reader;
         return sequences_.at(name).parts.empty() ? name : name.substr(0, name.rfind('.'));
     }
 
@@ -1704,7 +1737,11 @@ private:
         Sequence& sequence = sequences_.at(name);
         if (sequence.compiled || !sequence.definition) return;
         const Home home(*this, sequence.definition);
-        if (sequence.compiling) throw Refusal(Refused(name), "its shape depends on itself");
+        if (sequence.compiling) {
+            for (const auto& [key, other] : sequences_)
+                if (other.compiling && other.size.rows && !first_.count(key)) throw First{key};
+            throw Refusal(Refused(name), "its shape depends on itself");
+        }
         sequence.compiling = true;
         for (const std::string& part : sequence.parts) sequences_.at(part).compiling = true;
         Bases(name);
@@ -1720,11 +1757,13 @@ private:
         // One reading its own term where no base clause gives a shape takes the
         // unguarded one's, compiled first (C377).
         const auto& clauses = sequence.definition->Clauses();
-        const bool shaped = !sequence.size.rows && std::ranges::any_of(clauses, [&](const auto& c) {
-            const std::string& own = sequence.definition->Name();
-            return c.parameters.guarded() &&
-                   (Mentions(*c.expression, own) || Mentions(*c.parameters.guard(), own));
-        });
+        const bool  shaped =
+            !sequence.size.rows &&
+            (totals_.count(name) || std::ranges::any_of(clauses, [&](const auto& c) {
+                 const std::string& own = sequence.definition->Name();
+                 return c.parameters.guarded() &&
+                        (Mentions(*c.expression, own) || Mentions(*c.parameters.guard(), own));
+             }));
         bool       settled = false, general = false;
         for (const bool guarded : {!shaped, shaped}) {
             for (const Clause<Value>& clause : clauses) {
@@ -1865,11 +1904,13 @@ private:
         definitions_.BeginEvaluation();
         const typename ReferenceStack<Value>::Within within(definitions_, scope_);
         const typename ReferenceStack<Value>::Frame  frame(definitions_);
-        std::vector<const Expansion*>                calls;
-        for (const Expansion* call = expansion_; call; call = call->outer) calls.push_back(call);
+        std::vector<const std::map<std::string, Code>*> calls{&frame_.values};  // the locals last
+        for (const Expansion* call = expansion_; call; call = call->outer)
+            calls.push_back(&call->values);
         for (auto call = calls.rbegin(); call != calls.rend(); ++call)
-            for (const auto& [name, code] : (*call)->values)
-                if (code.constant || every)
+            for (const auto& [name, code] : **call)
+                if ((code.constant || every) &&
+                    (*call != &frame_.values || !frame_.graded.count(name)))
                     definitions_.BindValue(name, code.constant ? *code.constant : Value(Number(0)));
         for (const auto& [name, value] : places_) definitions_.BindValue(name, value);
         if (every && !index_.empty()) definitions_.BindValue(index_, Value(Number(0)));
@@ -2577,7 +2618,7 @@ private:
     // The built-in e, as Derivative::Euler has it.
     bool Euler(const Expression<Value>& base) {
         return dynamic_cast<const RefExpression<Value>*>(&base) && base.Name() == "e" &&
-               !places_.count("e") && !Expanded("e") &&
+               !places_.count("e") && !frame_.values.count("e") && !Expanded("e") &&
                Lookup("e").where == &definitions_.Builtins();
     }
 
@@ -2710,7 +2751,8 @@ private:
         const Setting<std::set<std::string>*> asking(statuses_, &asked), doubting(unsure_, &unsure);
         const Setting<std::vector<Compiled::Named>*> reading(read_, &read);
         const Setting<bool> guarding(guarding_, true), moved(moved_, false);
-        const Code          code = Quiet(guard);
+        const Frame                                  frame = frame_;
+        const Code                                   code  = Quiet(guard);
         chosen_                  = chosen_ || moved_;
         unconverged_.clear();
         asked_.clear();
@@ -2731,7 +2773,10 @@ private:
             (grad_.empty() ? fallen.plain : fallen.grad) = true;
         }
         const auto taken = [this](const std::string& status) { return Falls(status); };
-        if (!Defers(guard) && std::ranges::none_of(asked, taken)) return Test(guard);
+        const Setting<Frame> again(frame_, frame);
+        const bool           defers = Defers(guard);
+        frame_                      = frame;
+        if (!defers && std::ranges::none_of(asked, taken)) return Test(guard);
         std::string       fell;
         const std::string truth = Shared(Cell(Truth(guard, &fell), primary)).text;
         if (std::ranges::none_of(asked, taken))
@@ -2782,10 +2827,13 @@ private:
             if (left == (logic->Conjunction() ? "0" : "1")) return left;
             return left + (logic->Conjunction() ? " && " : " || ") + Right(*logic, operand).first;
         }
-        const Code code = Emit(expression);
+        const Frame frame = frame_;
+        const Code  code  = Emit(expression);
         if (code.constant) return Holds(*code.constant) ? "1" : "0";
         if (const auto* compare = dynamic_cast<CompareExpression<Value>*>(expression.get())) {
-            return Compared(compare->Op(), Emit(compare->m_e1()), Emit(compare->m_e2()));
+            const Setting<Frame> again(frame_, frame);
+            const Code           left = Emit(compare->m_e1());
+            return Compared(compare->Op(), left, Emit(compare->m_e2()));
         }
         return Nan(code) + Wrap(code.cells[0], sum) + " != 0.0";
     }
@@ -2907,7 +2955,8 @@ private:
                                  : std::nullopt;
         };
         // A left side that decides is the answer, and the right is not read.
-        const std::optional<bool> left = truth(Emit(expression->m_e1()));
+        const Frame               frame = frame_;
+        const std::optional<bool> left  = truth(Emit(expression->m_e1()));
         if (left && *left != expression->Conjunction())
             return Answer(Literal(Value(Number(*left ? 1 : 0))));
         // What an 'or' reads on its right alone may have run out where it holds.
@@ -2917,9 +2966,16 @@ private:
         if (either)
             for (const std::string& status : *statuses_)
                 if (!before.count(status)) unsure_->insert(status);
+        std::set<std::string> bound;
+        if (!left) Binding(*expression->m_e2(), bound);
+        for (const std::string& name : bound)
+            frame_.refused[name] = ", bound on the right of 'and' or 'or', read after it, for now";
         if (left && right) return Answer(Literal(Value(Number(*right ? 1 : 0))));
         const PExpression<Value> self = expression->self();
-        if (Defers(self)) return Answer(Cell(Truth(self), primary));
+        const Setting<Frame>     again(frame_, frame);  // read again from where it began
+        const bool               defers = Defers(self);
+        frame_                          = frame;
+        if (defers) return Answer(Cell(Truth(self), primary));
         return Answer(Cell("(" + Test(self) + " ? 1.0 : 0.0)", primary));
     }
 
@@ -3027,6 +3083,11 @@ private:
             if (const auto place = places_.find(name); place != places_.end())
                 return Answer(Literal(place->second));
             if (!index_.empty() && name == index_) return Answer(Atom(index_text_, true));
+            if (const auto refused = frame_.refused.find(name); refused != frame_.refused.end())
+                throw Reason(name + refused->second);
+            const auto local = frame_.values.find(name);
+            if (local != frame_.values.end() && !frame_.graded.count(name))
+                return Answer(local->second);
             if (const auto expanded = Expanded(name)) return Answer(*expanded);
         }
         const Found             found      = Lookup(name);
@@ -3040,6 +3101,10 @@ private:
                 }))
                 throw Reason(key + " is a sequence; index it");
             return Answer(Field(key, Value(Number(NAN))));
+        }
+        for (const std::string& by : graded_) {  // where a local did not hide it (C313)
+            std::set<const Reference<Value>*> seen;
+            Reasoned([&] { Derivative<Value>(definitions_).Definition(*definition, by, seen); });
         }
         ReadWhole(key, *definition, false, false);
         // 'f()' is 'f', a call with every default (C169).
@@ -3073,6 +3138,7 @@ private:
         {
             const Home                home(*this, definition);
             const Setting<Expansion*> uncalled(expansion_, nullptr);
+            const Setting<Frame>      own(frame_, {});
             code = std::any_of(definition->Clauses().begin(), definition->Clauses().end(), cells)
                        ? Cells(key, *definition)
                        : Emit(definition->Clauses().front().expression);
@@ -3113,7 +3179,8 @@ private:
     std::pair<Code, std::vector<std::string>> TermCells(const std::string&      name,
                                                         const Reference<Value>& definition,
                                                         Fits fits, std::optional<Code> whole,
-                                                        std::vector<std::string>* taken = nullptr) {
+                                                        std::vector<std::string>* taken  = nullptr,
+                                                        bool                      marked = false) {
         const std::string           nan    = Refused(whole);
         const std::optional<Extent> extent = Measured(name, definition, whole, fits);
         if (!extent) throw Reason(name + " has no size");
@@ -3134,25 +3201,28 @@ private:
             std::optional<std::string> last;
             int                        picked  = 0;
             const auto                 settles = [&](const Clause<Value>& clause) {
+                const Setting<Frame> own(frame_, {});  // each cell its own (C406)
                 const int place = static_cast<int>(&clause - definition.Clauses().data()) + 1;
                 const ParametersDefinition<Value>& p = clause.parameters;
                 const std::string outer = std::exchange(index_, p.general() ? p.index_name() : "");
+                Reads                 guard_reads, value_reads;
+                const Setting<Reads*> reads(clause_reads_, marked ? &guard_reads : clause_reads_);
                 const std::optional<std::string> condition =
                     p.guarded() ? Condition(p.guard()) : std::optional<std::string>("");
                 Ran(ran, condition);
-                // --check asks the interpreter's guards of a cell by its row and column.
-                if (p.tensor() && condition && !condition->empty())
-                    throw Reason("a tensor's cells under a guard that is not a constant, for now");
+                if (marked) clause_reads_ = &value_reads;
                 const std::optional<Code> value =
                     condition ? std::optional<Code>(Emit(clause.expression)) : std::nullopt;
                 index_ = outer;
                 if (!value) return false;
                 if (!value->Scalar()) throw Reason("a cell of " + name + " must be a single value");
+                // Computed again (At), what each guard and value reads is checked where it is.
+                const std::string text = Marked(value_reads) + value->cells[0].text;
                 if (condition->empty()) {
-                    last   = value->cells[0].text;
+                    last   = text;
                     picked = place;
                 } else {
-                    chain += *condition + " ? " + value->cells[0].text + " : ";
+                    chain += Marked(guard_reads) + *condition + " ? " + text + " : ";
                     pick += Picked(*condition) + " ? " + std::to_string(place) + " : ";
                 }
                 return condition->empty();
@@ -3271,7 +3341,7 @@ private:
                 clauses_ && std::any_of(definition.Clauses().begin(), definition.Clauses().end(),
                                         [](const Clause<Value>& c) {
                                             return c.parameters.general() && c.parameters.cells() &&
-                                                   c.parameters.guarded() && !c.parameters.tensor();
+                                                   c.parameters.guarded();
                                         });
             auto [shape, cells] =
                 TermCells(name, definition, every, whole, guarded ? &sequence.taken : nullptr);
@@ -3401,6 +3471,7 @@ private:
         Walk(
             definition, slice, row, col, [](const Clause<Value>&) { return true; },
             [&](const Clause<Value>& clause) {
+                const Setting<Frame>               own(frame_, {});
                 const ParametersDefinition<Value>& p = clause.parameters;
                 const std::optional<std::string>   condition =
                     p.guarded() ? Condition(p.guard()) : std::optional<std::string>("");
@@ -3492,6 +3563,7 @@ private:
                                 if (!c.indexed() || c.general()) continue;
                                 if (c.guarded())
                                     throw Reason("a guarded base clause in a limit's terms");
+                                const Setting<Frame> own(frame_, {});
                                 bases[c.index()] = shaped(Emit(clause.expression));
                             }
                             walked.first = (bases.empty() ? 0 : bases.rbegin()->first) + 1;
@@ -3802,6 +3874,7 @@ private:
                     continue;
                 if (base && c.guarded()) throw Reason("a guarded base clause in a limit's terms");
                 const Setting<std::string>       named(index_, base ? index_ : c.index_name());
+                const Setting<Frame>             own(frame_, {});
                 const std::optional<std::string> condition =
                     base    ? "k_ == " + std::to_string(c.index())
                     : guard ? Condition(c.guard())
@@ -3908,7 +3981,16 @@ private:
         const std::string what = std::string(expression->Product() ? "prod_(" : "sum_(") + q + "=" +
                                  std::to_string(first) + ")";
         std::vector<PExpression<Value>> unmoved;
-        Unmoved(expression->Body(), {q}, what, unmoved);
+        std::set<std::string>           bound;  // a local is its term's
+        Binding(*expression->Body(), bound);
+        const auto carried = [&] {
+            for (const std::string& name : bound)
+                frame_.refused[name] =
+                    ", carried past a term of a sum without an upper bound, for now";
+        };
+        carried();
+        bound.insert(q);
+        Unmoved(expression->Body(), bound, what, unmoved);
         std::map<std::string, Code>              given;
         std::map<const Expression<Value>*, Code> lifted;
         std::vector<std::string>                 names;
@@ -3928,6 +4010,7 @@ private:
             expression, what, what, expression->Product() ? "partial products" : "partial sums", 1,
             names, given, inside,
             [&](Walked& walked, std::map<int, Code>& bases, const auto& shaped) {
+                carried();
                 places_[q]   = Value(Number(first));
                 bases[first] = shaped(Emit(expression->Body()));
                 places_.erase(q);
@@ -4089,6 +4172,14 @@ private:
         const bool calls = !call.parameters_expression().empty() || !call.parameters_dict().empty();
         situated_ += call.limit() || !calls;
         if (call.limit()) return Limit(expression, name, call);
+        if (const auto local = frame_.values.find(name); !own_ && local != frame_.values.end())
+            return !calls && !call.subexpr() ? Answer(local->second)
+                                             : throw Reason(name + (calls ? " takes no arguments"
+                                                                          : " is not a sequence"));
+        if (std::set<std::string> bound; call.subexpr()) {  // asked more than once (C409)
+            Binding(*call.subexpr(), bound);
+            if (!bound.empty()) throw Reason(*bound.begin() + ", bound in a term's index, for now");
+        }
         if (limit_ && name == limit_->name && call.subexpr()) return Answer(Earlier(call));
         if (calls && !own_) {
             const auto [local, in] = Local(name);
@@ -4133,6 +4224,11 @@ private:
         if (!reading_ && !basing_) throw Reason(key + "_...: a term read outside a general clause");
         if (definition && !IsSequence(*definition)) throw Reason(key + " is not a sequence");
         Sequence& read = sequences_[key];
+        // One the model does not define, the session's, is computed in its step too.
+        if (definition && !read.definition) {
+            Define(key, *definition);
+            read.session = true;
+        }
         if (!definition) {
             Unreserved(key);
             if (!read.size.rows) read.size = Extent{};
@@ -4236,8 +4332,16 @@ private:
     // One with no base clause, which the interpreter answers wherever its
     // clauses can be evaluated, below where the step starts it too.
     static bool Recomputed(const Sequence& sequence) {
-        return sequence.definition && sequence.bases.empty() && !ByCells(*sequence.definition) &&
+        return sequence.definition && sequence.bases.empty() &&
+               std::ranges::all_of(sequence.definition->Clauses(),  // no term's own cells
+                                   [](const auto& c) { return c.parameters.general(); }) &&
                sequence.definition->passes.empty();  // an inner optional input is absent there
+    }
+
+    std::string Marked(Reads& read) {
+        if (read.empty()) return std::string();
+        checks_.push_back({read, nullptr, false, nullptr, std::string(), {}, 0});
+        return "\x02" + std::to_string(checks_.size() - 1) + "\x03";
     }
 
     // A term computed again 'lag' before the reader's index, its clauses
@@ -4254,15 +4358,13 @@ private:
         const auto   places = std::exchange(places_, {});
         Reads* const reads  = std::exchange(clause_reads_, nullptr);
         const int    shift  = std::exchange(shift_, lag);
-        const auto   mark   = [&](Reads& read) {
-            if (read.empty()) return std::string();
-            checks_.push_back({read, nullptr, false, nullptr, std::string(), {}, 0});
-            return "\x02" + std::to_string(checks_.size() - 1) + "\x03";
-        };
+        const auto   mark   = [&](Reads& read) { return Marked(read); };
+        const bool   by     = ByCells(*sequence.definition);
         for (const bool guard : {true, false}) {
             for (const Clause<Value>& clause : sequence.definition->Clauses()) {
                 const ParametersDefinition<Value>& p = clause.parameters;
-                if (otherwise || !p.general() || p.guarded() != guard) continue;
+                if (by || otherwise || !p.general() || p.guarded() != guard) continue;
+                const Setting<Frame> own(frame_, {});
                 index_ = p.index_name();
                 Reads guard_reads, value_reads;
                 clause_reads_ = &guard_reads;
@@ -4283,6 +4385,24 @@ private:
                 else
                     guarded.emplace_back(test, value);
             }
+        }
+        // A term by its cells, each cell's chain as the step's (C412).
+        if (by) {
+            Reads whole;
+            clause_reads_ = &whole;
+            for (const Clause<Value>& clause : sequence.definition->Clauses())
+                if (clause.parameters.general() && !clause.parameters.cells()) {
+                    index_    = clause.parameters.index_name();
+                    otherwise = Emit(clause.expression);
+                }
+            clause_reads_ = nullptr;
+            if (otherwise)
+                for (Cell& cell : otherwise->cells) cell = Cell(mark(whole) + cell.text, 0);
+            const auto every = [](const Clause<Value>& c) { return c.parameters.general(); };
+            const auto [shape, cells] = TermCells(sequence.definition->Name(), *sequence.definition,
+                                                  every, otherwise, nullptr, true);
+            otherwise                 = shape;
+            for (const std::string& cell : cells) otherwise->cells.push_back(Cell(cell, 0));
         }
         index_        = index;
         index_text_   = text;
@@ -4515,8 +4635,18 @@ private:
         return Reasoned([&] { return AsIndex<Value>(*code.constant); });
     }
 
-    PExpression<Value> visit(EqualExpression<Value>*) override {
-        throw Reason("a local definition");
+    PExpression<Value> visit(EqualExpression<Value>* local) override {
+        Reasoned([&] { EvaluationVisitor<Value>::Unparametrized(*local); });
+        const std::string& name = local->Name();
+        if (places_.count(name) || name == index_)
+            throw Reason(name + " is the sum's index, so a local cannot define it");
+        if (frame_.graded.count(name))
+            throw Reason(name + " is grad's variable, so a local cannot define it");
+        if (!local->m_e1()->Children().empty()) throw Reason("a local by cells, for now");
+        Code code = Emit(local->m_e2());
+        for (Cell& cell : code.cells) cell.atom &= cell.level == primary;  // a name or a number
+        frame_.refused.erase(name);
+        return Answer(frame_.values.insert_or_assign(name, SharedAll(code)).first->second);
     }
     // '[a;; b]', slice by slice as Matrix::Stack stacks them, and their parts too.
     PExpression<Value> visit(TensorExpression<Value>* expression) override {
@@ -4687,15 +4817,15 @@ private:
         std::vector<Code> points, parts;
         for (std::size_t v = 0; v < expression->Variables().size(); ++v)
             points.push_back(Emit(expression->Point(v)));
-        Asked([&] { Reasoned([&] { Derivative<Value>(definitions_).Names(*expression, true); }); },
-              true);
+        // Its body is a value, in a guard too, where a comparison jumps (C414).
+        const Setting<bool> valued(guarding_, false);
+        Asked([&] { Reasoned([&] { Derivative<Value>(definitions_).Names(*expression); }); }, true);
         const bool hessian =
             Reasoned([&] { return Derivative<Value>::Hessian(*expression, points[0].size); });
         // Its inner grad's point reads v, where its body may not.
         if (hessian) {
             auto& inner = static_cast<GradExpression<Value>&>(*expression->Body());
-            Asked([&] { Reasoned([&] { Derivative<Value>(definitions_).Names(inner, true); }); },
-                  true);
+            Asked([&] { Reasoned([&] { Derivative<Value>(definitions_).Names(inner); }); }, true);
         }
         if (depth_ + (hessian ? 1 : 0) > 1)
             throw Reason("a derivative of a derivative of a derivative, for now");
@@ -4704,12 +4834,13 @@ private:
             throw Reason("a derivative of a derivative by several names, for now");
         if (depth_ && tape_) throw Forward();
         if (depth_) return Answer(Nest(*expression, points[0]));
+        const Frame frame = frame_;
         if (!hessian && (points.size() > 1 || points[0].size.count() > 1)) try {
                 Tape tape;
                 parts = Graded(*expression, points, &tape);
             } catch (const Forward&) {
             }
-        if (parts.empty()) parts = Graded(*expression, points, nullptr, hessian);
+        if (parts.empty()) parts = (frame_ = frame, Graded(*expression, points, nullptr, hessian));
         // A nest at constant points reading nothing that moves is folded, as
         // a first derivative's values are, and NaN where the interpreter refuses.
         if (!depth_ && dynamic_cast<GradExpression<Value>*>(expression->Body().get()) &&
@@ -4733,6 +4864,7 @@ private:
         const Setting<Expansion*>                   binding(expansion_, &bound);
         const Setting<std::map<std::string, Value>> places(places_, places_);
         const Setting<std::string>                  indexed(index_, index_);
+        const Setting<Frame>                        probed(frame_, frame_);
         Code                                        body;
         try {
             for (GradExpression<Value>* g = &grad; g;) {
@@ -4772,6 +4904,8 @@ private:
             for (auto& [name, code] : e->values) inward(code);
         }
         inward(point);
+        const std::map<std::string, Code> before = frame_.values;  // put back where not bound
+        for (auto& [name, code] : frame_.values) inward(code);
         struct Restore {
             std::vector<std::pair<Expansion*, std::map<std::string, Code>>>& each;
             ~Restore() {
@@ -4779,6 +4913,12 @@ private:
             }
         } restore{saved};
         Code out = Graded(expression, {point}, nullptr)[0];
+        std::set<std::string> rebound;
+        Binding(*expression.Body(), rebound);
+        for (auto& [name, code] : frame_.values) {  // its part by the outer, its exact value kept
+            const auto was = before.find(name);
+            code = was != before.end() && !rebound.count(name) ? was->second : Outward(code);
+        }
         out.part = std::move(out.outer);
         out.outer.clear();
         out.moves.reset();
@@ -4798,9 +4938,13 @@ private:
         std::vector<Code>               parts;
         std::vector<bool>               any(names.size());
         const Setting<Tape*>            taping(tape_, tape);
+        const Frame                     frame = frame_;  // each pass binds its own
         if (tape) ++tapes_;
         std::string with;
         for (const std::string& name : names) with += (with.empty() ? "" : " or ") + name;
+        std::vector<std::string> around = graded_;
+        around.insert(around.end(), names.begin(), names.end());
+        const Setting<std::vector<std::string>> graded(graded_, std::move(around));
         const std::size_t n  = points[0].cells.size();
         const auto        at = [&](std::size_t i, std::size_t j) {
             if (i > j) std::swap(i, j);
@@ -4836,6 +4980,8 @@ private:
                     places.erase(names[w]);
                     if (index == names[w]) index.clear();
                 }
+                frame_ = frame;
+                frame_.graded.insert(names.begin(), names.end());
                 const Setting<std::map<std::string, Value>> hidden(places_, places);
                 const Setting<std::string>                  indexed(index_, index);
                 const Setting<Expansion*>                   binding(expansion_, &bound);
@@ -4860,11 +5006,17 @@ private:
                 if (!tape) parts.push_back(part ? *part : Literal(Value(body.size)));
                 any[v] = any[v] || part;
             }
+        // Past the grad, a local keeps its value and the parts of the grads around it (C322).
+        for (auto& [name, local] : frame_.values)
+            local = {local.size,  local.cells, local.constant,
+                     local.whole, {},          hessian ? std::vector<Code>() : local.outer,
+                     {},          0,           false};
+        frame_.graded = frame.graded;
         // NaN where the value differentiated is, in a header that writes NaN,
         // as one does where that value writes it and no part reads it (C113),
         // in any walk: each moves by its own name, and the interpreter refuses
         // all where one jumps (C341).
-        for (const Cell& c : values.cells) aware_ |= WritesNan(c.text);
+        for (const Cell& c : values.cells) aware_ |= MayNan(c.text);  // a temporary's too
         const std::string nan = aware_ ? Nan(Shared(values)) : "";
         std::vector<Code> outs;
         for (std::size_t v = 0, first = 0; v < names.size(); ++v) {
@@ -5192,6 +5344,7 @@ private:
     // the lags it gives are constants.
     PExpression<Value> visit(SeriesExpression<Value>* expression) override {
         if (!expression->Upper()) return Sum(expression);
+        if (const auto total = Running(*expression)) return Answer(*total);
         const Code lower =
             Known(expression->Lower(), "a sum or a product whose bounds are not constants");
         const Code upper =
@@ -5239,6 +5392,92 @@ private:
             return value;
         };
         return Answer(constant ? Parted(Exact(exact), PartOf(total), {&total}) : total);
+    }
+
+    // A sum or a product up to the clause's index less a constant c, kept as
+    // a sequence of the step's own, as a recurrence by hand is (DESIGN.md):
+    // 's0_n | n < a + c = 0', and 's0_n' the sum, which its own clause
+    // compiles as its term at n - 1 plus the sum's at n - c. One for each place.
+    struct Accumulator {
+        std::string                  reader;
+        SeriesExpression<Value>*     series;
+        std::map<std::string, Value> places;
+        int                          lag;
+        std::string                  upto;
+        ParametersCall<Value>        now        = {};  // its term at n
+        Reference<Value>             definition = {};
+    };
+    std::optional<Code> Running(SeriesExpression<Value>& series) {
+        const auto own = totals_.find(within_);
+        if (own != totals_.end() && own->second.series == &series) return Accumulated(own->second);
+        if (limit_ || index_.empty() || places_.count(index_) || !Mentions(*series.Upper(), index_))
+            return std::nullopt;
+        const std::string what = std::string(series.Indexes() ? "an " : "a ") + series.Noun();
+        const std::string upto = what + " up to " + index_;
+        if (own != totals_.end()) throw Reason(what + " up to an enclosing sum's index, for now");
+        if (series.Reduction() || !grad_.empty())
+            throw Reason(upto + (grad_.empty() ? "" : " under grad") + ", for now");
+        if (Mentions(*series.Body(), index_))
+            throw Reason(upto + " whose terms read " + index_ + "; write it as a recurrence");
+        int c = -1;
+        try {
+            c = -Offset(series.Upper(), index_);
+        } catch (const Reason&) {
+        }
+        if (c < 0)
+            throw Reason(what + " whose last index is neither a constant nor " + index_ +
+                         " less a constant");
+        const int a = Whole(Known(series.Lower(), what + " whose first index is not a constant"));
+        auto      found = std::ranges::find_if(totals_, [&](const auto& total) {
+            const Accumulator& t = total.second;
+            return t.series == &series && t.definition.home == scope_ && t.places == places_;
+        });
+        if (found == totals_.end()) {
+            const std::string key = scope_->Qualified("s" + std::to_string(totals_.size()) + "_");
+            found = totals_.try_emplace(key, within_, &series, places_, c, upto).first;
+            Accumulator&             total = found->second;
+            const auto               n     = std::make_shared<RefExpression<Value>>(index_);
+            EvaluationVisitor<Value> evaluator(definitions_);
+            const auto               below = std::make_shared<CompareExpression<Value>>(
+                Comparison::Less, n, std::make_shared<ValExpression<Value>>(Value(Number(a + c))));
+            total.now = {nullptr, n};
+            total.definition.add_expression(
+                key, {nullptr, n, evaluator, below},
+                std::make_shared<ValExpression<Value>>(Value(Number(series.Product()))));
+            total.definition.add_expression(key, {nullptr, n, evaluator},
+                                            PExpression<Value>(PExpression<Value>(), &series));
+            total.definition.home      = scope_;
+            sequences_[key].definition = &total.definition;
+        }
+        const Code  code  = Term(found->first, &found->second.definition, found->second.now);
+        const auto& bases = reading_->bases;
+        for (int n = bases.empty() ? 0 : bases.begin()->first; !code.Scalar() && n < a + c; ++n)
+            if (!bases.count(n))
+                throw Reason(upto + " empty at " + std::to_string(n) + ", a single " +
+                             (series.Product() ? "1" : "0") + " there and a " +
+                             code.size.Described() + " after");
+        return code;
+    }
+    Code Accumulated(Accumulator& total) {
+        Code term;
+        {
+            const Setting<std::map<std::string, Value>> places(places_, total.places);
+            const Setting<int>                          lagged(shift_, total.lag);
+            const Setting<std::string>                  bound(index_, total.series->Index());
+            const Setting<std::string>                  text(
+                index_text_, total.lag ? "(double)(m_->index_ - " + std::to_string(total.lag) + ")"
+                                                        : index_text_);
+            term = Emit(total.series->Body());
+        }
+        if (!term.Scalar())  // its history of its terms' size
+            total.definition.add_expression(
+                within_, total.definition.Clauses()[0].parameters,
+                std::make_shared<ValExpression<Value>>(
+                    total.series->Product() ? Value::Identity(term.size) : Value(term.size)));
+        sequences_.at(within_).size = term.size;
+        const Setting<int> back(shift_, 1);
+        const Code         before = Term(within_, &total.definition, total.now);
+        return total.series->Product() ? Product(before, term) : Broadcast(before, term, Added);
     }
     // A reduction's term, as the interpreter ranks it; under grad, for now, refused.
     static const Code& Ranked(const SeriesExpression<Value>& series, const Code& term) {
@@ -5377,6 +5616,10 @@ private:
         for (const Reads* some : {&sequence.reads, &sequence.deferred})
             for (const auto& [read, lags] : *some) {
                 const int period = sequences_.at(read).period;
+                if (read != name && totals_.count(read) && std::max(period, sequence.period) > 1)
+                    throw Refusal(name, totals_.at(read).upto + " in a sequence computed every " +
+                                            std::to_string(std::max(period, sequence.period)) +
+                                            ", for now");
                 if (read != name && period > 1 && sequence.period > 1) throw another(read);
                 if (read != name && period > 1)
                     throw Refusal(name, read + "_(...): read every step, and " + read +
@@ -5835,9 +6078,10 @@ private:
         const auto              history = histories_.find(name);
         const Reference<Value>* definition =
             history != histories_.end() ? history->second : sequences_.at(name).definition;
-        // A recurrence's own term, where no input or parameter can change it.
+        // A recurrence's own term, where no parameter can change it: an input
+        // its term reads there has none to give, and the term is refused (C403).
         const bool given = (Recurrent(name) || Own(name) || Under(name)) &&
-                           (Parametric(name, true).empty() || Given(name, n));
+                           (Parametric(name).empty() || Given(name, n));
         // A history's clause that holds there reads no parameter, whatever
         // the argument it is tried before reads (C379).
         const bool historic =
@@ -5887,8 +6131,9 @@ private:
     // or that it has none.
     std::string Unfolded(const std::string& read, int at) const {
         const auto why = unfolded_.find({read, at});
-        return why != unfolded_.end() ? read + "'s history " + why->second
-                                      : read + " has no history";
+        return why != unfolded_.end()
+                   ? (totals_.count(read) ? "it " : read + "'s history ") + why->second
+                   : read + " has no history";
     }
 
     // A parameter a term can read, which the host may assign after init has
@@ -5981,10 +6226,17 @@ private:
                     if (!Ticks(reader, n) || reader.bases.count(n) || Folded(read, n - lag) ||
                         kept_at(n) || Optional(read))
                         continue;
-                    throw Refusal(
-                        name, name + "_" + std::to_string(Floor(n - reader.phase, reader.period)) +
-                                  " reads " + read + "_" + std::to_string(n - lag) +
-                                  ", before the stream, where " + Unfolded(read, n - lag));
+                    const std::string& who   = totals_.count(name) ? totals_.at(name).reader : name;
+                    const auto         total = totals_.find(read);
+                    const std::string  term  = total == totals_.end()
+                                                   ? read + "_" + std::to_string(n - lag)
+                                                   : total->second.reader + "'s " +
+                                                       total->second.series->Noun() + " up to " +
+                                                       std::to_string(n - lag - total->second.lag);
+                    throw Refusal(who, who + "_" +
+                                           std::to_string(Floor(n - reader.phase, reader.period)) +
+                                           " reads " + term + ", before the stream, where " +
+                                           Unfolded(read, n - lag));
                 }
             }
         }
@@ -6036,10 +6288,31 @@ private:
                                             ", before the stream, where " +
                                             Unfolded(seed.read, seed.at));
         }
-        for (const Early& early : earlies_)
+        for (std::size_t id = 0; id < earlies_.size(); ++id)
             for (const auto& [name, sequence] : sequences_)
-                if (&sequence == early.reader && Needed(early))
-                    Cover(name, sequence, early.reads, sequences_.at(early.name).start + early.lag);
+                if (const Early& early = earlies_[id]; &sequence == early.reader && Needed(early))
+                    Cover(name, sequence, early.reads, sequences_.at(early.name).start + early.lag,
+                          Kept(sequence, "\x04" + std::to_string(id) + "\x05"));
+    }
+
+    // What a mark stands for, read by the general clause alone, is read
+    // only where no guard holds (C413).
+    std::vector<Check> Kept(const Sequence& sequence, const std::string& mark) const {
+        const auto in = [&](const std::string& text) {
+            return text.find(mark) != std::string::npos;
+        };
+        std::vector<Check> holds;
+        if (std::ranges::none_of(sequence.general, in) ||
+            std::ranges::any_of(sequence.guarded, [&](const Guarded& g) {
+                return in(g.condition) || std::ranges::any_of(g.cells, in);
+            }))
+            return holds;
+        for (const Guarded& guarded : sequence.guarded) {
+            const auto& p = sequence.definition->Clauses()[guarded.clause].parameters;
+            holds.push_back(
+                {{}, p.guard(), false, sequence.definition->home, p.index_name(), {}, 0});
+        }
+        return holds;
     }
 
     // init's lines for what histories give, once every read has asked.
@@ -6078,8 +6351,16 @@ private:
                                       " / sizeof(double); ++c_) ((double*)" + at + ")[c_] = NAN;\n";
     }
 
-    std::vector<std::string> Order() const {
+    // Where no order computes every base a base clause reads at its own
+    // index before it, as with a_0 = v_0 and v_n = a_n, such a base is also
+    // computed ahead of its reader, by 'ahead' (C402).
+    using Ahead = std::multimap<std::string, std::pair<std::string, int>>;
+    std::vector<std::string> Order(Ahead* ahead = nullptr) const {
         std::map<std::string, std::set<std::string>> waiting;
+        const auto early = [&](const Sequence& reader, const Seed& seed) {
+            const Sequence& read = sequences_.at(seed.read);
+            return ahead && reader.parts.empty() && read.parts.empty() && read.bases.count(seed.at);
+        };
         for (const auto& [name, sequence] : sequences_) {
             if (!sequence.definition) continue;
             waiting[name];
@@ -6088,13 +6369,16 @@ private:
             // A hold's lag is counted from the window as the held term's tick
             // leaves it, so the held sequence comes first.
             for (const std::size_t h : sequence.holds) waiting[name].insert(holds_[h].read);
-            for (const Reads* reads : {&sequence.reads, &sequence.deferred, &sequence.seeded}) {
+            for (const Reads* reads : {&sequence.reads, &sequence.deferred}) {
                 for (const auto& [read, lags] : *reads) {
                     if (!lags.count(0) || !sequences_.at(read).definition) continue;
                     if (read == name) throw Refusal(name, "a term reads itself");
                     waiting[name].insert(read);
                 }
             }
+            for (const Seed& seed : sequence.seeds)
+                if (seed.lag == 0 && sequences_.at(seed.read).definition && !early(sequence, seed))
+                    waiting[name].insert(seed.read);
         }
         std::vector<std::string> order;
         while (!waiting.empty()) {
@@ -6107,6 +6391,24 @@ private:
             waiting.erase(ready);
             for (auto& entry : waiting) entry.second.erase(name);
         }
+        const auto place = [&](const std::string& name) {
+            return std::find(order.begin(), order.end(), name) - order.begin();
+        };
+        // And ahead of it, what that base reads at its index and is not computed yet.
+        const auto hoist = [&](const auto& self, const std::string& name, const Sequence& reader,
+                               const Seed& seed, std::size_t depth) -> void {
+            if (seed.lag || !sequences_.at(seed.read).definition || place(seed.read) < place(name))
+                return;
+            if (!early(reader, seed) || depth > order.size())
+                throw Refusal(name, "it and the terms it reads need each other");
+            const Sequence& read = sequences_.at(seed.read);
+            for (const Seed& own : read.seeds)
+                if (own.index == seed.at) self(self, name, read, own, depth + 1);
+            ahead->emplace(name, std::pair(seed.read, seed.at));
+        };
+        for (const std::string& name : order)
+            for (const Seed& seed : sequences_.at(name).seeds)
+                hoist(hoist, name, sequences_.at(name), seed, 0);
         return order;
     }
 
@@ -6465,7 +6767,9 @@ private:
              at             = text.find('\x02', at)) {
             const std::size_t end = text.find('\x03', at);
             const Check&      kept = checks_.at(std::stoul(text.substr(at + 1, end - at - 1)));
-            Cover(name, sequence, kept.reads, std::numeric_limits<int>::max(), {kept});
+            std::vector<Check> keep = Kept(sequence, text.substr(at, end - at + 1));
+            keep.push_back(kept);
+            Cover(name, sequence, kept.reads, std::numeric_limits<int>::max(), keep);
             const int   from = From(kept.reads);
             std::string check;
             for (int n = sequence.start; n < from && check.empty(); ++n)
@@ -6495,8 +6799,12 @@ private:
         for (const std::string& name : fields) {
             const Sequence&   sequence = sequences_.at(name);
             const int         depth    = sequence.depth;
+            const auto        total    = totals_.find(name);
             const std::string term =
-                depth > 1 ? name + "\x01(k\x01<=\x01" + std::to_string(depth - 1) + ")" : name;
+                (depth > 1 ? name + "\x01(k\x01<=\x01" + std::to_string(depth - 1) + ")" : name) +
+                (total == totals_.end()
+                     ? ""
+                     : " for " + total->second.reader + "'s " + total->second.series->Noun());
             if (sequence.period == 1) {
                 terms.push_back(term);
                 continue;
@@ -6622,13 +6930,18 @@ private:
     }
 
     // A sequence's cells assigned in its step, in the order the interpreter
-    // tries its clauses.
-    std::string Assigned(const std::string& name, const std::string& indent) {
+    // tries its clauses; with 'only', that base term's alone.
+    std::string Assigned(const std::string& name, const std::string& indent,
+                         const std::vector<std::string>* only = nullptr) {
         const Sequence& sequence = sequences_.at(name);
         const bool      scalar   = sequence.general.size() == 1;
         std::string     assignments;
         for (std::size_t c = 0; c < sequence.general.size(); ++c) {
             assignments += indent + "m_->" + name + "[0]" + Subscript(sequence.size, c) + " = ";
+            if (only) {
+                assignments += (*only)[c] + ";\n";
+                continue;
+            }
             for (const auto& [index, base] : sequence.bases)
                 assignments += "m_->index_ == " + std::to_string(index) + " ? " + base[c] + " : ";
             // Checked only where an index no base clause gives needs it.
@@ -6706,7 +7019,7 @@ private:
         }
         // Ahead of the cells too, a cell's clause where no base term stands.
         std::string picks;
-        for (std::size_t c = 0; c < sequence.taken.size(); ++c) {
+        for (std::size_t c = 0; !only && c < sequence.taken.size(); ++c) {
             picks += indent + "m_->" + name + "_clause_[" + std::to_string(c) + "] = ";
             for (const auto& [index, base] : sequence.bases)
                 picks += "m_->index_ == " + std::to_string(index) + " ? 0 : ";
@@ -6740,7 +7053,13 @@ private:
         for (auto& [name, sequence] : sequences_)
             for (const std::size_t h : sequence.holds) Resolve(name, holds_[h]);
         for (auto& [name, sequence] : sequences_) Seeds(name, sequence);
-        const std::vector<std::string> order    = Order();
+        Ahead                    ahead;
+        std::vector<std::string> order;
+        try {
+            order = Order();
+        } catch (const Refusal&) {
+            order = Order(&ahead);
+        }
         std::vector<std::string>       fields;
         for (const Early& early : earlies_)
             if (Needed(early))
@@ -6895,10 +7214,30 @@ private:
             if (!given.empty())
                 out += "    m_->" + name + "_present[0] = " + name + "_present_in_ != 0;\n";
         }
+        // Resolved before what is used is known: a term read back that is
+        // not computed again leaves its temporaries unread.
+        const auto written = [&](const std::string& name, const std::string& assignments,
+                                 const std::string& indent) {
+            const Sequence&        sequence    = sequences_.at(name);
+            std::vector<Temporary> temporaries = sequence.temporaries;
+            for (Temporary& temporary : temporaries)
+                for (std::string& line : temporary.lines)
+                    line = Checked(Rated(line, sequence), name, sequence);
+            std::string checked  = Checked(Rated(assignments, sequence), name, sequence);
+            const auto  numbered = Numbered(temporaries, checked);
+            return Split(numbered, checked, indent, sequence.definition->home);
+        };
         for (const std::string& name : order) {
             const Sequence&   sequence = sequences_.at(name);
             // A grad by several names' parts are written with the first.
             if (!sequence.parts.empty() && sequence.parts[0] != name) continue;
+            for (auto [at, end] = ahead.equal_range(name); at != end; ++at) {
+                const auto& [base, n] = at->second;
+                out += "    if (m_->index_ == " + std::to_string(n) + ") {\n" +
+                       written(base, Assigned(base, "        ", &sequences_.at(base).bases.at(n)),
+                               "        ") +
+                       "    }\n";
+            }
             const bool        rated    = sequence.period > 1;
             const bool        late     = sequence.start > earliest || rated;
             const std::string indent   = late ? "        " : "    ";
@@ -6947,15 +7286,7 @@ private:
                 if (chains_.count(part))
                     assignments += gave + (given.general_clause < 0 ? "0" : "1") + ";\n";
             }
-            // Resolved before what is used is known: a term read back that is
-            // not computed again leaves its temporaries unread.
-            std::vector<Temporary> temporaries = sequence.temporaries;
-            for (Temporary& temporary : temporaries)
-                for (std::string& line : temporary.lines)
-                    line = Checked(Rated(line, sequence), name, sequence);
-            std::string checked  = Checked(Rated(assignments, sequence), name, sequence);
-            const auto  numbered = Numbered(temporaries, checked);
-            out += Split(numbered, checked, indent, sequence.definition->home);
+            out += written(name, assignments, indent);
             if (late) out += "    }\n";
         }
         out += "}\n\n#endif\n";
@@ -7018,13 +7349,14 @@ private:
         Compiled compiled{out, earliest, inputs, {}, {}, {}, unnamed_, fallen_};
         for (const std::string& name : inputs) compiled.cells.push_back(Cells(name));
         for (const std::string& name : order) {
+            if (totals_.count(name)) continue;  // which the interpreter does not name
             const Sequence& sequence = sequences_.at(name);
             const bool      unnamed  = std::any_of(
                 labels_.begin(), labels_.end(),
                 [&](const std::string& label) { return name.rfind(label + ".", 0) == 0; });
             compiled.sequences.push_back({name, sequence.size, sequence.period, sequence.phase,
                                           sequence.period * sequence.first + sequence.phase,
-                                          unnamed});
+                                          unnamed, sequence.session});
             if (clauses_ && (!sequence.guarded.empty() || !sequence.taken.empty()))
                 compiled.guarded.push_back(name);
         }
@@ -7037,6 +7369,8 @@ private:
     const Scope<Value>*              scope_;  // where the names being read are sought
     const Scope<Value>*              own_ = nullptr;  // the scope after a point, for one name
     Expansion*                       expansion_ = nullptr;  // the call being compiled, if one is
+    Frame                            frame_;  // the locals the code being compiled sees
+    std::vector<std::string> graded_;         // the names of the grads it is under, outermost first
     int                              expanded_  = 0;        // how deep calls are
     int                              calls_     = 0;        // how many were compiled
     std::vector<std::shared_ptr<const Scope<Value>>> held_;    // what expansions name
@@ -7050,6 +7384,7 @@ private:
     std::map<std::string, Parameter> parameters_;
     std::vector<Derived>             derived_;  // each after those it reads
     std::set<std::string>            fixed_;    // parameters compiled as constants; see Fix
+    std::set<std::string>            first_;    // see First
     std::set<std::string>            approximated_in_;  // what reads one approximated_ says
     std::set<std::string>            rounded_in_;       // what writes a constant marked rounded
     std::set<std::string>            aside_;    // definitions refused; see Refusals
@@ -7159,6 +7494,7 @@ private:
     std::map<const Expression<Value>*, Code> lifted_;  // an unbounded sum's arguments, by part
     int                              temporary_count_ = 0;
     std::map<std::string, Value>     places_;             // a cell's row and column, by their names
+    std::map<std::string, Accumulator>       totals_;             // by key
     Code        code_;
     Tape* tape_  = nullptr;  // the grad's being compiled in reverse mode
     std::size_t                        depth_ = 0;        // the grads around, a nest's 2

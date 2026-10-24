@@ -429,6 +429,25 @@ cycling(x_n) = {
 }
 cycled = cycling(x_n = n)
 
+# A cycle guarded on some of its sequences only, the input read in it: b,
+# unguarded, was refused, "b has no history", where b_-1 reads c's guard and
+# no input; and 'loose' refused a, "its shape depends on itself", where only
+# b's guard gives a shape (C403).
+halving(x_n) = {
+    a_n | n < 0 = 1
+    a_n = b_(n-1)/2
+    b_n = c_(n-1)/2
+    c_n | n < 0 = 1
+    c_n = a_(n-1)/2 + x_n
+}
+semi = halving(x_n = n)
+loosing(x_n) = {
+    a_n = b_(n-1)/2
+    b_n | n < 0 = 1
+    b_n = a_(n-1)/2 + x_n
+}
+loose = loosing(x_n = n)
+
 # Below a base clause where no guard holds, the interpreter gives no term, so
 # 'tenths' starts q at 1, as it does without the guard: it was refused,
 # 'q_0 reads p_-1, ... no clause of p applies' (C376).
@@ -439,3 +458,33 @@ tenthing() = {
     p_n = q_n
 }
 tenths = tenthing()
+
+# A term by its cells with no base clause, read before the stream: 'rowed'
+# reads S_-1, which q's history gives, where the step had none, "R: none at
+# 0, where the interpreter gives 2" without T; and T_-2, a closed form, was
+# refused, "a complex number", its cells computed again with i unbound (C412).
+#
+#     rowed: 100 steps from 0, against exact values
+#     rowed.<name>: within 0, for each of R, q, S and T
+celling(x_n) = {
+    q_n | n < 0 = 1
+    q_n = q_(n-1) + x_n
+    S_n[i<=2] | q_n > i = q_n*i
+    S_n[i<=2] = i
+    T_n[i<=2] = n*i
+    R_n = S_(n-1)[2] + T_(n-2)[1]
+}
+rowed = celling(x_n = n - 1)
+
+# A guard that holds keeps what the general clause alone reads before the
+# stream: 'tallied' takes run_0 from its guard, and was refused, "run_0 reads
+# x_-1, before the stream, where x has no history", for u_-1 (C413).
+#
+#     tallied: 100 steps from 0, against exact values
+#     tallied.<name>: within 0, for each of run and u
+tallying(x_n) = {
+    u_n = 2*x_n
+    run_n | n < 1 = 0
+    run_n = run_(n-1) + u_(n-1)
+}
+tallied = tallying(x_n = n)

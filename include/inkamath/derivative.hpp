@@ -38,12 +38,10 @@ public:
     }
 
     // What grad refuses by the names its body reads, before any value: the
-    // compiler asks it too (DESIGN.md, grad compiled), and refuses a local
-    // there, reached or not, as it compiles none (C313).
-    void Names(const GradExpression<T>& grad, bool compiled = false) {
-        const Setting<bool> refusing(compile_, compiled);
+    // compiler asks it too (DESIGN.md, grad compiled).
+    void Names(const GradExpression<T>& grad) {
         for (const std::string& name : grad.Variables()) {
-            Unreached(grad.Body(), name);
+            Unreached(grad.Body(), name, grad.Variables());
             if (!Mentions(*grad.Body(), name))
                 throw std::runtime_error("grad's expression does not read " + name);
         }
@@ -64,6 +62,7 @@ public:
     }
 
 private:
+    friend class CompileC;  // which searches the globals it reads under grad (C313)
     struct Tape;
     // What reverse mode cannot do as forward mode does: forward mode does it.
     struct Forward {};
@@ -1544,9 +1543,10 @@ private:
     // A definition reads the globals where it was written, which a grad's
     // name does not reach: a derivative through one that reads the global of
     // that name would be zero for no reason the reader can see.
-    void Unreached(const PExpression<T>& body, const std::string& name) {
+    void Unreached(const PExpression<T>& body, const std::string& name,
+                   const std::vector<std::string>& names) {
         std::set<const Reference<T>*> seen;
-        std::set<std::string>         bound{name};
+        std::set<std::string>         bound(names.begin(), names.end());
         Scan(body, name, bound, nullptr, seen);
     }
 
@@ -1575,7 +1575,6 @@ private:
             return;
         }
         if (const auto* local = dynamic_cast<const EqualExpression<T>*>(e.get())) {
-            if (compile_) throw std::runtime_error("a local definition");
             Scan(local->m_e2(), name, bound, within, seen);
             bound.insert(local->Name());
             return;
@@ -1683,6 +1682,19 @@ private:
             if (!held && clause.parameters.binds()) d.frames_.back() = own;
             return held;
         }
+        // A cell's frames, put back after it (C406).
+        struct Own {
+            Own(Derivative& of, bool binds) : locals(of.stack_, binds), d(of) {
+                if (binds) own = d.frames_.back();
+            }
+            ~Own() {
+                if (own) d.frames_.back() = std::move(*own);
+            }
+            typename ReferenceStack<T>::Tentative locals;
+            Derivative&                           d;
+            std::optional<Arguments>              own;
+        };
+        Own Framed(bool binds) { return {d, binds}; }
         // A cell's place, from 1, for the tape.
         static std::size_t At(Jet& into, int slice, int row, int col) {
             return static_cast<std::size_t>(&Value(into)(slice, row, col) - Value(into).data()) + 1;
@@ -1801,7 +1813,6 @@ private:
     bool                                                  filling_ = false;
     bool                                                  chosen_  = false;
     bool                                                  rounded_ = false;
-    bool                                                  compile_ = false;
     std::size_t                                           stepped_ = 0;
     std::size_t                                           complex_ = 0;  // grads at a complex point
     const Guarded*                                        guarded_ = nullptr;

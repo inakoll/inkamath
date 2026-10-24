@@ -47,7 +47,7 @@ public:
         // not asked twice. A function's by run, ask and call, a call begun
         // where its guards are tried again; none while a margin is measured,
         // as a disturbed run measures none (DESIGN.md).
-        std::map<std::tuple<int, const Reference<Value>*, int, int, int>, Asked> asked;
+        std::map<std::tuple<int, const Reference<Value>*, int, int, int, int>, Asked> asked;
         using Sequence = CompileC::Compiled::Sequence;
         std::map<std::tuple<int, const Sequence*, int, const Reference<Value>*>, std::vector<Asked>>
                                         calls;
@@ -56,7 +56,8 @@ public:
         bool                            measuring = false;
         int                             order     = 0;
         const auto hook = [&](const Reference<Value>& reference, const Clause<Value>& clause, int n,
-                              int row, int col, bool held, EvaluationVisitor<Value>& evaluator) {
+                              int slice, int row, int col, bool held,
+                              EvaluationVisitor<Value>& evaluator) {
             if (measuring) return;
             const int   place = static_cast<int>(&clause - reference.Clauses().data());
             const auto& p     = clause.parameters;
@@ -68,7 +69,7 @@ public:
             if (call && (call->empty() || call->back().chosen ||
                          call->back().margins.rbegin()->first >= place))
                 call->emplace_back();
-            Asked& seen = call ? call->back() : asked[{sample, &reference, n, row, col}];
+            Asked& seen = call ? call->back() : asked[{sample, &reference, n, slice, row, col}];
             if (!seen.heard) seen.heard = ++order;
             const Setting<bool> quiet(measuring, true);
             seen.margins[place] =
@@ -136,8 +137,11 @@ public:
             made[label] = stack.Detached(*kept.model, *kept.call, *written, instance + "." + label,
                                          kept.captured);
         }
+        const auto called = [&](const CompileC::Compiled::Sequence& sequence) {
+            return sequence.session ? sequence.name : instance + "." + sequence.name;
+        };
         const auto ask = [&](const CompileC::Compiled::Sequence& sequence, int index) {
-            if (!sequence.unnamed) return At(session, instance + "." + sequence.name, index);
+            if (!sequence.unnamed) return At(session, called(sequence), index);
             const std::size_t                            dot = sequence.name.rfind('.');
             const typename ReferenceStack<Value>::Within within(
                 stack, made.at(sequence.name.substr(0, dot)).get());
@@ -161,7 +165,7 @@ public:
                         const Setting<decltype(stack.limits)> kept(stack.limits, &limits[n]);
                         const int  index = Floor(n - sequence.phase, sequence.period);
                         const Term term  = ask(sequence, index);
-                        again[{instance + "." + sequence.name, index}].push_back(
+                        again[{called(sequence), index}].push_back(
                             term.error.empty() ? std::optional(term.value) : std::nullopt);
                     }
                 }
@@ -182,7 +186,7 @@ public:
                 // Before its start the step has no term, and the interpreter
                 // should have none either; at another rate it is not asked.
                 const bool        before = n < sequence.start;
-                const std::string name   = instance + "." + sequence.name;
+                const std::string name   = called(sequence);
                 const int         index  = Floor(n - sequence.phase, sequence.period);
                 now                      = {&sequence, n};
                 const Term term          = before && sequence.period > 1
@@ -233,7 +237,7 @@ public:
             stepped += "        memcpy(&got_" + id + "[n_ * " + std::to_string(cells) + "], &m_." +
                        sequence.name + "[0], sizeof(" + CompileC::Real() + ") * " +
                        std::to_string(cells) + ");\n";
-            held += "    held_ &= hold_(\"" + instance + "." + sequence.name + "\", " +
+            held += "    held_ &= hold_(\"" + called(sequence) + "\", " +
                     std::to_string(sequence.size.cols) + ", " +
                     (tensors ? std::to_string(sequence.size.rows) + ", " : "") +
                     std::to_string(cells) + ", " + std::to_string(sequence.start) + ", got_" + id +
@@ -264,10 +268,9 @@ public:
                 return;
             const bool earlier = clauses[took].parameters.guarded() &&
                                  (took < chose || !clauses[chose].parameters.guarded());
-            std::string line = instance + "." + sequence->name + place + ": at " +
-                               std::to_string(n) + " a disturbed run takes '" +
-                               clauses[took].written + "' and the interpreter '" +
-                               clauses[chose].written + "'";
+            std::string line = called(*sequence) + place + ": at " + std::to_string(n) +
+                               " a disturbed run takes '" + clauses[took].written +
+                               "' and the interpreter '" + clauses[chose].written + "'";
             const auto margin = seen.margins.find(earlier ? took : chose);
             if (margin != seen.margins.end() && margin->second) {
                 const double d = margin->second->Inexact().real();
@@ -333,19 +336,22 @@ public:
                            ? std::numeric_limits<int>::min()
                            : Floor(n - found->phase, found->period);
             };
-            const std::size_t cols   = found->size.cols;
+            const std::size_t cols = found->size.cols, high = found->size.rows;
             const std::size_t places = cellwise ? found->size.count() : 1;
             for (std::size_t c = 0; c < places; ++c) {
-                const int                row = cellwise ? static_cast<int>(c / cols) + 1 : 0;
-                const int                col = cellwise ? static_cast<int>(c % cols) + 1 : 0;
-                const std::string        at  = id + (cellwise ? "_" + std::to_string(c) : "");
-                const std::string        place =
-                    cellwise ? "[" + std::to_string(row) + "," + std::to_string(col) + "]" : "";
+                const int         slice = cellwise ? static_cast<int>(c / (high * cols)) + 1 : 0;
+                const int         row   = cellwise ? static_cast<int>(c / cols % high) + 1 : 0;
+                const int         col   = cellwise ? static_cast<int>(c % cols) + 1 : 0;
+                const std::string at    = id + (cellwise ? "_" + std::to_string(c) : "");
+                const std::string place =
+                    !cellwise ? ""
+                              : "[" + (found->size.slices ? std::to_string(slice) + "," : "") +
+                                    std::to_string(row) + "," + std::to_string(col) + "]";
                 std::vector<std::string> want, margin;
                 for (int n = first; n < first + steps; ++n) {
-                    const auto asking = asked.find({0, &reference, term(n), row, col});
+                    const auto asking = asked.find({0, &reference, term(n), slice, row, col});
                     for (int r = 1; r <= 3 && asking != asked.end(); ++r)
-                        if (const auto them = asked.find({r, &reference, term(n), row, col});
+                        if (const auto them = asked.find({r, &reference, term(n), slice, row, col});
                             them != asked.end())
                             straddle(n, &*found, place, clauses, general, them->second,
                                      asking->second);
