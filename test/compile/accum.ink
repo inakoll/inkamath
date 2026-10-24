@@ -104,6 +104,23 @@ recevery(x_n) = {
 ev = every(x_n = 1/(n+1))
 recev = recevery(x_n = 1/(n+1))
 
+# Read at -1 at step 0, where the sum is empty, 0, as the total's history
+# gives it: base clauses, R_0 = x_0, would give no term there.
+dr(x_n) = {
+    R_n = sum_(t=0)^n x_t
+    D_n = R_n - R_(n-1)
+    A_n = R_(n-1)/max(n, 1)
+}
+recdr(x_n) = {
+    run_n | n < 0 = 0
+    run_n = run_(n-1) + x_n
+    R_n = run_n
+    D_n = R_n - R_(n-1)
+    A_n = R_(n-1)/max(n, 1)
+}
+dv = dr(x_n = 1/(n+1))
+recdv = recdr(x_n = 1/(n+1))
+
 # By cells: one total for each cell the sum is compiled at, the first two
 # moments of x.
 moments(x_n) = {
@@ -118,7 +135,7 @@ mm = moments(x_n = 1/(n+1))
 recmm = recmoments(x_n = 1/(n+1))
 
 # From before the stream: at 0 the sum holds three terms, two of them the
-# history the model gives its input, unrolled as a sum with constant bounds.
+# history the model gives its input, which init folds into the total.
 early(x_n) = {
     x_n | n < 0 = 1/2
     y_n = sum_(t=-2)^n x_t

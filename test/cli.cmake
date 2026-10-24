@@ -81,7 +81,7 @@ if(PART STREQUAL "spec")
     # Run now: each instance is its twin term for term in the interpreter, up
     # to the steps it is checked at. A twin that is not, R_0 = 0 for e_0 in
     # recreg, checks as its sum does, and the reports below cannot tell.
-    foreach(term IN ITEMS m.R ol.R ag.v sv.S ls.G ls.b ev.y mm.mo ey.y hy.R fy.y ms.k.S ms.y)
+    foreach(term IN ITEMS m.R ol.R ag.v sv.S ls.G ls.b ev.y dv.R dv.D dv.A mm.mo ey.y hy.R fy.y ms.k.S ms.y)
         string(REGEX REPLACE "\\..*" "" instance "${term}")
         set(last 99)
         if(instance STREQUAL "ol")
@@ -104,7 +104,7 @@ if(PART STREQUAL "spec")
         message("compile_accum: the sum up to n refused, as today")
         return()
     endif()
-    foreach(model IN ITEMS reg ogd ada surv gram every moments early hist fwd outer)
+    foreach(model IN ITEMS reg ogd ada surv gram every dr moments early hist fwd outer)
         foreach(written IN ITEMS ${model} rec${model})
             set(args --compile ${story} ${written} -o ${written}.h)
             check(compile_accum_${written})
@@ -112,10 +112,10 @@ if(PART STREQUAL "spec")
         endforeach()
     endforeach()
     holds(compile_accum_reg reg.h "    double s0_[2];\n"
-          "    m_->s0_[0] = m_->index_ == 0 ? m_->e[0] : m_->s0_[1] + m_->e[0];\n"
+          "    m_->s0_[0] = (double)m_->index_ < 0.0 ? 0.0 : m_->s0_[1] + m_->e[0];\n"
           "    m_->R[0] = m_->s0_[0];\n")
     holds(compile_accum_every every.h "    double s0_[2];\n"
-          "    m_->s0_[0] = m_->index_ == 0 ? 0.0 : m_->index_ == 1 ? m_->x[1] : m_->s0_[1] + m_->x[1];\n"
+          "    m_->s0_[0] = (double)m_->index_ < 1.0 ? 0.0 : m_->s0_[1] + m_->x[1];\n"
           "    m_->y[0] = floor((double)m_->index_ / 2.0) * 2.0 == (double)m_->index_ ? m_->s0_[0] : -1.0;\n")
 
     set(refused_adam "v: a sum up to t whose terms read t; write it as a recurrence")
@@ -169,7 +169,7 @@ if(PART STREQUAL "spec")
         endif()
         set(report_${name} "${report_${name}}" PARENT_SCOPE)
     endfunction()
-    foreach(instance IN ITEMS m ag sv ls ev mm ey hy fy ms)
+    foreach(instance IN ITEMS m ag sv ls ev dv mm ey hy fy ms)
         compared(${instance} ${instance} 100)
     endforeach()
     compared(ol ol 300)

@@ -3630,26 +3630,31 @@ that exploring seven domains asked of the interpreter, by how many asked.
   - **Kept as the recurrence a reader writes**: the total is a sequence of
     the step's own, `s0_`, `s1_` in the order compiled, one for each sum
     and each place it is compiled at, a cell or an unrolled sum's term, of
-    its terms' size. Its term at n is the sum at n: before a + c none, so 0,
-    1 for a product; at a + c its first term itself; after, its term at n -
-    1 plus, or times, the sum's term at n - c. Where a + c < 0 its term at 0
-    is the sum there unrolled, as with constant bounds, reading what a
-    history gives (`early`, `sum_(t=-2)^n x_t`). So it is `R_0 = e_0`, `R_n
-    = R_(n-1) + e_n` written by hand, compiled by the same machinery: its
-    terms before a + c base clauses in the chain, ordered before its
-    readers, a window in the struct, `double s0_[2]`, its NaN, its split and
-    a parameter assigned while it runs all a sequence's, and the header's
-    comment naming it by its sum. In `reg`'s step:
+    its terms' size. Its term at n is the sum at n, at every index, below
+    0 too: a history, `s0_n | n < a + c = 0`, 1 for a product, and its term
+    at n - 1 plus, or times, the sum's term at n - c. So it is `s_n | n < 0
+    = 0`, `s_n = s_(n-1) + e_n` written by hand, compiled by the same
+    machinery: its history guarded in the chain and folded by init below
+    0, where a + c < 0 from what the terms' history gives (`early`,
+    `sum_(t=-2)^n x_t`), ordered before its readers, a window in the
+    struct, `double s0_[2]`, its NaN, its split and a parameter assigned
+    while it runs all a sequence's, and the header's comment naming it by
+    its sum. In `reg`'s step:
 
-          m_->s0_[0] = m_->index_ == 0 ? m_->e[0] : m_->s0_[1] + m_->e[0];
+          m_->s0_[0] = (double)m_->index_ < 0.0 ? 0.0 : m_->s0_[1] + m_->e[0];
           m_->R[0] = m_->s0_[0];
 
-    It is computed at every step, read or not: `every` reads its sum at
-    even steps only, `sum_(t=0)^(n-1) x_t`, which reads nothing at 0.
+    Base clauses, `R_0 = e_0`, are what a reader writes, but they give no
+    term below 0, where the interpreter's sum is empty: `dr`'s `D_n = R_n -
+    R_(n-1)` and `A_n = R_(n-1)/max(n, 1)` read R_-1, 0, at step 0, as the
+    history gives it. It is computed at every step, read or not: `every`
+    reads its sum at even steps only, `sum_(t=0)^(n-1) x_t`, which reads
+    nothing at 0.
   - **The same doubles**: the total at n adds the same terms in the same
     order as that sum unrolled, left to right from its first, and as the
     recurrence by hand, so the two steps agree bit for bit, a zero's sign
-    aside where the one by hand starts from 0 plus its first term.
+    aside where the total starts from 0 plus its first term and the one by
+    hand from its first term.
   - **`--check`** holds it as any sequence, the step's double against the
     interpreter's exact sum within a billionth of one plus it. Rounding
     accumulates step by step, as in the recurrence, and the report says how
@@ -3727,7 +3732,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
 
   Specified in `test/compile/accum.ink`: `reg`, a regret `ogd`, AdaGrad's
   `ada`, a survival function's product `surv`, a fit's normal equations
-  `gram`, two totals one of them 2x2, `every`, `moments` by cells,
+  `gram`, two totals one of them 2x2, `every`, `dr` read at -1,
+  `moments` by cells,
   `early`, `hist`, whose first term is a history's, `fwd` in a forward
   clause and `outer`, whose instance of `inner` keeps the total, each
   beside its recurrence by hand, `rec` and its name, the totals by hand
@@ -3738,9 +3744,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   where both check within 0, as `recm`'s with `R_0 = 0`; then, skipped
   while `reg` is refused as today, and only then: every model and
   its recurrence compiled and strict; `reg`'s header holding `double
-  s0_[2];` and the two lines above, `every`'s `m_->s0_[0] = m_->index_ ==
-  0 ? 0.0 : m_->index_ == 1 ? m_->x[1] : m_->s0_[1] + m_->x[1];` and its
-  y read from `m_->s0_[0]`; each instance's report its recurrence's but
+  s0_[2];` and the two lines above, `every`'s `m_->s0_[0] = (double)m_->index_
+  < 1.0 ? 0.0 : m_->s0_[1] + m_->x[1];` and its y read from `m_->s0_[0]`,
+  each as today's compiler writes the recurrence by hand with that
+  history; each instance's report its recurrence's but
   for the name and run's lines, `ol`'s at 300 steps, in double holding
   `ol.fs: within 0`, `ol.x: within 1.1e-16`, `ol.f: within 5.6e-17` and
   `ol.R: within 3.6e-14`, by Python as above, and in float too; and each
