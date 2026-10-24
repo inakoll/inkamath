@@ -191,6 +191,29 @@ hg = grad_(u = 1, v = 2) hv(u)
 >> hg.u
 error: hv reads the global v, which grad's v does not reach
 
+# Every name is grad's in the body, not only the one asked: the body's x
+# is grad's, and the global x reading y is never read (C407).
+>> y = 5
+y = 5
+
+>> x = y + 1
+x = y + 1
+
+>> gy = grad_(x = 1, y = 2) (x*y)
+gy = grad_(x = 1, y = 2) (x*y)
+
+>> gy.x
+2
+
+>> gy.y
+1
+
+>> clear x
+clear x
+
+>> clear y
+clear y
+
 >> fl = grad_(x = 2, y = 3) floor(x*y)
 fl = grad_(x = 2, y = 3) floor(x*y)
 
