@@ -219,3 +219,57 @@ h2(x) = (M[j<=2] = j*x) + M
 >> (t = 2) + (M[j<=2] = j*t) + M
 [ 6;
  10]
+
+# Each cell is evaluated in a frame of its own, as each term is (C66): a
+# later cell read an earlier one's local, so the answer hung on the order of
+# the cells, [7; 7] here and refused with the guard at j == 2 (C406).
+>> N[j<=2] | j == 1 = (t = 7)
+N[j<=2] | j == 1 = (t = 7)
+
+>> N[j<=2] = t
+N[j<=2] = t
+
+>> N
+error: t is not defined
+
+>> P[j<=2] | j == 2 = (t = 7)
+P[j<=2] | j == 2 = (t = 7)
+
+>> P[j<=2] = t
+P[j<=2] = t
+
+>> P
+error: t is not defined
+
+>> tc_n[j<=2] | j == 1 = (t = n)
+tc_n[j<=2] | j == 1 = (t = n)
+
+>> tc_n[j<=2] = t
+tc_n[j<=2] = t
+
+>> tc_1
+error: t is not defined
+
+>> fc(x)[j<=2] | j == 1 = (t = x)
+fc(x)[j<=2] | j == 1 = (t = x)
+
+>> fc(x)[j<=2] = t
+fc(x)[j<=2] = t
+
+>> fc(3)
+error: t is not defined
+
+>> grad_(x = 1) fc(x)
+error: t is not defined
+
+# A cell still reads its parameters, and its own locals.
+>> fd(x)[j<=2] = (t = x*j) + t
+fd(x)[j<=2] = (t = x*j) + t
+
+>> fd(3)
+[ 6;
+ 12]
+
+>> grad_(x = 3) fd(x)
+[2;
+ 4]

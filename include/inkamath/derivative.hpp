@@ -1683,6 +1683,19 @@ private:
             if (!held && clause.parameters.binds()) d.frames_.back() = own;
             return held;
         }
+        // A cell's frames, put back after it (C406).
+        struct Own {
+            Own(Derivative& of, bool binds) : locals(of.stack_, binds), d(of) {
+                if (binds) own = d.frames_.back();
+            }
+            ~Own() {
+                if (own) d.frames_.back() = std::move(*own);
+            }
+            typename ReferenceStack<T>::Tentative locals;
+            Derivative&                           d;
+            std::optional<Arguments>              own;
+        };
+        Own Framed(bool binds) { return {d, binds}; }
         // A cell's place, from 1, for the tape.
         static std::size_t At(Jet& into, int slice, int row, int col) {
             return static_cast<std::size_t>(&Value(into)(slice, row, col) - Value(into).data()) + 1;

@@ -1212,6 +1212,8 @@ private:
                 evaluator.stack().guards(definition, clause, index, row, col, held, evaluator);
             return held;
         }
+        // A cell's frame, put back after it (C406).
+        typename ReferenceStack<T>::Tentative Framed(bool binds) { return {stack(), binds}; }
         static T&   Value(T& value) { return value; }
         static T    Blank(Extent extent) { return T(extent); }
         static void Store(T& into, int slice, int row, int col, typename T::value_type single,
@@ -1341,16 +1343,25 @@ private:
         for (const Clause<T>& clause : clauses_) {
             if (IsOneCell(clause)) Named(clause.parameters, walk.Value(matrix), reference_name_);
         }
+        const bool binds = Binds();
         for (int slice = 1; slice <= Slices(*extent); ++slice) {
             for (int row = 1; row <= static_cast<int>(extent->rows); ++row) {
                 for (int col = 1; col <= static_cast<int>(extent->cols); ++col) {
-                    auto cell = Cell(slice, row, col, walk);
+                    const auto apart = walk.Framed(binds);
+                    auto       cell  = Cell(slice, row, col, walk);
                     if (cell) walk.Store(matrix, slice, row, col, Single(*cell, walk), *cell);
                     walk.Settle(matrix, slice, row, col);
                 }
             }
         }
         return matrix;
+    }
+
+    // Whether a clause binds a local, which one cell must not leave the next.
+    bool Binds() const {
+        return FirstThat([](const Clause<T>& c) {
+            return c.parameters.binds() || ParametersDefinition<T>::Binds(*c.expression);
+        });
     }
 
     template <typename Walk>
@@ -1505,9 +1516,11 @@ private:
             if (IsOneCell(clause) && (base(clause) || general(clause)))
                 Named(clause.parameters, walk.Value(term), name);
         }
+        const bool binds = Binds();
         for (int s = 1; s <= Slices(*extent); ++s) {
             for (int r = 1; r <= static_cast<int>(extent->rows); ++r) {
                 for (int c = 1; c <= static_cast<int>(extent->cols); ++c) {
+                    const auto                           apart = walk.Framed(binds);
                     std::optional<typename Walk::Result> cell;
                     if (auto own = OneCell(s, r, c, index, base, walk)) {
                         cell = std::move(own->first);
