@@ -594,6 +594,12 @@ set(stdout "model.ink compiles\n")
 set(exit 0)
 check(compile_nothing_refused)
 
+# C415: a file with no sequence lists none in its header's comment.
+file(WRITE "${OUT}/nothing.ink" "x = 1\n")
+set(args --compile nothing.ink -o nothing.h)
+check(compile_no_sequence)
+holds(compile_no_sequence nothing.h " * A step takes no input.\n */\n")
+
 # A model compiled by name declares its inputs, so a name nothing defines is a
 # mistake rather than one more input (DESIGN.md, phase 15).
 file(WRITE "${OUT}/models.ink" "gain(k = 2, x_n) = { y_n = k*x_n + z_n }\n")

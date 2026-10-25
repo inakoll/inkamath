@@ -6822,9 +6822,12 @@ private:
                                      ? name + "\x01=\x01" + Double(parameter.initial[0])
                                      : name + "\x01(" + parameter.size.toString() + ")");
         std::string text =
-            "After a step, m.name[k] is name_(n-k) for each sequence: " + list(terms) + ".";
+            terms.empty()
+                ? ""
+                : "After a step, m.name[k] is name_(n-k) for each sequence: " + list(terms) + ".";
         if (!rated.empty())
-            text += " At another rate, m.name[k] is name_(m-k), m its latest term's index: " +
+            text += std::string(terms.empty() ? "" : " ") +
+                    "At another rate, m.name[k] is name_(m-k), m its latest term's index: " +
                     list(rated) + ".";
         const auto sliced = [&](auto& name) { return sequences_.at(name).size.slices > 0; };
         if (std::any_of(inputs.begin(), inputs.end(), [&](auto& name) { return Cells(name) > 1; }))
@@ -6838,6 +6841,8 @@ private:
                     ? "A step takes " + list(inputs_n) + ", the input at its index. "
                     : "A step takes " + list(inputs_n) + ", the inputs at its index. ") +
                text;
+        // With no sequence, no clause follows the input's.
+        if (text.back() == ' ') text.pop_back();
         std::vector<std::string> flagged;
         for (const std::string& name : inputs)
             if (Optional(name)) flagged.push_back(name);
