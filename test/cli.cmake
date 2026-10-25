@@ -223,7 +223,8 @@ At a terminal the prompt edits the line and keeps its history.
   --compile   write the sequences the file defines as a C header over
               doubles, named after the header: a struct, an init and a step;
               given a model the file defines, those of the model instead;
-              without -o, list what would not compile, and write nothing
+              without -o, list what would not compile, or say that it
+              all compiles, and write nothing
   --check     write a C program that steps an instance the file defines,
               compiled, on the inputs the interpreter gives it, holds each
               term to the interpreter's exact one and says where one drifts;
@@ -377,12 +378,12 @@ check(compile_c234)
 # does, its '| x <= 0 = 1/0' NaN in the header's function for it.
 file(WRITE "${OUT}/c86.ink" "gd(a = 2) = {\n    h(x) = 1\n    h(x) | x <= 0 = 1/0\n    y_n = h(a + n)\n}\n")
 set(args --compile c86.ink gd)
-set(stdout "")
+set(stdout "gd in c86.ink compiles\n")
 check(compile_c86)
 
 file(WRITE "${OUT}/logged.ink" "lg(a = 2) = {\n    y_n = log(a + n)\n}\n")
 set(args --compile logged.ink lg)
-set(stdout "")
+set(stdout "lg in logged.ink compiles\n")
 check(compile_log)
 
 # A base term is computed at its own index, so it reads a term from there
@@ -589,9 +590,21 @@ check(compile_mod_refused)
 
 set(args --compile model.ink)
 file(WRITE "${OUT}/model.ink" "a_0 = 1\na_n = a_(n-1) + n\n")
-set(stdout "")
+set(stdout "model.ink compiles\n")
 set(exit 0)
 check(compile_nothing_refused)
+
+# C415: a file with no sequence lists none in its header's comment.
+file(WRITE "${OUT}/nothing.ink" "x = 1\n")
+set(args --compile nothing.ink -o nothing.h)
+check(compile_no_sequence)
+holds(compile_no_sequence nothing.h " * A step takes no input.\n */\n")
+
+# A file of models alone is compiled by a model's name.
+file(WRITE "${OUT}/gains.ink" "gain(k = 2, x_n) = {\n    y_n = k*x_n\n}\n")
+set(args --compile gains.ink)
+set(stdout "gains.ink defines no sequence of its own; compile a model by name\n")
+check(compile_models_only)
 
 # A model compiled by name declares its inputs, so a name nothing defines is a
 # mistake rather than one more input (DESIGN.md, phase 15).
@@ -605,6 +618,14 @@ set(args --compile models.ink loss -o gain.h)
 set(stderr "inkamath: models.ink defines no model loss\n")
 set(exit 1)
 check(compile_no_model)
+
+# A default reading another instance's term is refused with its remedy.
+file(WRITE "${OUT}/trained.ink" "trainer(a = 1/2) = {\n    W_0 = 0\n    W_n = W_(n-1) + a*(1 - W_(n-1))\n}\n"
+     "train = trainer()\nuser(W = train.W_10, y_n) = {\n    u_n = W*y_n\n}\n")
+set(args --compile trained.ink user)
+set(stdout "cannot compile W: trained.train.W_...: a term read outside a general clause; write its value, or pass it as a parameter\ncannot compile u: W, which cannot be compiled\n")
+set(exit 1)
+check(compile_default_term)
 
 # An instance checked: the C program its check writes is built and run by the
 # tests, beside the compiled models.
@@ -1265,7 +1286,7 @@ set(args --compile "${CMAKE_CURRENT_LIST_DIR}/compile/pid_clamped.ink" -o NAN_cl
 check(compile_nan_named)
 file(READ "${OUT}/NAN_clamped.h" named)
 file(READ "${CMAKE_CURRENT_LIST_DIR}/compile/expected/pid_clamped.h" expected)
-string(REPLACE "NAN_CLAMPED_H" "PID_CLAMPED_H" named "${named}")
+string(REPLACE "NAN_CLAMPED_" "PID_CLAMPED_" named "${named}")
 string(REPLACE "NAN_clamped" "pid_clamped" named "${named}")
 if(NOT named STREQUAL expected)
     message(SEND_ERROR "compile_nan_named: NAN_clamped.h is not pid_clamped.h renamed")
@@ -1301,7 +1322,7 @@ holds(compile_inputs_dot dot.h [[/* Using it:
     double x[1][2][1];
     double y[1];
 } dot;
-]] [[static inline void dot_step(dot* m_, const double x_in_[2]) {
+]] [[DOT_API_ void dot_step(dot* m_, const double x_in_[2]) {
     ++m_->index_;
     memcpy(m_->x[0], x_in_, sizeof m_->x[0]);
 ]])
@@ -1309,19 +1330,19 @@ holds(compile_inputs_ctl ctl.h [[
  * A step takes r_n and s_n (2x1), the inputs at its index. An input of more
  * than one cell is a pointer to its cells, row by row. After a step, m.name[k]
  * is name_(n-k) for each sequence: r, s and u.
-]] [[static inline void ctl_step(ctl* m_, double r_in_, const double s_in_[2]) {
+]] [[CTL_API_ void ctl_step(ctl* m_, double r_in_, const double s_in_[2]) {
     ++m_->index_;
     m_->r[0] = r_in_;
     memcpy(m_->s[0], s_in_, sizeof m_->s[0]);
 ]])
-holds(compile_inputs_turn turn.h [[static inline void turn_init(turn* m_) {
+holds(compile_inputs_turn turn.h [[TURN_API_ void turn_init(turn* m_) {
     memset(m_, 0, sizeof *m_);
     m_->x[0][0][0] = 1.0;
     m_->x[0][1][0] = -1.0;
     m_->index_ = -1;
     turn_update(m_);
 }
-]] [[static inline void turn_step(turn* m_, const double x_in_[2]) {
+]] [[TURN_API_ void turn_step(turn* m_, const double x_in_[2]) {
     ++m_->index_;
     memcpy(m_->x[1], m_->x[0], sizeof m_->x[1]);
     memcpy(m_->x[0], x_in_, sizeof m_->x[0]);
@@ -1554,6 +1575,7 @@ refused(slowed "a = 2, x_n) = {\n    y_m | m < 0 = a\n    y_m = y_(m-1) + x_(2*m
 file(WRITE "${OUT}/cycled.ink" "cycling(x_n) = {\n    a_n | n < 0 = 1\n    a_n = b_(n-1)/2\n"
      "    b_n | n < 0 = 1\n    b_n = c_(n-1)/2\n    c_n | n < 0 = 1\n    c_n = a_(n-1)/2 + x_n\n}\n")
 set(args --compile cycled.ink cycling)
+set(stdout "cycling in cycled.ink compiles\n")
 check(history_cycled)
 # C403: a cycle guarded on some of its sequences only, whose term before the
 # stream reads the input, is refused for it rather than for having no history.
@@ -1568,6 +1590,7 @@ foreach(i RANGE 17)
 endforeach()
 file(WRITE "${OUT}/long.ink" "${text}}\n")
 set(args --compile long.ink long)
+set(stdout "long in long.ink compiles\n")
 check(history_cycled_long)
 # Init folds a slow history back from its first term, so a term it reads
 # past one it cannot fold is refused for that one (C348).
@@ -1634,7 +1657,7 @@ holds(float_dot float/dot.h [[typedef struct dot {
     float x[1][2][1];
     float y[1];
 } dot;
-]] [[static inline void dot_step(dot* m_, const float x_in_[2]) {
+]] [[DOT_API_ void dot_step(dot* m_, const float x_in_[2]) {
 ]])
 
 file(WRITE "${OUT}/vast.ink" "vast(x_n) = {\n    x_n | n < 0 = 10^39\n    c_n = x_(n-1)\n}\n")
@@ -2121,7 +2144,7 @@ holds(compile_tensor_mha mha.h [=[ *     mha_step(&m, X);  once for each index, 
     double X[1][2][3][4];
     double O[1][2][3][4];
 } mha;
-]=] [=[static inline void mha_step(mha* m_, const double X_in_[24]) {
+]=] [=[MHA_API_ void mha_step(mha* m_, const double X_in_[24]) {
     ++m_->index_;
     memcpy(m_->X[0], X_in_, sizeof m_->X[0]);
 ]=])
@@ -2161,7 +2184,7 @@ holds(compile_tensor_ring ring.h [=[/* Using it:
     double q[1][2][1][2];
     double u[1][2][1][2];
 } ring;
-]=] [=[static inline void ring_init(ring* m_) {
+]=] [=[RING_API_ void ring_init(ring* m_) {
     memset(m_, 0, sizeof *m_);
     m_->s0[0][0][0] = 1.0;
     m_->s0[0][0][1] = 0.0;
@@ -2173,7 +2196,7 @@ holds(compile_tensor_ring ring.h [=[/* Using it:
     m_->index_ = -1;
     ring_update(m_);
 }
-]=] [=[static inline void ring_step(ring* m_, const double X_in_[4]) {
+]=] [=[RING_API_ void ring_step(ring* m_, const double X_in_[4]) {
     ++m_->index_;
     memcpy(m_->X[1], m_->X[0], sizeof m_->X[1]);
     memcpy(m_->s[1], m_->s[0], sizeof m_->s[1]);
@@ -2193,7 +2216,7 @@ holds(compile_tensor_ring_float float/ring.h [=[typedef struct ring {
     float s0[2][1][2];
     long long index_;
     float X[2][2][1][2];
-]=] [=[static inline void ring_step(ring* m_, const float X_in_[4]) {
+]=] [=[RING_API_ void ring_step(ring* m_, const float X_in_[4]) {
 ]=] [=[    m_->s[0][1][0][0] = m_->index_ == 0 ? m_->s0[1][0][0] : m_->s[1][1][0][0] * 0.0f + m_->s[1][1][0][1] * -1.0f + m_->X[0][1][0][0];
 ]=])
 set(args --compile ${tensor} sgd -o sgd.h)
@@ -2205,7 +2228,7 @@ holds(compile_tensor_sgd sgd.h [=[typedef struct sgd {
     double Y[1][2][2][1];
     double w[2][2][1];
 } sgd;
-]=] [=[static inline void sgd_step(sgd* m_, const double X_in_[8], const double Y_in_[4]) {
+]=] [=[SGD_API_ void sgd_step(sgd* m_, const double X_in_[8], const double Y_in_[4]) {
 ]=])
 
 # A sequence with parameters read at a constant index, compiled (DESIGN.md,
@@ -2691,7 +2714,7 @@ check(compile_reduce)
 set(args --compile ${CMAKE_CURRENT_LIST_DIR}/compile/optional.ink track -o track.h)
 check(compile_optional)
 holds(compile_optional track.h
-      "static inline void track_step(track* m_, double z_in_, int z_present_in_) {\n"
+      "TRACK_API_ void track_step(track* m_, double z_in_, int z_present_in_) {\n"
       " *     track_step(&m, z, z_present);  once for each index, the first 0\n"
       "    int z_present[4];\n" "    m_->z[0] = z_present_in_ ? z_in_ : NAN;\n")
 strict(compile_optional track.h)
@@ -2703,12 +2726,12 @@ set(story "${CMAKE_CURRENT_LIST_DIR}/compile/inner.ink")
 set(args --compile ${story} fw -o fw.h)
 check(compile_inner)
 holds(compile_inner fw.h
-      "static inline void fw_step(fw* m_, double z_in_, int z_present_in_, double w_in_) {\n"
+      "FW_API_ void fw_step(fw* m_, double z_in_, int z_present_in_, double w_in_) {\n"
       "        int z_present[4];\n")
 strict(compile_inner fw.h)
 set(args --compile ${story} loop -o loop.h)
 check(compile_inner_loop)
-holds(compile_inner_loop loop.h "static inline void loop_step(loop* m_) {\n"
+holds(compile_inner_loop loop.h "LOOP_API_ void loop_step(loop* m_) {\n"
       "        int z_present[1];\n")
 strict(compile_inner_loop loop.h)
 set(args --compile ${story} alone -o alone.h)
@@ -2716,6 +2739,7 @@ check(compile_inner_alone)
 holds(compile_inner_alone alone.h "    m_->f.e.z_present[0] = m_->f.z_present[0];\n")
 strict(compile_inner_alone alone.h)
 set(args --compile ${story})
+set(stdout "inner.ink compiles\n")
 check(compile_inner_file)
 file(WRITE "${OUT}/lag.ink" "held(z_n?) = {\n    x_0 = 0\n    x_n | z_n >= 0 = z_n\n"
      "    x_n = x_(n-1)\n}\nsrc() = {\n    z_n | mod(n, 3) == 0 = n\n}\n"

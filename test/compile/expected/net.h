@@ -37,12 +37,25 @@ typedef struct net {
     double y[1];
 } net;
 
+/* A shared library, built alone as C, not C++, with -DNET_SHARED: these
+ * functions exported and, at its end, the struct's size and its members'
+ * names, nested ones dotted, and offsets, not yet a stable interface. */
+#ifndef NET_SHARED
+#define NET_API_ static inline
+#elif defined(_WIN32)
+#define NET_API_ __declspec(dllexport)
+#elif defined(__GNUC__)
+#define NET_API_ __attribute__((visibility("default")))
+#else
+#define NET_API_
+#endif
+
 /* Computes what derives from the parameters: call it after assigning one. */
-static inline void net_update(net* m_) {
+NET_API_ void net_update(net* m_) {
     (void)m_;
 }
 
-static inline void net_init(net* m_) {
+NET_API_ void net_init(net* m_) {
     memset(m_, 0, sizeof *m_);
     m_->W[0][0] = 0.5;
     m_->W[0][1] = -0.25;
@@ -57,7 +70,7 @@ static inline void net_init(net* m_) {
 }
 
 /* Advances to the next index, the first at 0, and computes its terms. */
-static inline void net_step(net* m_, double x_in_) {
+NET_API_ void net_step(net* m_, double x_in_) {
     ++m_->index_;
     memcpy(m_->w[1], m_->w[0], sizeof m_->w[1]);
     m_->x[0] = x_in_;
@@ -70,5 +83,17 @@ static inline void net_step(net* m_, double x_in_) {
     m_->h[0][1][0] = m_->z[0][1][0] < 0.0 ? 0.0 : m_->z[0][1][0];
     m_->y[0] = m_->v[0][0] * m_->h[0][0][0] + m_->v[0][1] * m_->h[0][1][0];
 }
+
+#ifdef NET_SHARED
+#include <stddef.h>
+NET_API_ const size_t net_size_ = sizeof(net);
+NET_API_ const char* const net_members_[] = {
+    "W", "v", "index_", "x", "w", "z", "h", "y", 0
+};
+NET_API_ const size_t net_offsets_[] = {
+    offsetof(net, W), offsetof(net, v), offsetof(net, index_), offsetof(net, x),
+    offsetof(net, w), offsetof(net, z), offsetof(net, h), offsetof(net, y)
+};
+#endif
 
 #endif

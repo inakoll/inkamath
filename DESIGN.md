@@ -615,6 +615,8 @@ on the Linux toolchain without saying so.
 | C412 `[fixed]` | **A term by its cells with no base clause had no term before the stream.** With `q_n \| n < 0 = 0`, `q_n = q_(n-1) + x_n`, `S_n[i<=2] = q_n*i` and `R_n = S_(n-1)[2]`, `--check` reported "R: none at 0, where the interpreter gives 0": the step computes a sequence with no base clause again where a reader needs it before its window holds it (C71), but not one by its cells, and R started at 1; one that reads no term, `T_n[i<=2] = n*i`, was computed again as though written whole, its place i the imaginary unit, and refused, "a complex number". Such a term is computed again cell by cell now as the step computes it, the term written whole beside its cells too, what each guard and value reads checked where it is read, as C71's; one with a term's own cells is not, as before. No golden, expected header or check program moves. In 39 lines of `compile.hpp`, 3 of comment, and 10 removed; `compile/history.ink`'s `rowed` holds it. |
 | C413 `[fixed]` | **A read before the stream the general clause alone makes was refused where a guard holds.** With `u_n = 2*x_n`, `run_n \| n < 1 = 0` and `run_n = run_(n-1) + u_(n-1)`, `--compile` refused run, "run_0 reads x_-1, before the stream, where x has no history", where the interpreter gives run_0 = 0 from the guard: u_-1, computed again for the general clause (C71), was checked as though every clause read it, where the general clause's own reads were checked only where no guard holds (C343). What a term computed again, or a check marked in it, reads is now checked so too where only the general clause reads it. No golden, expected header or check program moves. In 27 lines of `compile.hpp`, 2 of comment, and 4 removed; `compile/history.ink`'s `tallied` holds it. |
 | C414 `[fixed]` | **A comparison under grad in a guard was tested as the guard's.** With `s_n \| grad_(y = x_n) ((y > 0) + y*y) > 1 = 1`, `s_n = 0` and x_n = n - 10, the step gave s_10 = 0 where the interpreter refuses it, "a comparison jumps at y = 0": a comparison in a guard is tested at its point alone (C320), and grad's body, a value, was taken for the guard it is in. grad's body is compiled as a value now, its comparisons jumping as in any value; a guard within it is still a guard. No golden, expected header or check program moves. In 2 lines of `compile.hpp`, 1 of comment; `compile/grad.ink`'s `gated` holds it. |
+| C415 `[fixed]` | **A header with no sequence listed none.** A file defining none, `x = 1`, compiled to a header whose comment read "After a step, m.name[k] is name_(n-k) for each sequence: .". The clause is left out where no sequence is, so it reads "A step takes no input." No golden, expected header or check program moves. In 7 lines of `compile.hpp` for 2, 1 of comment; the cli case compile_no_sequence holds it. |
+| C416 `[open]` | **A module named after what a header it includes declares does not build.** `Keeper` refuses a C or C++ keyword and the macros it lists, but not a name `<math.h>`, `<string.h>` or what they pull in declares: a file compiled whole with `-o atan.h` or `-o nan.h` gives a header whose struct `atan` or `nan` is redeclared, five errors as C, and `-o system.h` one that builds as C but not as C++, where `<math.h>` declares `system`; under `-D<NAME>_SHARED`, `<stddef.h>` adds `ptrdiff_t` and `max_align_t`, and on MSVC `errno` may join them. Found by the review of the 2.0 batch; to be fixed as a class, in `Keeper`, after 2.0. |
 
 ---
 
@@ -13364,6 +13366,48 @@ for, which `eig` refuses complex:
   constants, the products pass 2^53 and a run in doubles parts from the
   exact one at step 2.
 
+### From a usability review of README
+
+- `[done]` **`--compile` without `-o` printed nothing when every definition
+  compiled.** It says so on stdout, `pid.ink compiles` or `mix in mix.ink
+  compiles`, still exiting 0, in 1 line. Only the cli cases that expected an
+  empty stdout moved: compile_c86, compile_log, compile_nothing_refused,
+  history_cycled, history_cycled_long and compile_inner_file, with `--help`.
+
+### A header built as a shared library `[done]`
+
+The owner's ruling, option B of the evaluation: a header builds as a shared
+library under a macro, rather than with a C file of its own beside it, which
+`docs/compile.md` keeps as its example of batching steps in C. Built alone
+as C with `-D<NAME>_SHARED`, the module's name upper-cased as the other
+per-module macros are, it exports:
+
+- `<name>_init`, `<name>_update` and `<name>_step`, as the header declares
+  them; `<NAME>_API_` spells them, `static inline` without the macro, so a
+  header included preprocesses to what it did before. A split step's pieces
+  and the header's helpers stay static.
+- `const size_t <name>_size_`, the struct's size; `const char* const
+  <name>_members_[]`, each member's name, an instance's dotted, then a null
+  pointer; and `const size_t <name>_offsets_[]`, each one's `offsetof`, a
+  table wrapped at 80 columns. The tables give no type: a member is a double,
+  a float under `--float`, but for `index_`, a `long long`, and the `int`
+  flags, `_present`, `_given_` and `_clause_`. A split step's `v_` is not
+  listed.
+- On Windows each `__declspec(dllexport)`, so that MSVC builds it, and
+  under GCC and Clang of default visibility, so that `-fvisibility=hidden`
+  keeps them.
+
+C only: as C++ the names would be mangled and the tables' `const` internal.
+The ABI is not frozen: names, order and the compiler's own members move with
+the language until it stops moving (MANIFESTO, *Not yet a library*). Every
+expected header and the prelude's moved, by the macro, the three spellings
+and the tables, each read, as did the cli cases holding a step's or an init's
+first line, and compile_nan_named's renaming; no golden or check program
+moved. In 37 lines of `compile.hpp` for 4; `compile_shared` builds pid,
+track, pid under `--float` and bank as libraries and loads each, by `dlopen`
+or `LoadLibrary`, reading outputs through the tables against the
+interpreter's values.
+
 ---
 
 ## Next in line
@@ -13668,6 +13712,9 @@ LQR), whose defects are C376 to C379, 49 lines, 19,288 to 19,337 at
 - **A default reading another instance's term**, `W = train.W_1000`, is
   refused: fold a default that reads no input to its value, as the header
   already prints defaults as values.
+  Evaluated: a prototype folding it is about 55 lines and its tests, and
+  moved nothing; open is its scope, defaults only or every term at a
+  constant index read outside a clause (`d = y_3`), for the owner to rule.
 - **A parameter that changes mid-run, replayed by `--check`**: an instance
   given a piecewise-constant sequence of a parameter, `--check` calling
   `update` where it changes.
@@ -13676,9 +13723,4 @@ LQR), whose defects are C376 to C379, 49 lines, 19,288 to 19,337 at
   evidence for MANIFESTO's clock question.
 - **`lim_n` is unusable**, `lim` being reserved, and a file name must be
   letters then digits, so `use e2e` is refused.
-
-From a usability review of README as a first reader meets it:
-
-- **`--compile` without `-o` prints nothing when every definition compiles**;
-  one line saying so would help. A behaviour change, not made with the docs.
 

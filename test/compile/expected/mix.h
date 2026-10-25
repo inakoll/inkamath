@@ -36,12 +36,25 @@ typedef struct mix {
     double v[2];
 } mix;
 
+/* A shared library, built alone as C, not C++, with -DMIX_SHARED: these
+ * functions exported and, at its end, the struct's size and its members'
+ * names, nested ones dotted, and offsets, not yet a stable interface. */
+#ifndef MIX_SHARED
+#define MIX_API_ static inline
+#elif defined(_WIN32)
+#define MIX_API_ __declspec(dllexport)
+#elif defined(__GNUC__)
+#define MIX_API_ __attribute__((visibility("default")))
+#else
+#define MIX_API_
+#endif
+
 /* Computes what derives from the parameters: call it after assigning one. */
-static inline void mix_update(mix* m_) {
+MIX_API_ void mix_update(mix* m_) {
     (void)m_;
 }
 
-static inline void mix_init(mix* m_) {
+MIX_API_ void mix_init(mix* m_) {
     memset(m_, 0, sizeof *m_);
     m_->a = 0.25;
     m_->g = 0.5;
@@ -50,7 +63,7 @@ static inline void mix_init(mix* m_) {
 }
 
 /* Advances to the next index, the first at 0, and computes its terms. */
-static inline void mix_step(mix* m_, double u_in_, double b_in_) {
+MIX_API_ void mix_step(mix* m_, double u_in_, double b_in_) {
     ++m_->index_;
     m_->v[1] = m_->v[0];
     m_->u[0] = u_in_;
@@ -58,5 +71,17 @@ static inline void mix_step(mix* m_, double u_in_, double b_in_) {
     m_->m[0] = m_->g * m_->u[0] + (1.0 + (0.0 - m_->g)) * m_->b[0];
     m_->v[0] = m_->index_ == 0 ? 0.0 : m_->a * m_->m[0] + (1.0 + (0.0 - m_->a)) * m_->v[1];
 }
+
+#ifdef MIX_SHARED
+#include <stddef.h>
+MIX_API_ const size_t mix_size_ = sizeof(mix);
+MIX_API_ const char* const mix_members_[] = {
+    "a", "g", "index_", "u", "b", "m", "v", 0
+};
+MIX_API_ const size_t mix_offsets_[] = {
+    offsetof(mix, a), offsetof(mix, g), offsetof(mix, index_), offsetof(mix, u),
+    offsetof(mix, b), offsetof(mix, m), offsetof(mix, v)
+};
+#endif
 
 #endif
