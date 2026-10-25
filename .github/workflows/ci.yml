@@ -10,8 +10,28 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # master moves by fast-forward to a commit its branch has already tested
+  # (CLAUDE.md, section 5): that commit is not built twice.
+  tested:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    outputs:
+      green: ${{ steps.runs.outputs.green }}
+    steps:
+      - id: runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          n=$(gh api "repos/${{ github.repository }}/actions/workflows/ci.yml/runs?head_sha=${{ github.sha }}&status=success" --jq .total_count || echo 0)
+          echo "green=$([ "$n" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          [ "$n" -gt 0 ] && echo "::notice::${{ github.sha }} already passed CI" || true
+
   build:
     name: ${{ matrix.compiler }} / ${{ matrix.build_type }}
+    needs: tested
+    if: ${{ !cancelled() && needs.tested.outputs.green != 'true' }}
     runs-on: [self-hosted, dedibox]
     strategy:
       fail-fast: false
@@ -62,6 +82,8 @@ jobs:
 
   windows:
     name: msvc / ${{ matrix.build_type }}
+    needs: tested
+    if: ${{ !cancelled() && needs.tested.outputs.green != 'true' }}
     runs-on: windows-latest
     strategy:
       fail-fast: false
@@ -83,6 +105,8 @@ jobs:
 
   sanitizers:
     name: asan+ubsan
+    needs: tested
+    if: ${{ !cancelled() && needs.tested.outputs.green != 'true' }}
     runs-on: [self-hosted, dedibox]
     steps:
       - uses: actions/checkout@v4
@@ -117,6 +141,8 @@ jobs:
 
   format:
     name: clang-format
+    needs: tested
+    if: ${{ !cancelled() && needs.tested.outputs.green != 'true' }}
     runs-on: [self-hosted, dedibox]
     steps:
       - uses: actions/checkout@v4
