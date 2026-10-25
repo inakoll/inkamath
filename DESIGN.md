@@ -13431,7 +13431,7 @@ In 10 lines of `compile.hpp` for 3 and 5 of comments for 4;
 offsets, each member fitting before the next or the struct's end, and its
 inputs to its step's.
 
-A host in Python needs no more: `tools/inkamath_model.py`, 66 lines of
+A host in Python needs no more: `tools/inkamath_model.py`, 74 lines of
 ctypes and nothing else, maps each member at its offset as its type says and
 types the step from the inputs. Byte for byte, it gave what the header
 included in C gives, for a model of a 4-vector input, an optional one, a
