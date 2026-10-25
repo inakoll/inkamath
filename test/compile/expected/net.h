@@ -44,6 +44,8 @@ typedef struct net {
 #define NET_API_ static inline
 #elif defined(_WIN32)
 #define NET_API_ __declspec(dllexport)
+#elif defined(__GNUC__)
+#define NET_API_ __attribute__((visibility("default")))
 #else
 #define NET_API_
 #endif

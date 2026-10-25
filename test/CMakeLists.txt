@@ -232,6 +232,8 @@ foreach(shared IN ITEMS pid:pid track:optional:track pidf:pid:--float bank:bank)
                           C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
     list(APPEND shared_libraries $<TARGET_FILE:shared_${name}>)
 endforeach()
+# A host's build may hide what it does not export by name.
+set_target_properties(shared_pid PROPERTIES C_VISIBILITY_PRESET hidden)
 add_executable(compile_shared compile/shared_test.c)
 target_link_libraries(compile_shared PRIVATE inkamath_warnings ${CMAKE_DL_LIBS}
                       $<$<NOT:$<C_COMPILER_ID:MSVC>>:m>)

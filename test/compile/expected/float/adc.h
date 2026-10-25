@@ -50,6 +50,8 @@ typedef struct adc {
 #define ADC_API_ static inline
 #elif defined(_WIN32)
 #define ADC_API_ __declspec(dllexport)
+#elif defined(__GNUC__)
+#define ADC_API_ __attribute__((visibility("default")))
 #else
 #define ADC_API_
 #endif

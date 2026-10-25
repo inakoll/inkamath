@@ -7155,6 +7155,8 @@ private:
         out += " * names, nested ones dotted, and offsets, not yet a stable interface. */\n";
         out += "#ifndef " + shared + "\n#define " + api + " static inline\n";
         out += "#elif defined(_WIN32)\n#define " + api + " __declspec(dllexport)\n";
+        out += "#elif defined(__GNUC__)\n#define " + api +
+               " __attribute__((visibility(\"default\")))\n";
         out += "#else\n#define " + api + "\n#endif\n\n";
 
         const std::size_t functions = out.size();

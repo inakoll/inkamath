@@ -49,6 +49,8 @@ typedef struct pid {
 #define PID_API_ static inline
 #elif defined(_WIN32)
 #define PID_API_ __declspec(dllexport)
+#elif defined(__GNUC__)
+#define PID_API_ __attribute__((visibility("default")))
 #else
 #define PID_API_
 #endif

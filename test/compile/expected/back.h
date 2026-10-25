@@ -44,6 +44,8 @@ typedef struct back {
 #define BACK_API_ static inline
 #elif defined(_WIN32)
 #define BACK_API_ __declspec(dllexport)
+#elif defined(__GNUC__)
+#define BACK_API_ __attribute__((visibility("default")))
 #else
 #define BACK_API_
 #endif

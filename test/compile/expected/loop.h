@@ -48,6 +48,8 @@ typedef struct loop {
 #define LOOP_API_ static inline
 #elif defined(_WIN32)
 #define LOOP_API_ __declspec(dllexport)
+#elif defined(__GNUC__)
+#define LOOP_API_ __attribute__((visibility("default")))
 #else
 #define LOOP_API_
 #endif

@@ -43,6 +43,8 @@ typedef struct mix {
 #define MIX_API_ static inline
 #elif defined(_WIN32)
 #define MIX_API_ __declspec(dllexport)
+#elif defined(__GNUC__)
+#define MIX_API_ __attribute__((visibility("default")))
 #else
 #define MIX_API_
 #endif

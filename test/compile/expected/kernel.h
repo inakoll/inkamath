@@ -41,6 +41,8 @@ typedef struct kernel {
 #define KERNEL_API_ static inline
 #elif defined(_WIN32)
 #define KERNEL_API_ __declspec(dllexport)
+#elif defined(__GNUC__)
+#define KERNEL_API_ __attribute__((visibility("default")))
 #else
 #define KERNEL_API_
 #endif

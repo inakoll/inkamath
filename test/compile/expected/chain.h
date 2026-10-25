@@ -59,6 +59,8 @@ typedef struct chain {
 #define CHAIN_API_ static inline
 #elif defined(_WIN32)
 #define CHAIN_API_ __declspec(dllexport)
+#elif defined(__GNUC__)
+#define CHAIN_API_ __attribute__((visibility("default")))
 #else
 #define CHAIN_API_
 #endif

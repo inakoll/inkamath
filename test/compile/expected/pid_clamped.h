@@ -50,6 +50,8 @@ typedef struct pid_clamped {
 #define PID_CLAMPED_API_ static inline
 #elif defined(_WIN32)
 #define PID_CLAMPED_API_ __declspec(dllexport)
+#elif defined(__GNUC__)
+#define PID_CLAMPED_API_ __attribute__((visibility("default")))
 #else
 #define PID_CLAMPED_API_
 #endif

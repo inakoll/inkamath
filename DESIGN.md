@@ -13392,7 +13392,9 @@ per-module macros are, it exports:
   a float under `--float`, but for `index_`, a `long long`, and the `int`
   flags, `_present`, `_given_` and `_clause_`. A split step's `v_` is not
   listed.
-- On Windows each `__declspec(dllexport)`, so that MSVC builds it.
+- On Windows each `__declspec(dllexport)`, so that MSVC builds it, and
+  under GCC and Clang of default visibility, so that `-fvisibility=hidden`
+  keeps them.
 
 C only: as C++ the names would be mangled and the tables' `const` internal.
 The ABI is not frozen: names, order and the compiler's own members move with

@@ -333,7 +333,8 @@ A host in C includes the header, as README's
 [getting started](../README.md#getting-started) does. Built alone as C, not
 C++, with its macro defined, `-D<NAME>_SHARED` for a module `<name>`, the
 header is a shared library instead: its `init`, `update` and `step` are
-exported (on Windows, `__declspec(dllexport)`), and so are `<name>_size_`,
+exported (`__declspec(dllexport)` on Windows, and visible under GCC and
+Clang's `-fvisibility=hidden`), and so are `<name>_size_`,
 the struct's size, `<name>_members_`, each member's name, an instance's
 dotted, `f.x`, then a null pointer, and `<name>_offsets_`, each member's
 offset. None of it is a stable interface yet, while the language moves.

@@ -50,6 +50,8 @@ typedef struct kalman {
 #define KALMAN_API_ static inline
 #elif defined(_WIN32)
 #define KALMAN_API_ __declspec(dllexport)
+#elif defined(__GNUC__)
+#define KALMAN_API_ __attribute__((visibility("default")))
 #else
 #define KALMAN_API_
 #endif
