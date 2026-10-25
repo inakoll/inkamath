@@ -13364,6 +13364,14 @@ for, which `eig` refuses complex:
   constants, the products pass 2^53 and a run in doubles parts from the
   exact one at step 2.
 
+### From a usability review of README
+
+- `[done]` **`--compile` without `-o` printed nothing when every definition
+  compiled.** It says so on stdout, `pid.ink compiles` or `mix in mix.ink
+  compiles`, still exiting 0, in 1 line. Only the cli cases that expected an
+  empty stdout moved: compile_c86, compile_log, compile_nothing_refused,
+  history_cycled, history_cycled_long and compile_inner_file, with `--help`.
+
 ---
 
 ## Next in line
@@ -13676,9 +13684,4 @@ LQR), whose defects are C376 to C379, 49 lines, 19,288 to 19,337 at
   evidence for MANIFESTO's clock question.
 - **`lim_n` is unusable**, `lim` being reserved, and a file name must be
   letters then digits, so `use e2e` is refused.
-
-From a usability review of README as a first reader meets it:
-
-- **`--compile` without `-o` prints nothing when every definition compiles**;
-  one line saying so would help. A behaviour change, not made with the docs.
 

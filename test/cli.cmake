@@ -223,7 +223,8 @@ At a terminal the prompt edits the line and keeps its history.
   --compile   write the sequences the file defines as a C header over
               doubles, named after the header: a struct, an init and a step;
               given a model the file defines, those of the model instead;
-              without -o, list what would not compile, and write nothing
+              without -o, list what would not compile, or say that it
+              all compiles, and write nothing
   --check     write a C program that steps an instance the file defines,
               compiled, on the inputs the interpreter gives it, holds each
               term to the interpreter's exact one and says where one drifts;
@@ -377,12 +378,12 @@ check(compile_c234)
 # does, its '| x <= 0 = 1/0' NaN in the header's function for it.
 file(WRITE "${OUT}/c86.ink" "gd(a = 2) = {\n    h(x) = 1\n    h(x) | x <= 0 = 1/0\n    y_n = h(a + n)\n}\n")
 set(args --compile c86.ink gd)
-set(stdout "")
+set(stdout "gd in c86.ink compiles\n")
 check(compile_c86)
 
 file(WRITE "${OUT}/logged.ink" "lg(a = 2) = {\n    y_n = log(a + n)\n}\n")
 set(args --compile logged.ink lg)
-set(stdout "")
+set(stdout "lg in logged.ink compiles\n")
 check(compile_log)
 
 # A base term is computed at its own index, so it reads a term from there
@@ -589,7 +590,7 @@ check(compile_mod_refused)
 
 set(args --compile model.ink)
 file(WRITE "${OUT}/model.ink" "a_0 = 1\na_n = a_(n-1) + n\n")
-set(stdout "")
+set(stdout "model.ink compiles\n")
 set(exit 0)
 check(compile_nothing_refused)
 
@@ -1554,6 +1555,7 @@ refused(slowed "a = 2, x_n) = {\n    y_m | m < 0 = a\n    y_m = y_(m-1) + x_(2*m
 file(WRITE "${OUT}/cycled.ink" "cycling(x_n) = {\n    a_n | n < 0 = 1\n    a_n = b_(n-1)/2\n"
      "    b_n | n < 0 = 1\n    b_n = c_(n-1)/2\n    c_n | n < 0 = 1\n    c_n = a_(n-1)/2 + x_n\n}\n")
 set(args --compile cycled.ink cycling)
+set(stdout "cycling in cycled.ink compiles\n")
 check(history_cycled)
 # C403: a cycle guarded on some of its sequences only, whose term before the
 # stream reads the input, is refused for it rather than for having no history.
@@ -1568,6 +1570,7 @@ foreach(i RANGE 17)
 endforeach()
 file(WRITE "${OUT}/long.ink" "${text}}\n")
 set(args --compile long.ink long)
+set(stdout "long in long.ink compiles\n")
 check(history_cycled_long)
 # Init folds a slow history back from its first term, so a term it reads
 # past one it cannot fold is refused for that one (C348).
@@ -2716,6 +2719,7 @@ check(compile_inner_alone)
 holds(compile_inner_alone alone.h "    m_->f.e.z_present[0] = m_->f.z_present[0];\n")
 strict(compile_inner_alone alone.h)
 set(args --compile ${story})
+set(stdout "inner.ink compiles\n")
 check(compile_inner_file)
 file(WRITE "${OUT}/lag.ink" "held(z_n?) = {\n    x_0 = 0\n    x_n | z_n >= 0 = z_n\n"
      "    x_n = x_(n-1)\n}\nsrc() = {\n    z_n | mod(n, 3) == 0 = n\n}\n"

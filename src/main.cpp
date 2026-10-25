@@ -53,7 +53,8 @@ At a terminal the prompt edits the line and keeps its history.
   --compile   write the sequences the file defines as a C header over
               doubles, named after the header: a struct, an init and a step;
               given a model the file defines, those of the model instead;
-              without -o, list what would not compile, and write nothing
+              without -o, list what would not compile, or say that it
+              all compiles, and write nothing
   --check     write a C program that steps an instance the file defines,
               compiled, on the inputs the interpreter gives it, holds each
               term to the interpreter's exact one and says where one drifts;
@@ -199,6 +200,7 @@ static int compile(const string& source, const string& name, const string& targe
     }
     if (target.empty()) {
         for (const string& refusal : refused) cout << refusal << '\n';
+        if (refused.empty()) cout << (name.empty() ? file : name + " in " + file) << " compiles\n";
         return refused.empty() ? 0 : 1;
     }
     return write(target, header) ? 0 : 2;
