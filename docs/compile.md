@@ -339,8 +339,8 @@ the struct's size, `<name>_members_`, each member's name, an instance's
 dotted, `f.x`, then a null pointer, and `<name>_offsets_`, each member's
 offset. None of it is a stable interface yet, while the language moves.
 For the getting started's `pid.h`, built with
-`cc -O2 -shared -fPIC -x c -DPID_SHARED pid.h -o libpid.so`, Python's ctypes
-reads each field at its offset, so the host does not mirror the struct:
+`cc -O2 -shared -fPIC -x c -DPID_SHARED pid.h -o libpid.so -lm`, Python's
+ctypes reads each field at its offset, so the host does not mirror the struct:
 
 ```python
 import ctypes as C
