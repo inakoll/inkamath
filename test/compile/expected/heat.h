@@ -38,6 +38,19 @@ typedef struct heat {
     double u[2][3][1];
 } heat;
 
+/* A shared library, built alone as C, not C++, with -DHEAT_SHARED: these
+ * functions exported and, at its end, the struct's size and its members'
+ * names, nested ones dotted, and offsets, not yet a stable interface. */
+#ifndef HEAT_SHARED
+#define HEAT_API_ static inline
+#elif defined(_WIN32)
+#define HEAT_API_ __declspec(dllexport)
+#elif defined(__GNUC__)
+#define HEAT_API_ __attribute__((visibility("default")))
+#else
+#define HEAT_API_
+#endif
+
 /* The inverse of a 3x3 matrix, in place, as the interpreter takes it: Gauss-Jordan
  * on the largest pivot, and NaN in every cell where there is none. */
 static inline void heat_inverse3_(double a_[3][3]) {
@@ -80,7 +93,7 @@ static inline void heat_inverse3_(double a_[3][3]) {
 }
 
 /* Computes what derives from the parameters: call it after assigning one. */
-static inline void heat_update(heat* m_) {
+HEAT_API_ void heat_update(heat* m_) {
     const double t4_ = 0.0 + m_->dt * -4.0;
     double t0_[3][3] = {{0.25 + m_->dt * 8.0, t4_, 0.0 + m_->dt * 0.0}, {t4_, 0.25 + m_->dt * 8.0, t4_}, {0.0 + m_->dt * 0.0, t4_, 0.25 + m_->dt * 8.0}};
     heat_inverse3_(t0_);
@@ -95,7 +108,7 @@ static inline void heat_update(heat* m_) {
     m_->A[2][2] = t0_[2][2] * 0.25;
 }
 
-static inline void heat_init(heat* m_) {
+HEAT_API_ void heat_init(heat* m_) {
     memset(m_, 0, sizeof *m_);
     m_->dt = 0.01;
     m_->index_ = -1;
@@ -103,7 +116,7 @@ static inline void heat_init(heat* m_) {
 }
 
 /* Advances to the next index, the first at 0, and computes its terms. */
-static inline void heat_step(heat* m_, double q_in_) {
+HEAT_API_ void heat_step(heat* m_, double q_in_) {
     ++m_->index_;
     memcpy(m_->u[1], m_->u[0], sizeof m_->u[1]);
     m_->q[0] = q_in_;
@@ -117,5 +130,17 @@ static inline void heat_step(heat* m_, double q_in_) {
         for (int i_ = 0; i_ < 3; ++i_)
             for (int j_ = 0; j_ < 1; ++j_) m_->u[0][i_][j_] = NAN;
 }
+
+#ifdef HEAT_SHARED
+#include <stddef.h>
+HEAT_API_ const size_t heat_size_ = sizeof(heat);
+HEAT_API_ const char* const heat_members_[] = {
+    "dt", "A", "index_", "q", "u", 0
+};
+HEAT_API_ const size_t heat_offsets_[] = {
+    offsetof(heat, dt), offsetof(heat, A), offsetof(heat, index_),
+    offsetof(heat, q), offsetof(heat, u)
+};
+#endif
 
 #endif

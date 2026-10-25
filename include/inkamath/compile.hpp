@@ -4221,7 +4221,10 @@ private:
             throw Reason(key + "_...: another sequence's term in " +
                          (limit_->what == "lim " + limit_->name ? "a limit" : limit_->what) +
                          "'s terms");
-        if (!reading_ && !basing_) throw Reason(key + "_...: a term read outside a general clause");
+        if (!reading_ && !basing_)
+            throw Reason(key +
+                         "_...: a term read outside a general clause; write its value, or "
+                         "pass it as a parameter");
         if (definition && !IsSequence(*definition)) throw Reason(key + " is not a sequence");
         Sequence& read = sequences_[key];
         // One the model does not define, the session's, is computed in its step too.
@@ -6822,9 +6825,12 @@ private:
                                      ? name + "\x01=\x01" + Double(parameter.initial[0])
                                      : name + "\x01(" + parameter.size.toString() + ")");
         std::string text =
-            "After a step, m.name[k] is name_(n-k) for each sequence: " + list(terms) + ".";
+            terms.empty()
+                ? ""
+                : "After a step, m.name[k] is name_(n-k) for each sequence: " + list(terms) + ".";
         if (!rated.empty())
-            text += " At another rate, m.name[k] is name_(m-k), m its latest term's index: " +
+            text += std::string(terms.empty() ? "" : " ") +
+                    "At another rate, m.name[k] is name_(m-k), m its latest term's index: " +
                     list(rated) + ".";
         const auto sliced = [&](auto& name) { return sequences_.at(name).size.slices > 0; };
         if (std::any_of(inputs.begin(), inputs.end(), [&](auto& name) { return Cells(name) > 1; }))
@@ -6838,6 +6844,8 @@ private:
                     ? "A step takes " + list(inputs_n) + ", the input at its index. "
                     : "A step takes " + list(inputs_n) + ", the inputs at its index. ") +
                text;
+        // With no sequence, no clause follows the input's.
+        if (text.back() == ' ') text.pop_back();
         std::vector<std::string> flagged;
         for (const std::string& name : inputs)
             if (Optional(name)) flagged.push_back(name);
@@ -7139,11 +7147,24 @@ private:
         }
         out +=
             "typedef struct " + module + " {\n" + Nested(members, "    ") + "} " + module + ";\n\n";
+        // Included, the functions are static inline; built alone, a shared
+        // library's (DESIGN.md, *A header built as a shared library*).
+        const std::string api = upper_ + "_API_", shared = upper_ + "_SHARED";
+        const std::string with  = "/* A shared library, built alone as C, not C++, with",
+                          macro = " -D" + shared + ": these\n";
+        out += with + (with.size() + macro.size() > 81 ? "\n *" : "") + macro;
+        out += " * functions exported and, at its end, the struct's size and its members'\n";
+        out += " * names, nested ones dotted, and offsets, not yet a stable interface. */\n";
+        out += "#ifndef " + shared + "\n#define " + api + " static inline\n";
+        out += "#elif defined(_WIN32)\n#define " + api + " __declspec(dllexport)\n";
+        out += "#elif defined(__GNUC__)\n#define " + api +
+               " __attribute__((visibility(\"default\")))\n";
+        out += "#else\n#define " + api + "\n#endif\n\n";
 
         const std::size_t functions = out.size();
 
         out += "/* Computes what derives from the parameters: call it after assigning one. */\n";
-        out += "static inline void " + module + "_update(" + module + "* m_) {\n";
+        out += api + " void " + module + "_update(" + module + "* m_) {\n";
         const auto read = [](const Derived& derived) { return derived.read; };
         if (std::none_of(derived_.begin(), derived_.end(), read)) out += "    (void)m_;\n";
         for (const Derived& derived : derived_) {
@@ -7157,7 +7178,7 @@ private:
         }
         out += "}\n\n";
 
-        out += "static inline void " + module + "_init(" + module + "* m_) {\n";
+        out += api + " void " + module + "_init(" + module + "* m_) {\n";
         out += "    memset(m_, 0, sizeof *m_);\n";
         for (const auto& [name, parameter] : parameters_) {
             for (std::size_t c = 0; c < parameter.initial.size(); ++c)
@@ -7171,7 +7192,7 @@ private:
         const std::size_t stepping = out.size();
         out += "/* Advances to the next index, the first at " + std::to_string(earliest) +
                ", and computes its terms. */\n";
-        out += "static inline void " + module + "_step(" + module + "* m_";
+        out += api + " void " + module + "_step(" + module + "* m_";
         // An input x is 'x_in_', which neither 'm_', a temporary 't0_' nor
         // a function 'model_f' can be named (C342).
         for (const std::string& name : inputs)
@@ -7289,7 +7310,31 @@ private:
             out += written(name, assignments, indent);
             if (late) out += "    }\n";
         }
-        out += "}\n\n#endif\n";
+        out += "}\n\n";
+        // The layout, for a host that reads no C, as many to a line as fit;
+        // the names end with a null pointer, as argv does.
+        const auto table = [&](const std::string& head, const std::vector<std::string>& items) {
+            std::string text = api + " const " + head + "[] = {\n", line = "   ";
+            for (std::size_t i = 0; i < items.size(); ++i) {
+                const std::string item = " " + items[i] + (i + 1 < items.size() ? "," : "");
+                if (line.size() > 3 && line.size() + item.size() > 80) {
+                    text += line + "\n";
+                    line = "   ";
+                }
+                line += item;
+            }
+            return text + line + "\n};\n";
+        };
+        std::vector<std::string> names, offsets;
+        for (const Member& member : members) {
+            names.push_back("\"" + member.key + "\"");
+            offsets.push_back("offsetof(" + module + ", " + member.key + ")");
+        }
+        names.push_back("0");
+        out += "#ifdef " + shared + "\n#include <stddef.h>\n" + api + " const size_t " + module +
+               "_size_ = sizeof(" + module + ");\n" +
+               table("char* const " + module + "_members_", names) +
+               table("size_t " + module + "_offsets_", offsets) + "#endif\n\n#endif\n";
         if (splits_) {
             const std::string define = "#define " + upper_ + "_NOINLINE_";
             out.insert(stepping,

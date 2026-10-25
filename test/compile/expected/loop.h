@@ -41,12 +41,25 @@ typedef struct loop {
     } plt;
 } loop;
 
+/* A shared library, built alone as C, not C++, with -DLOOP_SHARED: these
+ * functions exported and, at its end, the struct's size and its members'
+ * names, nested ones dotted, and offsets, not yet a stable interface. */
+#ifndef LOOP_SHARED
+#define LOOP_API_ static inline
+#elif defined(_WIN32)
+#define LOOP_API_ __declspec(dllexport)
+#elif defined(__GNUC__)
+#define LOOP_API_ __attribute__((visibility("default")))
+#else
+#define LOOP_API_
+#endif
+
 /* Computes what derives from the parameters: call it after assigning one. */
-static inline void loop_update(loop* m_) {
+LOOP_API_ void loop_update(loop* m_) {
     (void)m_;
 }
 
-static inline void loop_init(loop* m_) {
+LOOP_API_ void loop_init(loop* m_) {
     memset(m_, 0, sizeof *m_);
     m_->ctl.kp = 2.0;
     m_->ctl.r = 1.0;
@@ -56,7 +69,7 @@ static inline void loop_init(loop* m_) {
 }
 
 /* Advances to the next index, the first at 0, and computes its terms. */
-static inline void loop_step(loop* m_) {
+LOOP_API_ void loop_step(loop* m_) {
     ++m_->index_;
     m_->plt.x[1] = m_->plt.x[0];
     m_->plt.u[1] = m_->plt.u[0];
@@ -65,5 +78,18 @@ static inline void loop_step(loop* m_) {
     m_->ctl.u[0] = m_->ctl.kp * (m_->ctl.r + (0.0 - m_->ctl.y[0]));
     m_->plt.u[0] = m_->ctl.u[0];
 }
+
+#ifdef LOOP_SHARED
+#include <stddef.h>
+LOOP_API_ const size_t loop_size_ = sizeof(loop);
+LOOP_API_ const char* const loop_members_[] = {
+    "ctl.kp", "ctl.r", "plt.dt", "index_", "plt.x", "ctl.y", "ctl.u", "plt.u", 0
+};
+LOOP_API_ const size_t loop_offsets_[] = {
+    offsetof(loop, ctl.kp), offsetof(loop, ctl.r), offsetof(loop, plt.dt),
+    offsetof(loop, index_), offsetof(loop, plt.x), offsetof(loop, ctl.y),
+    offsetof(loop, ctl.u), offsetof(loop, plt.u)
+};
+#endif
 
 #endif

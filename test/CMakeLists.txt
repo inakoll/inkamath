@@ -208,6 +208,38 @@ target_link_libraries(compile_host PRIVATE inkamath_warnings $<$<NOT:$<C_COMPILE
 set_target_properties(compile_host PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
 add_test(NAME compile_host COMMAND compile_host)
 
+# A header built as a shared library (DESIGN.md): pid's, track's with its
+# optional input, pid's in floats and bank's with its instances, each
+# compiled alone as C under its macro and loaded by a host that reads no C.
+set(shared_libraries "")
+foreach(shared IN ITEMS pid:pid track:optional:track pidf:pid:--float bank:bank)
+    string(REPLACE ":" ";" shared ${shared})
+    list(POP_FRONT shared name file)
+    set(header ${CMAKE_CURRENT_BINARY_DIR}/compile/shared/${name}.h)
+    add_custom_command(OUTPUT ${header}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/compile/shared
+        COMMAND inkamath_cli --compile ${CMAKE_CURRENT_SOURCE_DIR}/compile/${file}.ink ${shared}
+                -o ${header}
+        DEPENDS inkamath_cli compile/${file}.ink
+        VERBATIM)
+    set_source_files_properties(${header} PROPERTIES LANGUAGE C)
+    add_library(shared_${name} MODULE ${header})
+    string(TOUPPER ${name} upper)
+    target_compile_definitions(shared_${name} PRIVATE ${upper}_SHARED)
+    target_link_libraries(shared_${name} PRIVATE inkamath_warnings
+                          $<$<NOT:$<C_COMPILER_ID:MSVC>>:m>)
+    set_target_properties(shared_${name} PROPERTIES
+                          C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
+    list(APPEND shared_libraries $<TARGET_FILE:shared_${name}>)
+endforeach()
+# A host's build may hide what it does not export by name.
+set_target_properties(shared_pid PROPERTIES C_VISIBILITY_PRESET hidden)
+add_executable(compile_shared compile/shared_test.c)
+target_link_libraries(compile_shared PRIVATE inkamath_warnings ${CMAKE_DL_LIBS}
+                      $<$<NOT:$<C_COMPILER_ID:MSVC>>:m>)
+set_target_properties(compile_shared PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
+add_test(NAME compile_shared COMMAND compile_shared ${shared_libraries})
+
 # The prelude's functions the interpreter calls on a double (DESIGN.md),
 # checked in so that building the interpreter needs no interpreter; recorded
 # as the goldens are, and its diff read.

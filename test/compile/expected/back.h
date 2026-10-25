@@ -37,19 +37,32 @@ typedef struct back {
     double e[1];
 } back;
 
+/* A shared library, built alone as C, not C++, with -DBACK_SHARED: these
+ * functions exported and, at its end, the struct's size and its members'
+ * names, nested ones dotted, and offsets, not yet a stable interface. */
+#ifndef BACK_SHARED
+#define BACK_API_ static inline
+#elif defined(_WIN32)
+#define BACK_API_ __declspec(dllexport)
+#elif defined(__GNUC__)
+#define BACK_API_ __attribute__((visibility("default")))
+#else
+#define BACK_API_
+#endif
+
 /* Computes what derives from the parameters: call it after assigning one. */
-static inline void back_update(back* m_) {
+BACK_API_ void back_update(back* m_) {
     (void)m_;
 }
 
-static inline void back_init(back* m_) {
+BACK_API_ void back_init(back* m_) {
     memset(m_, 0, sizeof *m_);
     m_->index_ = -1;
     back_update(m_);
 }
 
 /* Advances to the next index, the first at 0, and computes its terms. */
-static inline void back_step(back* m_, double u_in_) {
+BACK_API_ void back_step(back* m_, double u_in_) {
     ++m_->index_;
     m_->u[2] = m_->u[1];
     m_->u[1] = m_->u[0];
@@ -61,5 +74,17 @@ static inline void back_step(back* m_, double u_in_) {
     m_->c[0] = (double)m_->index_ < 0.0 ? (m_->index_ < 1 ? NAN : m_->u[1]) : 1.0;
     m_->e[0] = (m_->index_ < 1 ? (double)(m_->index_ - 1) < 0.0 ? m_->index_ < 2 ? NAN : m_->u[2] : 1.0 : m_->c[1]);
 }
+
+#ifdef BACK_SHARED
+#include <stddef.h>
+BACK_API_ const size_t back_size_ = sizeof(back);
+BACK_API_ const char* const back_members_[] = {
+    "index_", "u", "a", "b", "c", "e", 0
+};
+BACK_API_ const size_t back_offsets_[] = {
+    offsetof(back, index_), offsetof(back, u), offsetof(back, a),
+    offsetof(back, b), offsetof(back, c), offsetof(back, e)
+};
+#endif
 
 #endif

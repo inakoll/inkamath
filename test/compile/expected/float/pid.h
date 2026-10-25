@@ -42,12 +42,25 @@ typedef struct pid {
     float u[1];
 } pid;
 
+/* A shared library, built alone as C, not C++, with -DPID_SHARED: these
+ * functions exported and, at its end, the struct's size and its members'
+ * names, nested ones dotted, and offsets, not yet a stable interface. */
+#ifndef PID_SHARED
+#define PID_API_ static inline
+#elif defined(_WIN32)
+#define PID_API_ __declspec(dllexport)
+#elif defined(__GNUC__)
+#define PID_API_ __attribute__((visibility("default")))
+#else
+#define PID_API_
+#endif
+
 /* Computes what derives from the parameters: call it after assigning one. */
-static inline void pid_update(pid* m_) {
+PID_API_ void pid_update(pid* m_) {
     (void)m_;
 }
 
-static inline void pid_init(pid* m_) {
+PID_API_ void pid_init(pid* m_) {
     memset(m_, 0, sizeof *m_);
     m_->dt = 0.1f;
     m_->kd = 0.1f;
@@ -59,7 +72,7 @@ static inline void pid_init(pid* m_) {
 }
 
 /* Advances to the next index, the first at 0, and computes its terms. */
-static inline void pid_step(pid* m_, float y_in_) {
+PID_API_ void pid_step(pid* m_, float y_in_) {
     ++m_->index_;
     m_->e[1] = m_->e[0];
     m_->s[1] = m_->s[0];
@@ -69,5 +82,18 @@ static inline void pid_step(pid* m_, float y_in_) {
     m_->s[0] = m_->index_ == 0 ? 0.0f : m_->s[1] + m_->e[0] * m_->dt;
     m_->u[0] = m_->kp * m_->e[0] + m_->ki * m_->s[0] + m_->kd * m_->d[0];
 }
+
+#ifdef PID_SHARED
+#include <stddef.h>
+PID_API_ const size_t pid_size_ = sizeof(pid);
+PID_API_ const char* const pid_members_[] = {
+    "dt", "kd", "ki", "kp", "r", "index_", "y", "e", "d", "s", "u", 0
+};
+PID_API_ const size_t pid_offsets_[] = {
+    offsetof(pid, dt), offsetof(pid, kd), offsetof(pid, ki), offsetof(pid, kp),
+    offsetof(pid, r), offsetof(pid, index_), offsetof(pid, y), offsetof(pid, e),
+    offsetof(pid, d), offsetof(pid, s), offsetof(pid, u)
+};
+#endif
 
 #endif

@@ -62,6 +62,11 @@ Python*), with no API of inkamath's. A C API, and bindings over it, would let
 the oracle's harness run interactively. They are not the end, and they freeze
 an interface; they wait until the language has stopped moving.
 
+Taken: a header builds as a shared library under a macro, `-DPID_SHARED`,
+exporting its functions and its struct's size, member names and offsets
+(`DESIGN.md`, *A header built as a shared library*). Its symbols are not a
+stable interface until the language stops moving.
+
 The size constraint at the top of `DESIGN.md` governs everything below.
 Several of these directions could each double the program. Where one does, the
 version worth having is the one that adds a capability without adding a second
