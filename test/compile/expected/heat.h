@@ -39,8 +39,9 @@ typedef struct heat {
 } heat;
 
 /* A shared library, built alone as C, not C++, with -DHEAT_SHARED: these
- * functions exported and, at its end, the struct's size and its members'
- * names, nested ones dotted, and offsets, not yet a stable interface. */
+ * functions exported and, at its end, the struct's size, its members' count,
+ * names, nested ones dotted, offsets and types, and the step's inputs, an
+ * optional one's ending in '?', not yet a stable interface. */
 #ifndef HEAT_SHARED
 #define HEAT_API_ static inline
 #elif defined(_WIN32)
@@ -134,12 +135,19 @@ HEAT_API_ void heat_step(heat* m_, double q_in_) {
 #ifdef HEAT_SHARED
 #include <stddef.h>
 HEAT_API_ const size_t heat_size_ = sizeof(heat);
+HEAT_API_ const size_t heat_count_ = 5;
 HEAT_API_ const char* const heat_members_[] = {
     "dt", "A", "index_", "q", "u", 0
 };
 HEAT_API_ const size_t heat_offsets_[] = {
     offsetof(heat, dt), offsetof(heat, A), offsetof(heat, index_),
     offsetof(heat, q), offsetof(heat, u)
+};
+HEAT_API_ const char* const heat_types_[] = {
+    "double", "double[3][3]", "long long", "double[1]", "double[2][3][1]"
+};
+HEAT_API_ const char* const heat_inputs_[] = {
+    "q", 0
 };
 #endif
 

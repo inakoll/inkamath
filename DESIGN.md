@@ -13389,10 +13389,8 @@ per-module macros are, it exports:
 - `const size_t <name>_size_`, the struct's size; `const char* const
   <name>_members_[]`, each member's name, an instance's dotted, then a null
   pointer; and `const size_t <name>_offsets_[]`, each one's `offsetof`, a
-  table wrapped at 80 columns. The tables give no type: a member is a double,
-  a float under `--float`, but for `index_`, a `long long`, and the `int`
-  flags, `_present`, `_given_` and `_clause_`. A split step's `v_` is not
-  listed.
+  table wrapped at 80 columns; their count and types, and the step's inputs,
+  came after (below). A split step's `v_` is not listed.
 - On Windows each `__declspec(dllexport)`, so that MSVC builds it, and
   under GCC and Clang of default visibility, so that `-fvisibility=hidden`
   keeps them.
@@ -13407,6 +13405,30 @@ moved. In 37 lines of `compile.hpp` for 4; `compile_shared` builds pid,
 track, pid under `--float` and bank as libraries and loads each, by `dlopen`
 or `LoadLibrary`, reading outputs through the tables against the
 interpreter's values.
+
+### A shared library's types and inputs `[done]`
+
+The owner's ruling: a host of a shared library learns each member's shape
+and the step's parameters from tables, not from C. Beside `_members_` and
+`_offsets_`, the header exports:
+
+- `const size_t <name>_count_`, the number of members, so that a host
+  sizes the tables without scanning to the null pointer, which stays.
+- `const char* const <name>_types_[]`, parallel to them, each member's C
+  type and dimensions in C order, `"long long"`, `"int[4]"`,
+  `"double[1][4][1]"`, a sequence's first its history's depth;
+  `"float[...]"` under `--float`, by the pass that writes every double so.
+- `const char* const <name>_inputs_[]`, the step's inputs in its order, a
+  null pointer after them, an optional one's name ending in `?`. One of a
+  cell is passed by value, a larger one as a pointer to its cells, and an
+  optional one is followed by its `int` flag.
+
+Every expected header and the prelude's moved by the three tables and the
+comment naming them, each read; no golden, cli case or check program moved.
+In 10 lines of `compile.hpp` for 3 and 5 of comments for 4;
+`compile_shared` holds each library's count to its names, its types to its
+offsets, each member fitting before the next or the struct's end, and its
+inputs to its step's.
 
 ---
 

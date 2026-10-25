@@ -37,8 +37,9 @@ typedef struct mix {
 } mix;
 
 /* A shared library, built alone as C, not C++, with -DMIX_SHARED: these
- * functions exported and, at its end, the struct's size and its members'
- * names, nested ones dotted, and offsets, not yet a stable interface. */
+ * functions exported and, at its end, the struct's size, its members' count,
+ * names, nested ones dotted, offsets and types, and the step's inputs, an
+ * optional one's ending in '?', not yet a stable interface. */
 #ifndef MIX_SHARED
 #define MIX_API_ static inline
 #elif defined(_WIN32)
@@ -75,12 +76,20 @@ MIX_API_ void mix_step(mix* m_, double u_in_, double b_in_) {
 #ifdef MIX_SHARED
 #include <stddef.h>
 MIX_API_ const size_t mix_size_ = sizeof(mix);
+MIX_API_ const size_t mix_count_ = 7;
 MIX_API_ const char* const mix_members_[] = {
     "a", "g", "index_", "u", "b", "m", "v", 0
 };
 MIX_API_ const size_t mix_offsets_[] = {
     offsetof(mix, a), offsetof(mix, g), offsetof(mix, index_), offsetof(mix, u),
     offsetof(mix, b), offsetof(mix, m), offsetof(mix, v)
+};
+MIX_API_ const char* const mix_types_[] = {
+    "double", "double", "long long", "double[1]", "double[1]", "double[1]",
+    "double[2]"
+};
+MIX_API_ const char* const mix_inputs_[] = {
+    "u", "b", 0
 };
 #endif
 

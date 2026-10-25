@@ -44,8 +44,9 @@ typedef struct kalman {
 } kalman;
 
 /* A shared library, built alone as C, not C++, with -DKALMAN_SHARED: these
- * functions exported and, at its end, the struct's size and its members'
- * names, nested ones dotted, and offsets, not yet a stable interface. */
+ * functions exported and, at its end, the struct's size, its members' count,
+ * names, nested ones dotted, offsets and types, and the step's inputs, an
+ * optional one's ending in '?', not yet a stable interface. */
 #ifndef KALMAN_SHARED
 #define KALMAN_API_ static inline
 #elif defined(_WIN32)
@@ -121,6 +122,7 @@ KALMAN_API_ void kalman_step(kalman* m_, double z_in_) {
 #ifdef KALMAN_SHARED
 #include <stddef.h>
 KALMAN_API_ const size_t kalman_size_ = sizeof(kalman);
+KALMAN_API_ const size_t kalman_count_ = 13;
 KALMAN_API_ const char* const kalman_members_[] = {
     "H", "I", "Q", "R", "dt", "index_", "z", "Pp", "K", "P", "xp", "x", "p", 0
 };
@@ -130,6 +132,14 @@ KALMAN_API_ const size_t kalman_offsets_[] = {
     offsetof(kalman, z), offsetof(kalman, Pp), offsetof(kalman, K),
     offsetof(kalman, P), offsetof(kalman, xp), offsetof(kalman, x),
     offsetof(kalman, p)
+};
+KALMAN_API_ const char* const kalman_types_[] = {
+    "double[1][2]", "double[2][2]", "double[2][2]", "double", "double",
+    "long long", "double[1]", "double[1][2][2]", "double[1][2][1]",
+    "double[2][2][2]", "double[1][2][1]", "double[2][2][1]", "double[1]"
+};
+KALMAN_API_ const char* const kalman_inputs_[] = {
+    "z", 0
 };
 #endif
 

@@ -43,8 +43,9 @@ typedef struct adc {
 } adc;
 
 /* A shared library, built alone as C, not C++, with -DADC_SHARED: these
- * functions exported and, at its end, the struct's size and its members'
- * names, nested ones dotted, and offsets, not yet a stable interface. */
+ * functions exported and, at its end, the struct's size, its members' count,
+ * names, nested ones dotted, offsets and types, and the step's inputs, an
+ * optional one's ending in '?', not yet a stable interface. */
 #ifndef ADC_SHARED
 #define ADC_API_ static inline
 #elif defined(_WIN32)
@@ -87,6 +88,7 @@ ADC_API_ void adc_step(adc* m_, double x_in_) {
 #ifdef ADC_SHARED
 #include <stddef.h>
 ADC_API_ const size_t adc_size_ = sizeof(adc);
+ADC_API_ const size_t adc_count_ = 9;
 ADC_API_ const char* const adc_members_[] = {
     "hi", "lo", "q", "index_", "x", "v", "held", "alarm", "rising", 0
 };
@@ -94,6 +96,13 @@ ADC_API_ const size_t adc_offsets_[] = {
     offsetof(adc, hi), offsetof(adc, lo), offsetof(adc, q),
     offsetof(adc, index_), offsetof(adc, x), offsetof(adc, v),
     offsetof(adc, held), offsetof(adc, alarm), offsetof(adc, rising)
+};
+ADC_API_ const char* const adc_types_[] = {
+    "double", "double", "double", "long long", "double[1]", "double[1]",
+    "double[2]", "double[1]", "double[1]"
+};
+ADC_API_ const char* const adc_inputs_[] = {
+    "x", 0
 };
 #endif
 

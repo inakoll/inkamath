@@ -34,8 +34,9 @@ typedef struct fir {
 } fir;
 
 /* A shared library, built alone as C, not C++, with -DFIR_SHARED: these
- * functions exported and, at its end, the struct's size and its members'
- * names, nested ones dotted, and offsets, not yet a stable interface. */
+ * functions exported and, at its end, the struct's size, its members' count,
+ * names, nested ones dotted, offsets and types, and the step's inputs, an
+ * optional one's ending in '?', not yet a stable interface. */
 #ifndef FIR_SHARED
 #define FIR_API_ static inline
 #elif defined(_WIN32)
@@ -76,11 +77,18 @@ FIR_API_ void fir_step(fir* m_, double x_in_) {
 #ifdef FIR_SHARED
 #include <stddef.h>
 FIR_API_ const size_t fir_size_ = sizeof(fir);
+FIR_API_ const size_t fir_count_ = 4;
 FIR_API_ const char* const fir_members_[] = {
     "b", "index_", "x", "y", 0
 };
 FIR_API_ const size_t fir_offsets_[] = {
     offsetof(fir, b), offsetof(fir, index_), offsetof(fir, x), offsetof(fir, y)
+};
+FIR_API_ const char* const fir_types_[] = {
+    "double[1][4]", "long long", "double[4]", "double[1]"
+};
+FIR_API_ const char* const fir_inputs_[] = {
+    "x", 0
 };
 #endif
 

@@ -7153,8 +7153,9 @@ private:
         const std::string with  = "/* A shared library, built alone as C, not C++, with",
                           macro = " -D" + shared + ": these\n";
         out += with + (with.size() + macro.size() > 81 ? "\n *" : "") + macro;
-        out += " * functions exported and, at its end, the struct's size and its members'\n";
-        out += " * names, nested ones dotted, and offsets, not yet a stable interface. */\n";
+        out += " * functions exported and, at its end, the struct's size, its members' count,\n";
+        out += " * names, nested ones dotted, offsets and types, and the step's inputs, an\n";
+        out += " * optional one's ending in '?', not yet a stable interface. */\n";
         out += "#ifndef " + shared + "\n#define " + api + " static inline\n";
         out += "#elif defined(_WIN32)\n#define " + api + " __declspec(dllexport)\n";
         out += "#elif defined(__GNUC__)\n#define " + api +
@@ -7311,8 +7312,8 @@ private:
             if (late) out += "    }\n";
         }
         out += "}\n\n";
-        // The layout, for a host that reads no C, as many to a line as fit;
-        // the names end with a null pointer, as argv does.
+        // The layout and the step's inputs, for a host that reads no C, as
+        // many to a line as fit; the names end with a null pointer, as argv does.
         const auto table = [&](const std::string& head, const std::vector<std::string>& items) {
             std::string text = api + " const " + head + "[] = {\n", line = "   ";
             for (std::size_t i = 0; i < items.size(); ++i) {
@@ -7325,16 +7326,23 @@ private:
             }
             return text + line + "\n};\n";
         };
-        std::vector<std::string> names, offsets;
+        std::vector<std::string> names, offsets, types, given;
         for (const Member& member : members) {
             names.push_back("\"" + member.key + "\"");
             offsets.push_back("offsetof(" + module + ", " + member.key + ")");
+            types.push_back("\"" + member.type + member.dimensions + "\"");
         }
+        for (const std::string& name : inputs)
+            given.push_back("\"" + name + (Optional(name) ? "?" : "") + "\"");
         names.push_back("0");
+        given.push_back("0");
         out += "#ifdef " + shared + "\n#include <stddef.h>\n" + api + " const size_t " + module +
-               "_size_ = sizeof(" + module + ");\n" +
+               "_size_ = sizeof(" + module + ");\n" + api + " const size_t " + module +
+               "_count_ = " + std::to_string(members.size()) + ";\n" +
                table("char* const " + module + "_members_", names) +
-               table("size_t " + module + "_offsets_", offsets) + "#endif\n\n#endif\n";
+               table("size_t " + module + "_offsets_", offsets) +
+               table("char* const " + module + "_types_", types) +
+               table("char* const " + module + "_inputs_", given) + "#endif\n\n#endif\n";
         if (splits_) {
             const std::string define = "#define " + upper_ + "_NOINLINE_";
             out.insert(stepping,

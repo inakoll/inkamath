@@ -38,8 +38,9 @@ typedef struct net {
 } net;
 
 /* A shared library, built alone as C, not C++, with -DNET_SHARED: these
- * functions exported and, at its end, the struct's size and its members'
- * names, nested ones dotted, and offsets, not yet a stable interface. */
+ * functions exported and, at its end, the struct's size, its members' count,
+ * names, nested ones dotted, offsets and types, and the step's inputs, an
+ * optional one's ending in '?', not yet a stable interface. */
 #ifndef NET_SHARED
 #define NET_API_ static inline
 #elif defined(_WIN32)
@@ -87,12 +88,20 @@ NET_API_ void net_step(net* m_, double x_in_) {
 #ifdef NET_SHARED
 #include <stddef.h>
 NET_API_ const size_t net_size_ = sizeof(net);
+NET_API_ const size_t net_count_ = 8;
 NET_API_ const char* const net_members_[] = {
     "W", "v", "index_", "x", "w", "z", "h", "y", 0
 };
 NET_API_ const size_t net_offsets_[] = {
     offsetof(net, W), offsetof(net, v), offsetof(net, index_), offsetof(net, x),
     offsetof(net, w), offsetof(net, z), offsetof(net, h), offsetof(net, y)
+};
+NET_API_ const char* const net_types_[] = {
+    "double[2][3]", "double[1][2]", "long long", "double[1]", "double[2][3][1]",
+    "double[1][2][1]", "double[1][2][1]", "double[1]"
+};
+NET_API_ const char* const net_inputs_[] = {
+    "x", 0
 };
 #endif
 

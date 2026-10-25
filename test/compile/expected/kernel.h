@@ -35,8 +35,9 @@ typedef struct kernel {
 } kernel;
 
 /* A shared library, built alone as C, not C++, with -DKERNEL_SHARED: these
- * functions exported and, at its end, the struct's size and its members'
- * names, nested ones dotted, and offsets, not yet a stable interface. */
+ * functions exported and, at its end, the struct's size, its members' count,
+ * names, nested ones dotted, offsets and types, and the step's inputs, an
+ * optional one's ending in '?', not yet a stable interface. */
 #ifndef KERNEL_SHARED
 #define KERNEL_API_ static inline
 #elif defined(_WIN32)
@@ -93,12 +94,19 @@ KERNEL_API_ void kernel_step(kernel* m_, double x_in_) {
 #ifdef KERNEL_SHARED
 #include <stddef.h>
 KERNEL_API_ const size_t kernel_size_ = sizeof(kernel);
+KERNEL_API_ const size_t kernel_count_ = 5;
 KERNEL_API_ const char* const kernel_members_[] = {
     "lap", "index_", "x", "u", "y", 0
 };
 KERNEL_API_ const size_t kernel_offsets_[] = {
     offsetof(kernel, lap), offsetof(kernel, index_), offsetof(kernel, x),
     offsetof(kernel, u), offsetof(kernel, y)
+};
+KERNEL_API_ const char* const kernel_types_[] = {
+    "double[3][3]", "long long", "double[1]", "double[2][3][3]", "double[1]"
+};
+KERNEL_API_ const char* const kernel_inputs_[] = {
+    "x", 0
 };
 #endif
 

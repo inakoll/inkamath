@@ -35,8 +35,9 @@ typedef struct inkamath_prelude {
 
 /* A shared library, built alone as C, not C++, with
  * -DINKAMATH_PRELUDE_SHARED: these
- * functions exported and, at its end, the struct's size and its members'
- * names, nested ones dotted, and offsets, not yet a stable interface. */
+ * functions exported and, at its end, the struct's size, its members' count,
+ * names, nested ones dotted, offsets and types, and the step's inputs, an
+ * optional one's ending in '?', not yet a stable interface. */
 #ifndef INKAMATH_PRELUDE_SHARED
 #define INKAMATH_PRELUDE_API_ static inline
 #elif defined(_WIN32)
@@ -383,12 +384,19 @@ INKAMATH_PRELUDE_API_ void inkamath_prelude_step(inkamath_prelude* m_) {
 #ifdef INKAMATH_PRELUDE_SHARED
 #include <stddef.h>
 INKAMATH_PRELUDE_API_ const size_t inkamath_prelude_size_ = sizeof(inkamath_prelude);
+INKAMATH_PRELUDE_API_ const size_t inkamath_prelude_count_ = 3;
 INKAMATH_PRELUDE_API_ const char* const inkamath_prelude_members_[] = {
     "index_", "c", "d", 0
 };
 INKAMATH_PRELUDE_API_ const size_t inkamath_prelude_offsets_[] = {
     offsetof(inkamath_prelude, index_), offsetof(inkamath_prelude, c),
     offsetof(inkamath_prelude, d)
+};
+INKAMATH_PRELUDE_API_ const char* const inkamath_prelude_types_[] = {
+    "long long", "double[1]", "double[1]"
+};
+INKAMATH_PRELUDE_API_ const char* const inkamath_prelude_inputs_[] = {
+    0
 };
 #endif
 
