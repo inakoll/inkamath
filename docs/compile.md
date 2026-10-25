@@ -344,13 +344,14 @@ ending in `?`. None of it is a stable interface yet, while the language moves.
 For the getting started's `pid.h`, built with
 `cc -O2 -shared -fPIC -x c -DPID_SHARED pid.h -o libpid.so -lm`,
 [`tools/inkamath_model.py`](../tools/inkamath_model.py) reads it from the
-tables alone, in ctypes, so the host does not mirror the struct: each member
+tables alone, in ctypes, under Python 3.10 or later, so the host does not
+mirror the struct: each member
 at its offset, the members after `index_` the sequences and their flags,
 each a sequence's history first, and the inputs in their order, `None` for
 an optional one absent:
 
 ```python
-from inkamath_model import Model
+from inkamath_model import Model   # tools/ on sys.path
 m = Model("./libpid.so", "pid")
 m["kp"] = 2.5                  # a parameter, and what derives from it
 for y in (0, 0.1, 0.2): m.step(y)
