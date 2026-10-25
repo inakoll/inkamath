@@ -225,6 +225,11 @@ step's own, and compares each term with the interpreter's.
 that does not: a tenth computed again at every step, whose rounding each step
 multiplies by ten.
 
+`--check steps.ink fall -o fall.c`, given a model rather than an instance,
+checks the instance `fall()` would be, with every default, under the model's
+name: `fall: 100 steps from 0`. A model with an input or a parameter that has
+no default is refused, as only an instance can give it.
+
 ### The report
 
 A report reads, in order:

@@ -13442,6 +13442,26 @@ for pid with r = 2, u_2 = 2*1.8 + 0.37 - 0.1 = 3.87. It runs where CMake
 finds a Python 3.10, and not under the sanitizers, whose runtime a Python
 does not load first.
 
+### A model checked by name `[done]`
+
+The owner's request: `--check file.ink m -o check.c`, `m` a model the file
+defines rather than an instance, checks the instance `m()` would be, with
+every default, so that a model needs no `d = m()` line to be checked. It is
+that instance as the interpreter makes one, not a path of its own: the
+definition `m = m()`, written in the session, where `m` finds the model, and
+found first from a scope over it, where the check asks its terms. So the
+report names it `m`, and on 27 instances `d = m()` of `test/compile` the
+program is the one `d` writes but for the name. A model with an input or a
+parameter that has no default, which `m()` reads as an input nothing
+defines, is refused, `gain in gains.ink takes x, which has no default;
+define an instance that gives it`; an optional input left out is absent, as
+in `m()`. The model is found in the file run, as an instance is, not read
+as `use` reads it, as `--compile file m` does: the instance is the
+session's. A name that is neither says `defines no instance or model`, which
+moved check_no_instance and check_steps_most, with `--help`. In 26 lines of
+`main.cpp` for 5, and 2 of comment; `check_steps_fall_report` holds
+steps.ink's `fall`, coast's model, to coast's report.
+
 ---
 
 ## Next in line

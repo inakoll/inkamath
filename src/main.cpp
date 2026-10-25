@@ -58,8 +58,9 @@ At a terminal the prompt edits the line and keeps its history.
   --check     write a C program that steps an instance the file defines,
               compiled, on the inputs the interpreter gives it, holds each
               term to the interpreter's exact one and says where one drifts;
-              given a transcript alone, replay it and report each answer
-              that is not the one recorded
+              given a model, its instance with every default; given a
+              transcript alone, replay it and report each answer that is
+              not the one recorded
   --float     with --compile or --check, write floats where they write
               doubles
   --steps n   with --check and an instance, step it n times rather than
@@ -231,15 +232,38 @@ static int check(const string& source, const string& name, const string& target,
     string program;
     try {
         if (!run(source, in, p)) return 1;
-        const auto& names = p.Definitions().Session().names;
+        using Value       = Interp::matrix_type;
+        auto&       stack = p.Definitions();
+        const auto& names = stack.Session().names;
         const auto  found = names.find(name);
-        const auto  unfed = found == names.end() ? nullptr : p.Definitions().Unfed(found->second);
+        auto        named = found == names.end() ? nullptr : found->second;
+        // A model is checked as 'name = name()' would be, were the name free:
+        // the instance written in the session, found first from a scope over it.
+        Scope<Value> over;
+        over.parent = &stack.Session();
+        if (named && named->model) {
+            const auto& parameters = named->model->parameters;
+            const auto  fed        = ranges::find_if(
+                parameters, [](const auto& q) { return !q.fallback && !q.optional; });
+            if (fed != parameters.end()) {
+                cerr << "inkamath: " << name << " in " << file << " takes " << fed->name
+                     << ", which has no default; define an instance that gives it\n";
+                return 1;
+            }
+            auto instance = make_shared<Reference<Value>>(name);
+            instance->add_expression(name, ParametersDefinition<Value>(),
+                                     make_shared<RefExpression<Value>>(name),
+                                     name + " = " + name + "()");
+            instance->home   = &stack.Session();
+            over.names[name] = named = instance;
+        }
+        const ReferenceStack<Value>::Within within(stack, &over);
+        const auto                          unfed = named ? stack.Unfed(named) : nullptr;
         if (!unfed) {
-            cerr << "inkamath: " << file << " defines no instance " << name << '\n';
+            cerr << "inkamath: " << file << " defines no instance or model " << name << '\n';
             return 1;
         }
-        program =
-            CheckC::Program(p, name, found->second, module, name + " in " + file, *unfed, steps);
+        program = CheckC::Program(p, name, named, module, name + " in " + file, *unfed, steps);
     } catch (const runtime_error& error) {
         cerr << "inkamath: " << error.what() << '\n';
         return 1;

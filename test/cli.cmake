@@ -228,8 +228,9 @@ At a terminal the prompt edits the line and keeps its history.
   --check     write a C program that steps an instance the file defines,
               compiled, on the inputs the interpreter gives it, holds each
               term to the interpreter's exact one and says where one drifts;
-              given a transcript alone, replay it and report each answer
-              that is not the one recorded
+              given a model, its instance with every default; given a
+              transcript alone, replay it and report each answer that is
+              not the one recorded
   --float     with --compile or --check, write floats where they write
               doubles
   --steps n   with --check and an instance, step it n times rather than
@@ -630,9 +631,16 @@ check(compile_default_term)
 # An instance checked: the C program its check writes is built and run by the
 # tests, beside the compiled models.
 set(args --check models.ink loss -o loss.c)
-set(stderr "inkamath: models.ink defines no instance loss\n")
+set(stderr "inkamath: models.ink defines no instance or model loss\n")
 set(exit 1)
 check(check_no_instance)
+
+# A model is checked as its instance with every default is, but not one that
+# needs data to step.
+set(args --check gains.ink gain -o gain.c)
+set(stderr "inkamath: gain in gains.ink takes x, which has no default; define an instance that gives it\n")
+set(exit 1)
+check(check_model_undefaulted)
 
 set(args --check models.ink gain)
 set(stderr "inkamath: --check takes a transcript, or a file, an instance it defines and -o check.c\nTry 'inkamath --help'.\n")
@@ -678,7 +686,7 @@ endif()
 
 # The largest is read: the instance is refused after it, before any term.
 set(args --check coast.ink nothing --steps 100000 -o nothing.c)
-set(stderr "inkamath: coast.ink defines no instance nothing\n")
+set(stderr "inkamath: coast.ink defines no instance or model nothing\n")
 set(exit 1)
 check(check_steps_most)
 

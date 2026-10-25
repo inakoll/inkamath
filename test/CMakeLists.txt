@@ -313,7 +313,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          straddle:knee straddle:crease straddle:plain straddle:both straddle:acc
                          straddle:given straddle:parted straddle:unasked
                          straddle:recalled straddle:founded straddle:reread straddle:equal
-                         straddle:folded steps:coast:1001 steps:coast:1
+                         straddle:folded steps:coast:1001 steps:coast:1 steps:fall
                          steps:runaway:150 steps:runaway:1000 steps:horizon:1000
                          robertson:inside:2000 robertson:outside:2000 robertson:rober
                          implicit:kinetic implicit:jacobian implicit:doubling implicit:inset
@@ -428,6 +428,9 @@ set_tests_properties(check_coast_1001_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^coast: 1001 steps from 0, against exact values\n${coast}")
 set_tests_properties(check_coast_1_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^coast: 1 step from 0, against exact values\n${coast}")
+# A model checked by name is its instance with every default, coast's.
+set_tests_properties(check_steps_fall_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^fall: 100 steps from 0, against exact values\nfall\\.v: within 0\nfall\\.y: within 0\n$")
 set_tests_properties(check_runaway_150_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^runaway: 150 steps from 0, against exact values\nrunaway\\.x: within 0\n$")
 set_tests_properties(check_runaway_1000_report PROPERTIES PASS_REGULAR_EXPRESSION
