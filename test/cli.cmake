@@ -68,6 +68,90 @@ endfunction()
 # Read by cases in every part.
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
+# Specified, not yet built (DESIGN.md, *Hosting from Python*): --names lists
+# what a file defines, sorted by name, each after what it is, so that a host
+# reads no inkamath. Not registered while it is refused; run by hand, 'cmake
+# -DEXE=build/inkamath -DPART=spec -DOUT=build/cli_spec -P test/cli.cmake'.
+if(PART STREQUAL "spec")
+    file(MAKE_DIRECTORY "${OUT}")
+    set(compiled "${CMAKE_CURRENT_LIST_DIR}/compile")
+    set(args --names ${compiled}/mix.ink)
+    set(stdout "model mix\nvalue tau\n")
+    check(names_mix)
+
+    set(args --names ${compiled}/pidloop.ink)
+    set(stdout "instance ctl\nmodel pid\nmodel plant\ninstance plt\n")
+    check(names_pidloop)
+
+    # A file used is a file; the prelude's names are not the file's, but one
+    # it defines again is, conv here.
+    set(args --names ${compiled}/chain.ink)
+    set(stdout "instance fast\nfile filters\ninstance h\nvalue k\ninstance slow\nsequence y\n")
+    check(names_chain)
+    set(args --names ${compiled}/kernel.ink)
+    set(stdout "model conv\nvalue lap\nmodel power\nfunction relu\nsequence u\nsequence y\n")
+    check(names_kernel)
+
+    # A definition by cells is a value, or a function with parameters; a
+    # sequence with parameters is a function, read at an index; a name
+    # brought in is what it is in its file. Sorted as bytes, capitals first.
+    file(COPY ${compiled}/filters.ink DESTINATION "${OUT}")
+    file(WRITE "${OUT}/kinds.ink" [=[
+use filters (lowpass)
+E[j<=2, k<=2] = j*k
+f(x)[j<=2] = x*j
+t(x)_0 = 1
+t(x)_k = x*t(x)_(k-1)
+w = lowpass(u_n = n)
+z_n = w.v_n
+]=])
+    set(args --names kinds.ink)
+    set(stdout "value E\nfunction f\nfile filters\nmodel lowpass\nfunction t\ninstance w\nsequence z\n")
+    check(names_kinds)
+
+    # A transcript's entries are its definitions; a file of none lists none.
+    file(WRITE "${OUT}/session.ink" ">> f(x) = x\nf(x) = x\n\n>> a = 1\na = 1\n")
+    set(args --names session.ink)
+    set(stdout "value a\nfunction f\n")
+    check(names_transcript)
+    file(WRITE "${OUT}/empty.ink" "# nothing\n")
+    set(args --names empty.ink)
+    set(stdout "")
+    check(names_empty)
+
+    # Refused as --compile refuses: a file that cannot be read, and one whose
+    # line fails, which lists nothing.
+    set(args --names missing.ink)
+    set(stderr "inkamath: cannot open 'missing.ink'\n")
+    set(exit 2)
+    check(names_missing)
+    file(WRITE "${OUT}/bad.ink" "a = 1\nb = 1+\n")
+    set(args --names bad.ink)
+    set(stderr "inkamath: bad.ink: b = 1+: unexpected end of input after '+'\n")
+    set(exit 1)
+    check(names_failing)
+
+    # One file, and nothing else.
+    file(COPY ${compiled}/mix.ink DESTINATION "${OUT}")
+    foreach(given "" "mix.ink;mix.ink" "mix.ink;-i" "mix.ink;--echo" "mix.ink;-o;x.h")
+        set(args --names ${given})
+        set(stderr "inkamath: --names takes a file and nothing else\nTry 'inkamath --help'.\n")
+        set(exit 2)
+        string(MAKE_C_IDENTIFIER "names_usage_${given}" name)
+        check(${name})
+    endforeach()
+
+    execute_process(COMMAND "${EXE}" --help OUTPUT_VARIABLE help)
+    foreach(line "       inkamath --names file\n"
+                 "  --names     print each name the file defines, one a line, sorted, after\n              what it is: model, instance, sequence, function, value or file\n")
+        string(FIND "${help}" "${line}" at)
+        if(at EQUAL -1)
+            message(SEND_ERROR "names_help: --help does not hold\n${line}")
+        endif()
+    endforeach()
+    return()
+endif()
+
 # The cases run as four tests of about equal time under the sanitizers: PART
 # 1 up to charpoly's refusal, 2 from it, 3 from eig's, 4 from the frequency
 # response's, and all where PART is not given.
