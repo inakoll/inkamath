@@ -7150,7 +7150,9 @@ private:
         // Included, the functions are static inline; built alone, a shared
         // library's (DESIGN.md, *A header built as a shared library*).
         const std::string api = upper_ + "_API_", shared = upper_ + "_SHARED";
-        out += "/* A shared library, built alone as C, not C++, with -D" + shared + ": these\n";
+        const std::string with  = "/* A shared library, built alone as C, not C++, with",
+                          macro = " -D" + shared + ": these\n";
+        out += with + (with.size() + macro.size() > 81 ? "\n *" : "") + macro;
         out += " * functions exported and, at its end, the struct's size and its members'\n";
         out += " * names, nested ones dotted, and offsets, not yet a stable interface. */\n";
         out += "#ifndef " + shared + "\n#define " + api + " static inline\n";

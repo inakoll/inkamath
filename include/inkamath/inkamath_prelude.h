@@ -33,7 +33,8 @@ typedef struct inkamath_prelude {
     double d[1];
 } inkamath_prelude;
 
-/* A shared library, built alone as C, not C++, with -DINKAMATH_PRELUDE_SHARED: these
+/* A shared library, built alone as C, not C++, with
+ * -DINKAMATH_PRELUDE_SHARED: these
  * functions exported and, at its end, the struct's size and its members'
  * names, nested ones dotted, and offsets, not yet a stable interface. */
 #ifndef INKAMATH_PRELUDE_SHARED
