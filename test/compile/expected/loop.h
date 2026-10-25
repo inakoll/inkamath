@@ -42,8 +42,9 @@ typedef struct loop {
 } loop;
 
 /* A shared library, built alone as C, not C++, with -DLOOP_SHARED: these
- * functions exported and, at its end, the struct's size and its members'
- * names, nested ones dotted, and offsets, not yet a stable interface. */
+ * functions exported and, at its end, the struct's size, its members' count,
+ * names, nested ones dotted, offsets and types, and the step's inputs, an
+ * optional one's ending in '?', not yet a stable interface. */
 #ifndef LOOP_SHARED
 #define LOOP_API_ static inline
 #elif defined(_WIN32)
@@ -82,6 +83,7 @@ LOOP_API_ void loop_step(loop* m_) {
 #ifdef LOOP_SHARED
 #include <stddef.h>
 LOOP_API_ const size_t loop_size_ = sizeof(loop);
+LOOP_API_ const size_t loop_count_ = 8;
 LOOP_API_ const char* const loop_members_[] = {
     "ctl.kp", "ctl.r", "plt.dt", "index_", "plt.x", "ctl.y", "ctl.u", "plt.u", 0
 };
@@ -89,6 +91,13 @@ LOOP_API_ const size_t loop_offsets_[] = {
     offsetof(loop, ctl.kp), offsetof(loop, ctl.r), offsetof(loop, plt.dt),
     offsetof(loop, index_), offsetof(loop, plt.x), offsetof(loop, ctl.y),
     offsetof(loop, ctl.u), offsetof(loop, plt.u)
+};
+LOOP_API_ const char* const loop_types_[] = {
+    "double", "double", "double", "long long", "double[2]", "double[1]",
+    "double[1]", "double[2]"
+};
+LOOP_API_ const char* const loop_inputs_[] = {
+    0
 };
 #endif
 

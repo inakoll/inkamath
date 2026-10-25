@@ -53,8 +53,9 @@ typedef struct chain {
 } chain;
 
 /* A shared library, built alone as C, not C++, with -DCHAIN_SHARED: these
- * functions exported and, at its end, the struct's size and its members'
- * names, nested ones dotted, and offsets, not yet a stable interface. */
+ * functions exported and, at its end, the struct's size, its members' count,
+ * names, nested ones dotted, offsets and types, and the step's inputs, an
+ * optional one's ending in '?', not yet a stable interface. */
 #ifndef CHAIN_SHARED
 #define CHAIN_API_ static inline
 #elif defined(_WIN32)
@@ -100,6 +101,7 @@ CHAIN_API_ void chain_step(chain* m_, double x_in_) {
 #ifdef CHAIN_SHARED
 #include <stddef.h>
 CHAIN_API_ const size_t chain_size_ = sizeof(chain);
+CHAIN_API_ const size_t chain_count_ = 14;
 CHAIN_API_ const char* const chain_members_[] = {
     "h.a", "k", "slow.a", "index_", "x", "fast.u", "fast.v", "h.u", "h.low.u",
     "h.low.v", "h.v", "slow.u", "slow.v", "y", 0
@@ -110,6 +112,14 @@ CHAIN_API_ const size_t chain_offsets_[] = {
     offsetof(chain, fast.v), offsetof(chain, h.u), offsetof(chain, h.low.u),
     offsetof(chain, h.low.v), offsetof(chain, h.v), offsetof(chain, slow.u),
     offsetof(chain, slow.v), offsetof(chain, y)
+};
+CHAIN_API_ const char* const chain_types_[] = {
+    "double", "double", "double", "long long", "double[1]", "double[1]",
+    "double[2]", "double[1]", "double[1]", "double[2]", "double[1]",
+    "double[1]", "double[2]", "double[1]"
+};
+CHAIN_API_ const char* const chain_inputs_[] = {
+    "x", 0
 };
 #endif
 

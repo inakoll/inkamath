@@ -69,8 +69,9 @@ typedef struct bank {
 } bank;
 
 /* A shared library, built alone as C, not C++, with -DBANK_SHARED: these
- * functions exported and, at its end, the struct's size and its members'
- * names, nested ones dotted, and offsets, not yet a stable interface. */
+ * functions exported and, at its end, the struct's size, its members' count,
+ * names, nested ones dotted, offsets and types, and the step's inputs, an
+ * optional one's ending in '?', not yet a stable interface. */
 #ifndef BANK_SHARED
 #define BANK_API_ static inline
 #elif defined(_WIN32)
@@ -128,6 +129,7 @@ BANK_API_ void bank_step(bank* m_, double x_in_) {
 #ifdef BANK_SHARED
 #include <stddef.h>
 BANK_API_ const size_t bank_size_ = sizeof(bank);
+BANK_API_ const size_t bank_count_ = 22;
 BANK_API_ const char* const bank_members_[] = {
     "bank_smooth_1.a", "bank_smooth_2.a", "bank_smooth_3.a", "s_sharp.a",
     "y_smooth.a", "index_", "x", "bank_smooth_1.u", "bank_smooth_1.v",
@@ -146,6 +148,15 @@ BANK_API_ const size_t bank_offsets_[] = {
     offsetof(bank, s_sharp.v_smooth.u), offsetof(bank, s_sharp.v_smooth.v),
     offsetof(bank, s_sharp.v), offsetof(bank, s), offsetof(bank, y_smooth.u),
     offsetof(bank, y_smooth.v), offsetof(bank, y)
+};
+BANK_API_ const char* const bank_types_[] = {
+    "double", "double", "double", "double", "double", "long long", "double[1]",
+    "double[1]", "double[2]", "double[1]", "double[2]", "double[1]",
+    "double[2]", "double[1][3][1]", "double[1]", "double[1]", "double[2]",
+    "double[1]", "double[1]", "double[1]", "double[2]", "double[1]"
+};
+BANK_API_ const char* const bank_inputs_[] = {
+    "x", 0
 };
 #endif
 

@@ -43,8 +43,9 @@ typedef struct pid {
 } pid;
 
 /* A shared library, built alone as C, not C++, with -DPID_SHARED: these
- * functions exported and, at its end, the struct's size and its members'
- * names, nested ones dotted, and offsets, not yet a stable interface. */
+ * functions exported and, at its end, the struct's size, its members' count,
+ * names, nested ones dotted, offsets and types, and the step's inputs, an
+ * optional one's ending in '?', not yet a stable interface. */
 #ifndef PID_SHARED
 #define PID_API_ static inline
 #elif defined(_WIN32)
@@ -86,6 +87,7 @@ PID_API_ void pid_step(pid* m_, float y_in_) {
 #ifdef PID_SHARED
 #include <stddef.h>
 PID_API_ const size_t pid_size_ = sizeof(pid);
+PID_API_ const size_t pid_count_ = 11;
 PID_API_ const char* const pid_members_[] = {
     "dt", "kd", "ki", "kp", "r", "index_", "y", "e", "d", "s", "u", 0
 };
@@ -93,6 +95,13 @@ PID_API_ const size_t pid_offsets_[] = {
     offsetof(pid, dt), offsetof(pid, kd), offsetof(pid, ki), offsetof(pid, kp),
     offsetof(pid, r), offsetof(pid, index_), offsetof(pid, y), offsetof(pid, e),
     offsetof(pid, d), offsetof(pid, s), offsetof(pid, u)
+};
+PID_API_ const char* const pid_types_[] = {
+    "float", "float", "float", "float", "float", "long long", "float[1]",
+    "float[2]", "float[1]", "float[2]", "float[1]"
+};
+PID_API_ const char* const pid_inputs_[] = {
+    "y", 0
 };
 #endif
 

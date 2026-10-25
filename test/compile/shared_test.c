@@ -4,7 +4,9 @@
  * the interpreter's values: pid's u_2 and u_10 for y_n = n/10, as doubles
  * and, built with --float, as floats; track's x_3, x_15 and d_30 for
  * optional.ink's seen; and bank's y_3 and, by its dotted name, its instance
- * s_sharp's v_3, for an input of 1. */
+ * s_sharp's v_3, for an input of 1. Each library's tables are held to one
+ * another: its count to its names, its types to its offsets, and its inputs
+ * to what its step takes. */
 #ifdef _WIN32
 #include <windows.h>
 #else
@@ -64,6 +66,60 @@ static char* state(void* library, const char* module) {
     const size_t* size = (const size_t*)symbol(library, module, "size_", NULL, 0);
     if (!size) exit(1);
     return (char*)calloc(1, *size);
+}
+
+/* A member's bytes, by its type in the tables: "double[2][3]" is 6 doubles. */
+static size_t bytes(const char* type) {
+    static const struct {
+        const char* name;
+        size_t      size;
+    } bases[] = {{"double", sizeof(double)},
+                 {"float", sizeof(float)},
+                 {"long long", sizeof(long long)},
+                 {"int", sizeof(int)}};
+    const size_t length = strcspn(type, "[");
+    size_t       size   = 0;
+    for (size_t i = 0; i < sizeof bases / sizeof bases[0]; ++i)
+        if (strlen(bases[i].name) == length && strncmp(type, bases[i].name, length) == 0)
+            size = bases[i].size;
+    for (const char* at = type + length; *at == '['; at = strchr(at, ']') + 1)
+        size *= strtoul(at + 1, NULL, 10);
+    return size;
+}
+
+/* Each member's type fits between its offset and the next, or the struct's
+ * end; 'inputs' is the step's, separated by spaces. */
+static int tables(void* library, const char* module, const char* inputs) {
+    const size_t*      size    = (const size_t*)symbol(library, module, "size_", NULL, 0);
+    const size_t*      count   = (const size_t*)symbol(library, module, "count_", NULL, 0);
+    const size_t*      offsets = (const size_t*)symbol(library, module, "offsets_", NULL, 0);
+    const char* const* names   = (const char* const*)symbol(library, module, "members_", NULL, 0);
+    const char* const* types   = (const char* const*)symbol(library, module, "types_", NULL, 0);
+    const char* const* given   = (const char* const*)symbol(library, module, "inputs_", NULL, 0);
+    if (!size || !count || !offsets || !names || !types || !given) return 1;
+    size_t n = 0;
+    while (names[n]) ++n;
+    int failed = n != *count;
+    if (failed) printf("%s_count_ is %zu, not %zu\n", module, *count, n);
+    for (size_t i = 0; i < n; ++i) {
+        size_t next = *size;
+        for (size_t j = 0; j < n; ++j)
+            if (offsets[j] > offsets[i] && offsets[j] < next) next = offsets[j];
+        if (bytes(types[i]) == 0 || offsets[i] + bytes(types[i]) > next) {
+            printf("%s's %s, %s at %zu, does not fit before %zu\n", module, names[i], types[i],
+                   offsets[i], next);
+            failed = 1;
+        }
+    }
+    char joined[64] = "";
+    for (size_t i = 0; given[i]; ++i)
+        snprintf(joined + strlen(joined), sizeof joined - strlen(joined), "%s%s", i ? " " : "",
+                 given[i]);
+    if (strcmp(joined, inputs) != 0) {
+        printf("%s's inputs are '%s', not '%s'\n", module, joined, inputs);
+        failed = 1;
+    }
+    return failed;
 }
 
 static int held(const char* what, double got, double exact, double within) {
@@ -163,5 +219,7 @@ int main(int argc, char** argv) {
         libraries[i] = load(argv[i + 1]);
         if (!libraries[i]) return 1;
     }
-    return pid(libraries[0]) | track(libraries[1]) | pidf(libraries[2]) | bank(libraries[3]);
+    return pid(libraries[0]) | track(libraries[1]) | pidf(libraries[2]) | bank(libraries[3]) |
+           tables(libraries[0], "pid", "y") | tables(libraries[1], "track", "z?") |
+           tables(libraries[2], "pidf", "y") | tables(libraries[3], "bank", "x");
 }
