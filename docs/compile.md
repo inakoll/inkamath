@@ -110,7 +110,8 @@ Refused for now
 
 The compiler refuses by name what it cannot yet express; without `-o` it
 writes nothing and lists every definition it would refuse, and why, or says
-that none is, `pid.ink compiles`. Refused:
+that none is, `pid.ink compiles`, or of a file of models alone that a model
+is compiled by name. Refused:
 
 - In a sum or a product up to the index: a term that reads the index itself,
   as Adam's `b2^(t-i)` does, and a last index other than the index less a

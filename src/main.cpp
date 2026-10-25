@@ -167,12 +167,18 @@ static int compile(const string& source, const string& name, const string& targe
     p.Directory(filesystem::path(source).parent_path());
     string         header;
     vector<string> refused;
+    bool           models = false;  // and no sequence of its own
     try {
         if (name.empty()) {
             if (!run(source, in, p)) return 1;
-            if (target.empty())
-                refused = CompileC::Refusals(p.Definitions(), file);
-            else
+            if (target.empty()) {
+                refused           = CompileC::Refusals(p.Definitions(), file);
+                const auto& names = p.Definitions().Session().names;
+                models            = refused.empty() &&
+                         any_of(names.begin(), names.end(),
+                                [](const auto& n) { return n.second->model != nullptr; }) &&
+                         CompileC::Build(p.Definitions(), "check", file).sequences.empty();
+            } else
                 header = CompileC::Header(p.Definitions(), module, file);
         } else {
             // Read as 'use' reads it, so that the model sees the file's names.
@@ -200,7 +206,10 @@ static int compile(const string& source, const string& name, const string& targe
     }
     if (target.empty()) {
         for (const string& refusal : refused) cout << refusal << '\n';
-        if (refused.empty()) cout << (name.empty() ? file : name + " in " + file) << " compiles\n";
+        if (models)
+            cout << file << " defines no sequence of its own; compile a model by name\n";
+        else if (refused.empty())
+            cout << (name.empty() ? file : name + " in " + file) << " compiles\n";
         return refused.empty() ? 0 : 1;
     }
     return write(target, header) ? 0 : 2;

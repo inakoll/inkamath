@@ -600,6 +600,12 @@ set(args --compile nothing.ink -o nothing.h)
 check(compile_no_sequence)
 holds(compile_no_sequence nothing.h " * A step takes no input.\n */\n")
 
+# A file of models alone is compiled by a model's name.
+file(WRITE "${OUT}/gains.ink" "gain(k = 2, x_n) = {\n    y_n = k*x_n\n}\n")
+set(args --compile gains.ink)
+set(stdout "gains.ink defines no sequence of its own; compile a model by name\n")
+check(compile_models_only)
+
 # A model compiled by name declares its inputs, so a name nothing defines is a
 # mistake rather than one more input (DESIGN.md, phase 15).
 file(WRITE "${OUT}/models.ink" "gain(k = 2, x_n) = { y_n = k*x_n + z_n }\n")
