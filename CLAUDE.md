@@ -120,12 +120,12 @@ purpose.
   naming the commit it built; a result for another commit is void. The
   worker and CI share one machine: use the worker while working, and let CI
   check the commit you push rather than running both on it.
-- `master` moves only by fast-forward, never by force. In cloud sessions a
-  checkout, merge and push of `master` in the main checkout is refused, so
-  merge in a detached worktree of `origin/master`
-  (`git merge --no-ff integration`), check its tree is the green
-  `integration`'s, and `git push origin HEAD:master`. Those sessions cannot
-  delete a remote branch either; ask the owner to.
+- `master` moves only by fast-forward, never by force. A branch starts from
+  `master` and is rebased onto it before it is pushed; once CI is green on
+  it, `git push origin <sha>:master` moves `master` to that same commit,
+  which CI then skips as already tested. In cloud sessions a checkout or
+  push of `master` in the main checkout is refused, so push from a worktree.
+  Those sessions cannot delete a remote branch either; ask the owner to.
 
 ## 6. C++ conventions
 
@@ -156,7 +156,7 @@ wrong because the plan says it.
 
 ## 8. How a change to the language runs
 
-A change larger than a fix runs on its own branch from `integration`, in a
+A change larger than a fix runs on its own branch from `master`, in a
 worktree of its own, as four agents, one after the other:
 
 1. **Spec.** A `DESIGN.md` entry in "Next in line" — decisions, alternatives
@@ -174,14 +174,14 @@ worktree of its own, as four agents, one after the other:
    on an overrun weighs each behaviour on its own merit: none is dropped only
    because it fits the gap, and a budget missed by a little is better than a
    refusal lost to meet it.
-4. **Implementation review.** Adversarial: run against `integration` on the
+4. **Implementation review.** Adversarial: run against `master` on the
    same inputs, a failing test before each fix, objections reported.
 
 Whoever runs the agents rules on each review's objections, applies the
-rulings, and merges into `integration` once CI is green; `master` follows by
-fast-forward (§5). Decisions are shown to the owner after the fact, except
-one that departs from `MANIFESTO.md` or that the owner asked to make. A
-fix skips the pipeline: a failing test, the fix, a row in the defect table.
+rulings, and fast-forwards `master` to the branch once CI is green on it
+(§5). Decisions are shown to the owner after the fact, except one that
+departs from `MANIFESTO.md` or that the owner asked to make. A fix skips the
+pipeline: a failing test, the fix, a row in the defect table.
 
 CI is shared and finite, and agents use it freely; the Linux builds it runs
 are the ones run before pushing anyway. So a branch is pushed once, when it is
