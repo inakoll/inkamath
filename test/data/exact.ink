@@ -9,7 +9,7 @@
 # bound -- is inexact, as is anything written after '~', and anything an
 # inexact number touches.
 
-# The promise, and what it costs the README: a quotient is exact.
+# The promise, and what it costs docs/language.md: a quotient is exact.
 >> 1/3+1/3+1/3
 1
 

@@ -3,7 +3,7 @@
 # interpreter, and the clause after it is taken; where the walk is refused,
 # or no clause comes after, the step is NaN as today. fallback_test.c holds
 # each model to values computed apart from the interpreter, in Python's
-# fractions and by README section 4's rule.
+# fractions and by docs/language.md section 4's rule.
 #
 # Where a limit runs out the clause after is taken, which is safe only where
 # the guarded clause is the risky one. --check lists, after the per-term

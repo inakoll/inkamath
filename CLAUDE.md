@@ -19,7 +19,7 @@ If the answer is a file and a line number, that is the whole answer.
 **In code comments.** Comment *why*, never *what*. A comment that restates the
 next line is noise; delete it rather than update it. The exceptions worth
 writing: a non-obvious invariant, a workaround with a reason, a reference to
-the spec or to a section of `README.md`. Every other comment is a smell that
+the spec or to a section of `docs/`. Every other comment is a smell that
 the code should be clearer instead.
 
 **In commit messages.** One line under 72 characters, imperative mood, saying
@@ -48,9 +48,7 @@ Specifically:
   and stray tabs. Leave them. `.clang-format` applies to lines you write or
   rewrite, not to files you happen to open. CI checks changed lines only.
 - **No speculative abstraction.** No interface, template parameter, or
-  extension point for a requirement that does not exist yet. This codebase is
-  already paying for `best_promotion`, `numeric_interface_imp_types`, and a
-  `MapType` template-template parameter that is only ever `std::unordered_map`.
+  extension point for a requirement that does not exist yet.
 - **Delete rather than deprecate.** Git remembers. Dead code that stays "just
   in case" is code the next reader has to understand.
 - **Prefer removing to adding.** A change that deletes 40 lines and adds 10 is
@@ -90,7 +88,7 @@ purpose.
 
 - Every bug fix lands with a test that fails before it and passes after. For
   interpreter behaviour that means a new entry in the relevant `.ink` file.
-- New `.ink` entries are drawn from `README.md` examples where possible, so
+- New `.ink` entries are drawn from the examples in `docs/` where possible, so
   the documentation and the tests check each other.
 - Unit tests (doctest) are for the containers and helpers; the interpreter
   itself is tested through transcripts. Do not unit-test the AST node classes
@@ -169,7 +167,8 @@ worktree of its own, as four agents, one after the other:
    independent route, errors in the spec fixed in commits of their own,
    design objections reported rather than acted on.
 3. **Implementation**, until the spec passes. The spec then becomes a golden
-   and the entry `[done]`, with its departures and lines of sources. Past
+   and the entry `[done]`, with its departures and lines of sources. An
+   entry marked `[done]` moves to "Done after the phases". Past
    one and a half times the spec's cost in lines, it stops and reports
    instead of finishing: the overrun is a decision, not a fact. A decision
    on an overrun weighs each behaviour on its own merit: none is dropped only

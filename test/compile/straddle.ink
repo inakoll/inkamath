@@ -90,8 +90,8 @@ paired(c = 1/10) = {
 }
 both = paired()
 
-# tie's straddle through a function's guard, as README writes a ramp: H is a
-# step, asked of 'y' less the threshold. Its interpreter's argument is
+# tie's straddle through a function's guard, as docs/language.md writes a ramp:
+# H is a step, asked of 'y' less the threshold. Its interpreter's argument is
 # 2^-34 - 10^-11 = -1.9e-11 and H takes 0, the run moved up's is +1e-11 and
 # H takes 1, so the exact 'x' is n and the interpreter's 0. The call is
 # 'x''s, first made at 1: x_0 is its base.

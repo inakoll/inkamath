@@ -1,4 +1,5 @@
-# Matrix literals, and the block expansion described in README.md section 2.
+# Matrix literals, and the block expansion described in docs/language.md,
+# section 2.
 
 >> [1]
 1

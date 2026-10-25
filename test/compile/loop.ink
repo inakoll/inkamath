@@ -1,6 +1,6 @@
 # Two instances closing a loop, compiled to one step: the plant's state, then
-# the controller reading it, then the plant's next input (README.md, section
-# 5).
+# the controller reading it, then the plant's next input (docs/language.md,
+# section 5).
 controller(kp = 2, r = 1, y_n) = { u_n = kp*(r - y_n) }
 plant(dt = 1/2, u_n) = {
     x_0 = 0

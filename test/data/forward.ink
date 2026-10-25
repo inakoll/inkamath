@@ -6,8 +6,8 @@
 # the shift written by hand gives; what shows the clause shows it as
 # written.
 
-# README section 4's sequence, written as a paper writes it. s_20 is 2^-20,
-# and lim stops where README's does, at 2^-34.
+# docs/language.md section 4's sequence, written as a paper writes it. s_20 is
+# 2^-20, and lim stops where that one does, at 2^-34.
 >> s_0 = 1
 s_0 = 1
 
@@ -35,7 +35,7 @@ s_{n+1} = \frac{s_n}{2}
 >> ?s_(n+1)
 error: n is not defined
 
-# README section 4's factorial: below its lowest base case it is not
+# docs/language.md section 4's factorial: below its lowest base case it is not
 # defined, whichever way the recurrence is written.
 >> fact_(n+1) = fact_n*(n+1)
 fact_(n+1) = fact_n*(n+1)
@@ -293,8 +293,8 @@ error: n is the index of b_(n+1), so the clause cannot bind it again
 >> b_(n+1)[j<=2, n] = j
 error: n is the index of b_(n+1), so the clause cannot bind it again
 
-# README section 4's Newton's method, x_(k+1) = x_k - F(x_k)/F'(x_k) as a
-# text writes it, with parameters and lim. The root of x^3 - 2x + 2 near
+# docs/language.md section 4's Newton's method, x_(k+1) = x_k - F(x_k)/F'(x_k)
+# as a text writes it, with parameters and lim. The root of x^3 - 2x + 2 near
 # -2 is -1.7692923542386314 by Python's floats; from 0 the walk cycles and
 # the fallback answers.
 >> cubic(x) = x^3 - 2*x + 2
@@ -335,8 +335,8 @@ error: nw is written nw(x)_(k+1), so a clause cannot be written nw(x)_k; write '
 >> g(t)_(t+1) = t
 error: g has a parameter and an index named t
 
-# README section 4's delay line by cells: tap_n[1] = n^2, and each cell
-# below it the one above, a step back.
+# docs/language.md section 4's delay line by cells: tap_n[1] = n^2, and each
+# cell below it the one above, a step back.
 >> tap_0[j<=3] = 0
 tap_0[j<=3] = 0
 
@@ -454,10 +454,10 @@ pw(a)_(n+1) = pw(a)_n*a
 >> grad_(a = 2) pw(a)_3
 12
 
-# README section 5's loop, the plant's explicit Euler step written as the
-# method writes it: the plant reads the controller's output at its own
+# docs/language.md section 5's loop, the plant's explicit Euler step written as
+# the method writes it: the plant reads the controller's output at its own
 # step, one behind its left side, which is the delay that lets the loop
-# start. x_1 = 1, x_2 = 1/2, x_3 = 3/4, as README's.
+# start. x_1 = 1, x_2 = 1/2, x_3 = 3/4, as section 5's.
 >> controller(kp = 2, r = 1, y_n) = { u_n = kp*(r - y_n) }
 controller(kp = 2, r = 1, y_n) = { ... }
 
@@ -521,8 +521,8 @@ late(x_n) = { ... }
 >> late(x_n = n^2).c_3
 4
 
-# README section 5's optional input, the last value seen held: the guard
-# and the value read z at the left side's index, the same term. x_4 is
+# docs/language.md section 5's optional input, the last value seen held: the
+# guard and the value read z at the left side's index, the same term. x_4 is
 # z_3 = 1, x_6 is z_6 = 2, and with no input x stays 0.
 >> kept(z_n?) = {
 ..     x_0 = 0

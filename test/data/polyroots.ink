@@ -90,7 +90,7 @@ K2 = kq(lim sgn([A, -B*B'; -[5000, 0, 0, 0; 0, 0, 0, 0; 0, 0, 100, 0; 0, 0, 0, 0
  ~0.00341504057;
     ~3.31048732]
 
-# README's PI loop, s(s + 1)(s + 2) + 2s + 1, its product by conv.
+# docs/language.md's PI loop, s(s + 1)(s + 2) + 2s + 1, its product by conv.
 >> roots(conv(conv([1; 1], [1; 2]), [1; 0]) + [0; 0; 2; 1])
 [~(-1.3411639-i*1.1615414);
  ~(-1.3411639+i*1.1615414);
@@ -132,7 +132,7 @@ K2 = kq(lim sgn([A, -B*B'; -[5000, 0, 0, 0; 0, 0, 0, 0; 0, 0, 100, 0; 0, 0, 0, 0
 [~1e-10;
  ~2e-10]
 
-# README's PI loop scaled by 10^-12, s^3 + 3*10^-12 s^2 + 4*10^-24 s +
+# docs/language.md's PI loop scaled by 10^-12, s^3 + 3*10^-12 s^2 + 4*10^-24 s +
 # 10^-36, in mpmath: its roots times 10^-12.
 >> roots([1; 3/10^12; 4/10^24; 1/10^36])
 [~(-1.3411639e-12-i*1.1615414e-12);

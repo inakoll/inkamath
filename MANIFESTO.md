@@ -47,7 +47,7 @@ has lost before it starts. Tensor Comprehensions is the precedent (see
 
 **Not continuous time.** No solver for differential equations, no plant
 modelling. A model that needs one is discretised by hand, as `plant` in
-`README.md` section 5 is, and what the language offers is to say that
+`docs/language.md` section 5 is, and what the language offers is to say that
 discretisation exactly.
 
 **Not a computer algebra system.** The reasons are in `DESIGN.md`,
@@ -57,10 +57,10 @@ discretisation exactly.
 infrastructure. A model is a file of definitions.
 
 **Not yet a library.** A compiled header is hosted from Python already, by a
-C file of a few lines and ctypes (`README.md`, after `--float`), with no API
-of inkamath's. A C API, and bindings over it, would let the oracle's harness
-run interactively. They are not the end, and they freeze an interface; they
-wait until the language has stopped moving.
+C file of a few lines and ctypes (`docs/compile.md`, *Hosting from C and
+Python*), with no API of inkamath's. A C API, and bindings over it, would let
+the oracle's harness run interactively. They are not the end, and they freeze
+an interface; they wait until the language has stopped moving.
 
 The size constraint at the top of `DESIGN.md` governs everything below.
 Several of these directions could each double the program. Where one does, the
@@ -107,7 +107,20 @@ it by hand, and running it under CTest. Each new target becomes testable the
 day it exists, which is the condition for having a second one at all.
 
 Taken: `--check file instance -o check.c` writes that harness from an
-instance, run under CTest (`DESIGN.md`, *The first check*).
+instance, run under CTest (`DESIGN.md`, *The first check*). It steps the
+compiled code a hundred times, or `--steps n`, on the inputs the interpreter
+gives the instance, and holds every term within a billionth of one plus the
+interpreter's: a tolerance, not the bound asked above. It says whether the
+interpreter's terms were exact throughout, and where they were not estimates
+how far, by three runs more with each rounding an error-free transformation
+detects taken the other way at random and each limit moved by the remainder
+it estimated: an estimate, not a bound. It names the cell and step where a
+term below 1 is lost whole or of the other sign, 2^52 units of a double, and
+reports the first step at which a compiled or a disturbed guard takes another
+clause, with that guard's distance from its threshold. It lists every
+compiled guard that reads a limit or an optional input, with the clause tried
+where the walk runs out or the input is absent (`docs/compile.md`, *The
+check*).
 
 ## Directions
 
@@ -133,8 +146,12 @@ target's side. A parameter or a sequence would be annotated with the type its
 compiled form should have, while the interpreter keeps computing exactly beside
 it, and the question is what carries that annotation.
 
-Taken for float32: `--float` makes it the compilation's, checked in units of
-a float (`README.md`). Fixed point and int8 are open.
+Taken for float32, the whole compilation's: `--float` writes the step in
+floats and checks it in units of a float, naming the cell and step where
+they reach 2^23, as a term a normal float holds lost whole or of the other
+sign does; the header names what reads a constant folded at the
+interpreter's precision (`docs/compile.md`, *In float*). Fixed point, int8
+and a precision per definition are open.
 
 ### Time: several rates, and events
 
@@ -154,9 +171,14 @@ form `a*n+b` and `floor((n-b)/a)`, infer a period for each sequence, and refuse
 a read whose index is neither, which is the clock calculus of synchronous
 languages reduced to divisibility of integers.
 
-Taken for periodic rates: one step at the input's rate (`README.md`, after
-`--compile`; `test/compile/rates.ink`). Event clocks and a step per rate are
-not; irregular arrival is an optional input, `z_n?`, at the fast rate.
+Taken for periodic rates: samples `x_(a*m + b)` and holds `y_(floor((n -
+b)/a) - d)` in one step at the input's rate (`docs/compile.md`, *Rates*;
+`test/compile/rates.ink`, `decimate.ink`, `cascade.ink`). Irregular arrival
+is an optional input, `z_n?`, at the fast rate, interpreted and compiled: a
+static check refuses a read of it outside a guard with a clause after it, and
+the step takes its flag, `z_present_in_` (`test/data/optinputs.ink`;
+`test/compile/optional.ink`, `inner.ink`). Event clocks and a step per rate
+are open.
 
 Aperiodic events do not have closed forms, but the same two maps generalise.
 A clock is a monotone correspondence between two indices: `t_m`, the base
@@ -211,14 +233,20 @@ for code whose execution time has to be bounded, is the term at a constant
 index, `nw(xp, u)_5`, written out (`test/compile/iterates.ink`).
 The derivative is written by hand or taken by `grad`.
 
+Taken: the walk compiled with the interpreter's stopping rule
+(`test/compile/newton.ink`, and backward Euler on a stiff chemical system in
+`implicit.ink`), and the fallback (`fallback.ink`), which `--check` lists for
+every such guard.
+
 ### Tensors
 
 The largest change, and the one most papers will force first. Machine learning
 is written in rank 3 and rank 4: batch, channel, height, width, heads. Tensors
-stop at rank 3, interpreted and compiled (`README.md` section 2), and a column
-is read by one index. The way forward should be **indexed tensors of any
-rank**, defined by their cells exactly as matrices are now, and not matrices of
-matrices.
+stop at rank 3, matrices stacked by `;;` along the first index, interpreted,
+differentiated and compiled (`docs/language.md` section 2;
+`test/compile/tensor.ink`, `tensorgrad.ink`), and a column is read by one
+index. The way forward should be **indexed tensors of any rank**, defined by
+their cells exactly as matrices are now, and not matrices of matrices.
 
 What the language already has is the right foundation. A definition by cells
 with its bounds, `W[j<=n, k<=m]`, is what Dex calls an index set, so shapes are
@@ -239,12 +267,15 @@ Three notational decisions have to be made out loud before anything else:
   sessions mean, and needs a type the language does not have to tell a
   function written over numbers from one written over matrices; it is worth
   reconsidering only if the cell form proves too heavy on real transcriptions.
-  Attention will be the test.
+  Attention will be the test. Taken: the cell form, a bound left out read
+  from the matrix its index reads, so a ReLU is one line of any size
+  (`docs/language.md` section 2); attention's softmax is written so
+  (`test/compile/attention.ink`).
 - **Slices.** `a[1]` as a whole row, which would make a reduction natural
   rather than a recurrence over cells, and give chained indexing a reason to
   exist. At rank 3 they stop being a convenience, since a head, a batch
   element and a channel are each a slice. Taken: one index reads a tensor's
-  slice, so `B[2][1,2]` chains (`README.md` section 2).
+  slice, so `B[2][1,2]` chains (`docs/language.md` section 2).
 - **Subscripts.** Papers use one notation for time and for components, `x_t`
   and `W_jk`. This language separates them, `_` and `[,]`. The separation is
   defensible and should probably stay, but it is the first thing a student will
@@ -278,10 +309,17 @@ Hints, in the order they cost:
   conflicts with a step that keeps only its latest terms; a fixed window of
   truncation is a lag, and lags are already compiled in as sizes.
 
-Taken: `grad_(w = point) L`, an expression by a name at a point (`README.md`
-section 4); forward mode as parts carried beside each value, not a dual type;
-reverse mode for a matrix, a tape in the interpreter and an adjoint step
-compiled (`DESIGN.md`, *Differentiation*, *Reverse mode in the interpreter*).
+Taken: `grad_(w = point) L`, an expression by a name at a point, or by
+several names at once, read by its parts, `g.W` (`docs/language.md` section
+4); its order, `grad_(x = a)^n`, to 8 interpreted and 2 compiled, a vector's
+Hessian symmetric exactly; a derivative in a direction by a grad inside a grad;
+a Jacobian by its cells. Forward mode as parts carried beside each value, not a
+dual type; reverse mode for a matrix or several names, a tape in the
+interpreter and an adjoint step compiled (`DESIGN.md`, *Differentiation*,
+*Reverse mode in the interpreter*, *The compiler's adjoint step*;
+`test/data/reverse.ink`, `test/compile/adjoint.ink`, `gradmany.ink`,
+`hessian.ink`). Open: an order past 2 compiled, and a compiled derivative of
+a limit or of a matrix power, which are refused.
 
 The objection that sank symbolic simplification, that the identities are
 unsound over matrices whose extents are unknown before evaluation, does not
@@ -301,9 +339,9 @@ Compiled code already receives inputs as the arguments of its step, so a
 stream of samples is an input sequence indexed by sample and a minibatch is
 index arithmetic over it. The interpreter reads such a sequence from a file
 of definitions, a matrix literal written by whatever holds the samples and
-read by `use` (`README.md` section 5), which keeps files holding definitions
-only; anything more, a stream or a sensor, would be the language's first real
-input from outside, and deserves its own decision.
+read by `use` (`docs/language.md` section 5), which keeps files holding
+definitions only; anything more, a stream or a sensor, would be the
+language's first real input from outside, and deserves its own decision.
 
 A deterministic shuffle needs no new construct: a linear congruential
 generator is a recurrence over `mod`, which the prelude has. Its terms are
@@ -315,10 +353,15 @@ the second step in double, Park and Miller's hold (`test/compile/lcg.ink`).
 
 Softmax, cross-entropy, sigmoid and tanh need `exp` and `log`. Embedded
 deployments approximate them anyway, by polynomial or by pieces, which the
-language can express. Taken: a prelude written in inkamath, no built-in, a
-polynomial after a reduction, within 3 units in the last place of a double and
-compiled as the header's own C functions (`README.md` section 5; `DESIGN.md`,
-*`exp`, `log` and `tanh` accurate, bounded and compiled*).
+language can express. Taken: a prelude written in inkamath, no built-in.
+`exp`, `log`, `tanh`, `sin`, `cos`, `atan`, `atan2`, `asin`, `acos` and
+`acosh` are written by the operations a compiled step performs, within 3.6
+units in the last place of a double, and compiled as the header's own C
+functions. With them come `ceil`, `mod`, `abs`, `max` and `min`, and of
+matrices `charpoly`, `conv`, `polyval`, `roots`, `hurwitz`, `schurcohn`, `rho`
+and `abscissa` with their brackets `rhob` and `abscissab`, `eig` with `eigb`,
+`chol`, `smax`, `hinf` and `dhinf` (`docs/language.md` sections 1, 2 and 5;
+`DESIGN.md`, *`exp`, `log` and `tanh` accurate, bounded and compiled*).
 
 ### One compiler, several printers
 
@@ -333,7 +376,8 @@ Taken at its smallest: a product, the sweep and same-shaped terms are loops,
 each written by the operation that knows its kind, parallel over cells or a
 reduction (`DESIGN.md`, *Loops in generated code*), and `--float` is a mode of
 the one printer. A tree of loops is not written: for C it would remove less
-than it adds.
+than it adds. Increments 4 and 5, a definition by cells as one loop body and
+the reverse sweep through it, wait for a model that needs them.
 
 None of these is written until an entry of the conformance suite needs it: a
 printer is justified by a model that cannot be served without it, and arrives
@@ -367,8 +411,11 @@ Two things are worth deciding before any of this is written:
   already makes, one instance per cell, is the shape to grow from.
 - **Layout.** One struct per instance is the natural C and the wrong GPU
   layout. It stays: its fields' offsets are the host's contract, read by
-  ctypes (`README.md`), and structures of arrays across the instance
-  dimension are a GPU printer's to decide.
+  ctypes (`docs/compile.md`), and structures of arrays across the instance
+  dimension are a GPU printer's to decide. A step split into functions keeps
+  what its parts share as the struct's last member, instances stepped in
+  turn sharing a union, so the offsets hold (`DESIGN.md`, *A split step's
+  scratch in the model struct*).
 
 And one thing to keep: the compiler emits source, and the host's toolchain
 builds it. That is how inkamath stays free of a C compiler today, and it is how
@@ -383,8 +430,9 @@ Two features that would do more for a student than any target:
   paper: the source is typed in plain text and read as the equation it
   transcribes, and a transcription mistake becomes a visible difference from
   the page. This gives what Fortress wanted, source that looks like
-  mathematics, without paying for it in the parser. Taken: `tex ?name`
-  (`README.md` section 6).
+  mathematics, without paying for it in the parser. Taken: `tex ?name`, of
+  clauses, cells, grads and models (`docs/language.md` section 6;
+  `test/data/tex.ink`, `grad.ink`).
 - **Numerical lessons the oracle can teach.** Softmax written naively
   overflows in float32 where the exact result is a perfectly good number, and
   the log-sum-exp form stays within bound of it. A variance computed by the
@@ -400,7 +448,8 @@ specify by transcripts before implementing. The specification should be a set
 of canonical equations, transcribed as closely to the page as the notation
 allows, drawn from more than one field because no field is the centre.
 Each entry below but the perceptron now has a model in `test/compile`, held
-to the interpreter by `--check`.
+to the interpreter by `--check`, or for `net`, `pid_clamped`, `kalman`, `adc`
+and `bank`, which came before it, by a harness written by hand.
 
 From machine learning:
 
@@ -486,9 +535,13 @@ Recorded so that they are asked before they are answered by accident.
 - Is a clock a property of an instance, of a sequence, or of an index?
 - Where does data come from beyond files of definitions, a stream or a
   sensor?
-- Do the loops' writers serve OpenMP and CUDA as modes, as they serve C, or
-  does a second target need a tree of loops, and would it remove more than it
-  adds?
+- Do the loops' writers serve OpenMP, SIMD and CUDA as modes, as they serve
+  C, once increments 4 and 5 make a definition by cells and its sweep one
+  loop each, or does a second target need a tree of loops, and would it
+  remove more than it adds?
+- Is a definition the host implements, a QP solver called from the step,
+  named when compiling and held by `--check` to the `.ink` definition it
+  replaces?
 - How much of a paper can be transcribed before the language has to grow, and
   is the answer to that a good measure of whether it should?
 - Is an index a kind of number of its own, an input refused where it is not

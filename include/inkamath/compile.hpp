@@ -3014,7 +3014,7 @@ private:
         return Answer(code);
     }
 
-    // '[A, B; C, D]' as the interpreter lays it out (README.md, section 2),
+    // '[A, B; C, D]' as the interpreter lays it out (docs/language.md, section 2),
     // and its parts, 0 of a block's shape where it has none (Derivative::Literal).
     PExpression<Value> visit(MatExpression<Value>* expression) override {
         std::vector<Code> blocks, parts;

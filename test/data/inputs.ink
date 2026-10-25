@@ -29,7 +29,8 @@ v = dot(x_n = [n; 1])
 [3;
  1]
 
-# README.md, section 5: an argument held to the size, where a term is read.
+# docs/language.md, section 5: an argument held to the size, where a term
+# is read.
 >> dot(x_n = [n; 1]).y_3
 5
 

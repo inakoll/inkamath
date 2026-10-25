@@ -4,8 +4,8 @@
 # not, answers the first term within it measured against max(1, |term|),
 # absolute below 1 (a tolerance floor for small limits, C401). Every value
 # was worked out apart from the interpreter: the terms in Python's
-# fractions, walked by README section 4's rule written again in Python with
-# the steps so measured, and what an inexact answer reads rounded to
+# fractions, walked by docs/language.md section 4's rule written again in Python
+# with the steps so measured, and what an inexact answer reads rounded to
 # doubles as the interpreter rounds it.
 
 # The partial sums of e. Measured against e, the step 1/13! is under 1e-10
