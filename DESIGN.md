@@ -13430,6 +13430,17 @@ In 10 lines of `compile.hpp` for 3 and 5 of comments for 4;
 offsets, each member fitting before the next or the struct's end, and its
 inputs to its step's.
 
+A host in Python needs no more: `tools/inkamath_model.py`, 66 lines of
+ctypes and nothing else, maps each member at its offset as its type says and
+types the step from the inputs. Byte for byte, it gave what the header
+included in C gives, for a model of a 4-vector input, an optional one, a
+2x3 one, a 4x4 output, a history 3 deep and an instance, in double and under
+`--float`, and for kalman's matrix parameter assigned. `compile_shared_python`
+loads `compile_shared`'s libraries through it against the same values and,
+for pid with r = 2, u_2 = 2*1.8 + 0.37 - 0.1 = 3.87. It runs where CMake
+finds a Python 3.10, and not under the sanitizers, whose runtime a Python
+does not load first.
+
 ---
 
 ## Next in line

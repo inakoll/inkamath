@@ -239,6 +239,14 @@ target_link_libraries(compile_shared PRIVATE inkamath_warnings ${CMAKE_DL_LIBS}
                       $<$<NOT:$<C_COMPILER_ID:MSVC>>:m>)
 set_target_properties(compile_shared PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
 add_test(NAME compile_shared COMMAND compile_shared ${shared_libraries})
+# The same through tools/inkamath_model.py, where a Python runs it; not under
+# the sanitizers, whose runtime a Python does not load first.
+find_package(Python3 3.10 COMPONENTS Interpreter QUIET)
+if(Python3_Interpreter_FOUND AND NOT INKAMATH_SANITIZE)
+    add_test(NAME compile_shared_python
+             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/compile/shared_test.py
+                     ${shared_libraries})
+endif()
 
 # The prelude's functions the interpreter calls on a double (DESIGN.md),
 # checked in so that building the interpreter needs no interpreter; recorded
