@@ -613,6 +613,14 @@ set(stderr "inkamath: models.ink defines no model loss\n")
 set(exit 1)
 check(compile_no_model)
 
+# A default reading another instance's term is refused with its remedy.
+file(WRITE "${OUT}/trained.ink" "trainer(a = 1/2) = {\n    W_0 = 0\n    W_n = W_(n-1) + a*(1 - W_(n-1))\n}\n"
+     "train = trainer()\nuser(W = train.W_10, y_n) = {\n    u_n = W*y_n\n}\n")
+set(args --compile trained.ink user)
+set(stdout "cannot compile W: trained.train.W_...: a term read outside a general clause; write its value, or pass it as a parameter\ncannot compile u: W, which cannot be compiled\n")
+set(exit 1)
+check(compile_default_term)
+
 # An instance checked: the C program its check writes is built and run by the
 # tests, beside the compiled models.
 set(args --check models.ink loss -o loss.c)

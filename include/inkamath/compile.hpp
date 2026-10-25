@@ -4221,7 +4221,10 @@ private:
             throw Reason(key + "_...: another sequence's term in " +
                          (limit_->what == "lim " + limit_->name ? "a limit" : limit_->what) +
                          "'s terms");
-        if (!reading_ && !basing_) throw Reason(key + "_...: a term read outside a general clause");
+        if (!reading_ && !basing_)
+            throw Reason(key +
+                         "_...: a term read outside a general clause; write its value, or "
+                         "pass it as a parameter");
         if (definition && !IsSequence(*definition)) throw Reason(key + " is not a sequence");
         Sequence& read = sequences_[key];
         // One the model does not define, the session's, is computed in its step too.

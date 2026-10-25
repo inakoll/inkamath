@@ -13677,6 +13677,9 @@ LQR), whose defects are C376 to C379, 49 lines, 19,288 to 19,337 at
 - **A default reading another instance's term**, `W = train.W_1000`, is
   refused: fold a default that reads no input to its value, as the header
   already prints defaults as values.
+  Evaluated: a prototype folding it is about 55 lines and its tests, and
+  moved nothing; open is its scope, defaults only or every term at a
+  constant index read outside a clause (`d = y_3`), for the owner to rule.
 - **A parameter that changes mid-run, replayed by `--check`**: an instance
   given a piecewise-constant sequence of a parameter, `--check` calling
   `update` where it changes.
