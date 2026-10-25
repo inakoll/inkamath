@@ -335,9 +335,13 @@ C++, with its macro defined, `-D<NAME>_SHARED` for a module `<name>`, the
 header is a shared library instead: its `init`, `update` and `step` are
 exported (`__declspec(dllexport)` on Windows, and visible under GCC and
 Clang's `-fvisibility=hidden`), and so are `<name>_size_`,
-the struct's size, `<name>_members_`, each member's name, an instance's
-dotted, `f.x`, then a null pointer, and `<name>_offsets_`, each member's
-offset. None of it is a stable interface yet, while the language moves.
+the struct's size, `<name>_count_`, the number of members,
+`<name>_members_`, each member's name, an instance's dotted, `f.x`, then a
+null pointer, `<name>_offsets_`, each member's offset, `<name>_types_`, its
+C type, `"long long"` or `"double[1][2][1]"`, a sequence's history first,
+and `<name>_inputs_`, the step's inputs in its order, then a null pointer,
+an optional one's name ending in `?`. None of it is a stable interface yet,
+while the language moves.
 For the getting started's `pid.h`, built with
 `cc -O2 -shared -fPIC -x c -DPID_SHARED pid.h -o libpid.so -lm`, Python's
 ctypes reads each field at its offset, so the host does not mirror the struct:
@@ -358,9 +362,21 @@ lib.pid_init(m)
 for y in (0, 0.1, 0.2): lib.pid_step(m, y)    # u.value is then 1.67, u_2
 ```
 
-Built with `--float`, the fields and inputs are floats, `C.c_float`. To
-batch steps in C, as a small model's cost advises (below), a host writes a
-small C file that includes the header and exports its loop:
+Built with `--float`, the fields and inputs are floats, `C.c_float`.
+[`tools/inkamath_model.py`](../tools/inkamath_model.py) does this for any
+model from the tables alone, in ctypes, its inputs passed in their order,
+`None` for an optional one absent:
+
+```python
+from inkamath_model import Model
+m = Model("./libpid.so", "pid")
+m["kp"] = 2.5                  # a parameter, and what derives from it
+for y in (0, 0.1, 0.2): m.step(y)
+m["u"][0]                      # u_n, as the struct holds it
+```
+
+To batch steps in C, as a small model's cost advises (below), a host
+writes a small C file that includes the header and exports its loop:
 
 ```c
 /* pid_host.c: what a shared library of pid.h exports. */
