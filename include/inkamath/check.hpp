@@ -31,7 +31,8 @@ public:
     using Definition = std::shared_ptr<const Reference<Value>>;
 
     // 'definition' names the instance, and 'unfed' is it with its parameters
-    // and no input, as ReferenceStack::Unfed makes it.
+    // and no input, as ReferenceStack::Unfed makes it. Without one, 'unfed' is
+    // the session, whose own sequences are checked under their names.
     static std::string Program(Interpreter<Number>& session, const std::string& instance,
                                const Definition& definition, const std::string& module,
                                const std::string& source, const Scope<Value>& unfed, int steps) {
@@ -42,6 +43,14 @@ public:
                           got = floats ? "(double)got[k]" : "got[k]";
         const CompileC::Compiled compiled =
             CompileC::Build(stack, module, source, unfed.model, &unfed, true);
+        if (!definition && compiled.sequences.empty())
+            throw std::runtime_error(source +
+                                     " defines no sequence of its own; check a model by name");
+        if (!definition && !compiled.inputs.empty())
+            throw std::runtime_error(source + " reads " + compiled.inputs.front() +
+                                     ", which nothing defines; define it");
+        const Scope<Value>* const checked = definition ? stack.InstanceScope(definition) : &unfed;
+        const std::string         dotted  = definition ? instance + "." : "";
         // Every guard asked on the way, from the first term on, by run, term
         // and cell: a term asked for again is remembered, and its guards are
         // not asked twice. A function's by run, ask and call, a call begun
@@ -125,7 +134,7 @@ public:
         // interpreter cannot name it.
         std::map<std::string, std::shared_ptr<const Scope<Value>>> made;
         for (const auto& [label, kept] : compiled.unnamed) {
-            const Scope<Value>* written = stack.InstanceScope(definition);
+            const Scope<Value>* written = checked;
             for (std::size_t at = 0, point; (point = label.find('.', at)) != std::string::npos;
                  at             = point + 1) {
                 const auto outer = made.find(label.substr(0, point));
@@ -134,11 +143,11 @@ public:
                         ? outer->second.get()
                         : stack.InstanceScope(written->names.at(label.substr(at, point - at)));
             }
-            made[label] = stack.Detached(*kept.model, *kept.call, *written, instance + "." + label,
-                                         kept.captured);
+            made[label] =
+                stack.Detached(*kept.model, *kept.call, *written, dotted + label, kept.captured);
         }
         const auto called = [&](const CompileC::Compiled::Sequence& sequence) {
-            return sequence.session ? sequence.name : instance + "." + sequence.name;
+            return sequence.session ? sequence.name : dotted + sequence.name;
         };
         const auto ask = [&](const CompileC::Compiled::Sequence& sequence, int index) {
             if (!sequence.unnamed) return At(session, called(sequence), index);
@@ -287,7 +296,7 @@ public:
         // straddles them all the same (C361).
         // None for a part of a group, which no scope names.
         const auto named = [&](const Sequence& s) -> const Reference<Value>* {
-            if (!s.unnamed) return Resolve(stack, definition, s.name);
+            if (!s.unnamed) return Resolve(stack, checked, s.name);
             const std::size_t dot = s.name.rfind('.');
             const auto        at  = made.find(s.name.substr(0, dot));
             if (at == made.end()) return nullptr;
@@ -373,9 +382,9 @@ public:
                 data += "static int taken_" + at + "[" + std::to_string(steps) + "];\n";
                 stepped += "        taken_" + at + "[n_] = m_." + name + "_clause_" +
                            (cellwise ? "[" + std::to_string(c) + "]" : "") + ";\n";
-                table += "        {\"" + instance + "." + name + place + "\", " + count +
-                         ", written_" + id + ", rank_" + id + ", clause_" + at + ", taken_" + at +
-                         ", margin_" + at + "},\n";
+                table += "        {\"" + dotted + name + place + "\", " + count + ", written_" +
+                         id + ", rank_" + id + ", clause_" + at + ", taken_" + at + ", margin_" +
+                         at + "},\n";
             }
         }
         // A function's, named by the sequence asked, its calls paired in order
@@ -405,7 +414,8 @@ public:
                                const std::string& prefix) -> void {
             for (const auto& [name, reference] : scope.names) {
                 if (const Scope<Value>* inner = stack.InstanceScope(reference)) {
-                    if (!prefix.empty()) self(self, *inner, prefix + name + ".");
+                    if (!prefix.empty() || &scope == checked)
+                        self(self, *inner, prefix + name + ".");
                     continue;
                 }
                 const auto& clauses = reference->Clauses();
@@ -451,9 +461,9 @@ public:
                 }
             }
         };
-        audit(audit, *stack.InstanceScope(definition), instance + ".");
-        audit(audit, *definition->home, "");
-        for (const auto& [label, scope] : made) audit(audit, *scope, instance + "." + label + ".");
+        audit(audit, *checked, dotted);
+        if (definition) audit(audit, *definition->home, "");
+        for (const auto& [label, scope] : made) audit(audit, *scope, dotted + label + ".");
         for (const auto& [at, line] : falls) held += "    puts(" + Quoted(line) + ");\n";
         const std::string against = !inexact ? "exact values"
                                              : "exact values until " + std::to_string(*inexact) +
@@ -565,9 +575,8 @@ public:
                ") {\n" + (floats ? "" : "        printf(\", %.2g units of a double\", units);\n") +
                "        const int k = most_k;\n"
                "        if (cells > 1) cell_(\" in \", name + " +
-               std::to_string(instance.size() + 1) + ", " + place +
-               "        printf(\" at step %d\", " + std::to_string(first) +
-               " + k / cells);\n    }\n";
+               std::to_string(dotted.size()) + ", " + place + "        printf(\" at step %d\", " +
+               std::to_string(first) + " + k / cells);\n    }\n";
         out += "    if (from > " + std::to_string(first) + ") printf(\", from %d\", from);\n";
         out += "    if (most > 0.0)\n";
         out +=
@@ -635,10 +644,9 @@ private:
     }
 
     // A sequence of the instance, from its name in the struct, 'h.low.v'.
-    static const Reference<Value>* Resolve(ReferenceStack<Value>& stack,
-                                           const Definition& definition, const std::string& name) {
-        const Scope<Value>* scope = stack.InstanceScope(definition);
-        std::size_t         at    = 0;
+    static const Reference<Value>* Resolve(ReferenceStack<Value>& stack, const Scope<Value>* scope,
+                                           const std::string& name) {
+        std::size_t at = 0;
         for (std::size_t point; scope && (point = name.find('.', at)) != std::string::npos;
              at = point + 1) {
             const auto found = scope->names.find(name.substr(at, point - at));

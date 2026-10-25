@@ -230,6 +230,12 @@ checks the instance `fall()` would be, with every default, under the model's
 name: `fall: 100 steps from 0`. A model with an input or a parameter that has
 no default is refused, as only an instance can give it.
 
+`--check fib.ink -o fib.c`, given neither, checks the file's own sequences,
+what `--compile fib.ink` compiles, under the file's name and theirs:
+`fib.ink: 79 steps from 0` and `fib: within 0` with `--steps 79`
+([`fib.ink`](../test/compile/fib.ink)). A file whose sequences read an input
+nothing defines is refused, and so is a file of models alone.
+
 ### The report
 
 A report reads, in order:

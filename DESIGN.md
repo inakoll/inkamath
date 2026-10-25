@@ -13462,6 +13462,26 @@ moved check_no_instance and check_steps_most, with `--help`. In 26 lines of
 `main.cpp` for 5, and 2 of comment; `check_steps_fall_report` holds
 steps.ink's `fall`, coast's model, to coast's report.
 
+### A file's own sequences checked `[done]`
+
+The owner's request, with the last: `--check file.ink -o check.c`, without
+an instance, checks what `--compile file.ink` compiles, the file's own
+sequences and its instances in one step, the report named after the file
+and each sequence as the file names it, `fib.ink: 79 steps from 0` and `fib:
+within 0`. It is an instance's check with the session for the instance:
+`CheckC::Program`, given no definition, compiles the session as `--compile`
+does, names each sequence without a prefix, and audits the session's
+instances as an instance's own. A file whose sequences read an input
+nothing defines is refused, `fed.ink reads x, which nothing defines; define
+it`, as the interpreter has nothing to replay, and a file of models alone in
+`--compile`'s words, `defines no sequence of its own; check a model by
+name`. The 304 programs `test/CMakeLists.txt` checks are byte-identical.
+`--check`'s usage says the instance is optional, which moved check_usage,
+check_steps_usage and the two extra_usage cases, with `--help`. In 26 lines
+of `check.hpp` for 19 and 8 of `main.cpp` for 6, with 3 of comment;
+`check_fib_79_report` holds docs/language.md's Fibonacci,
+`test/compile/fib.ink`, to the bit through fib_78, the last below 2^53.
+
 ---
 
 ## Next in line

@@ -211,7 +211,7 @@ set(args --help)
 set(stdout [=[
 Usage: inkamath [options] [file...]
        inkamath --compile file [model] [-o header.h]
-       inkamath --check file instance -o check.c
+       inkamath --check file [instance] -o check.c
        inkamath --check transcript.ink
 
 Runs the files in order and exits; with no file, reads standard input.
@@ -228,9 +228,9 @@ At a terminal the prompt edits the line and keeps its history.
   --check     write a C program that steps an instance the file defines,
               compiled, on the inputs the interpreter gives it, holds each
               term to the interpreter's exact one and says where one drifts;
-              given a model, its instance with every default; given a
-              transcript alone, replay it and report each answer that is
-              not the one recorded
+              given a model, its instance with every default, and given
+              neither, the file's own sequences; given a transcript alone,
+              replay it and report each answer that is not the one recorded
   --float     with --compile or --check, write floats where they write
               doubles
   --steps n   with --check and an instance, step it n times rather than
@@ -642,8 +642,21 @@ set(stderr "inkamath: gain in gains.ink takes x, which has no default; define an
 set(exit 1)
 check(check_model_undefaulted)
 
+# Without an instance, the file's own sequences, as --compile without a model
+# compiles them, if the interpreter can give them all they read.
+set(args --check gains.ink -o gains.c)
+set(stderr "inkamath: gains.ink defines no sequence of its own; check a model by name\n")
+set(exit 1)
+check(check_models_only)
+
+file(WRITE "${OUT}/fed.ink" "y_0 = 0\ny_n = y_(n-1) + x_n\n")
+set(args --check fed.ink -o fed.c)
+set(stderr "inkamath: fed.ink reads x, which nothing defines; define it\n")
+set(exit 1)
+check(check_undefined_input)
+
 set(args --check models.ink gain)
-set(stderr "inkamath: --check takes a transcript, or a file, an instance it defines and -o check.c\nTry 'inkamath --help'.\n")
+set(stderr "inkamath: --check takes a transcript, or a file, optionally an instance or a model it defines, and -o check.c\nTry 'inkamath --help'.\n")
 set(exit 2)
 check(check_usage)
 
@@ -749,7 +762,7 @@ foreach(case IN ITEMS "compile;--compile;coast.ink;fall;-o;fall.h"
 endforeach()
 # An instance with no -o is told what --check takes, as without --steps.
 set(args --check coast.ink coast --steps 10)
-set(stderr "inkamath: --check takes a transcript, or a file, an instance it defines and -o check.c\nTry 'inkamath --help'.\n")
+set(stderr "inkamath: --check takes a transcript, or a file, optionally an instance or a model it defines, and -o check.c\nTry 'inkamath --help'.\n")
 set(exit 2)
 check(check_steps_usage)
 # And so is one a word too many, with --steps or --float, where each said it
@@ -757,7 +770,7 @@ check(check_steps_usage)
 foreach(option IN ITEMS "steps;--steps;5" "float;--float")
     list(POP_FRONT option name)
     set(args --check coast.ink coast extra ${option} -o extra.c)
-    set(stderr "inkamath: --check takes a transcript, or a file, an instance it defines and -o check.c\nTry 'inkamath --help'.\n")
+    set(stderr "inkamath: --check takes a transcript, or a file, optionally an instance or a model it defines, and -o check.c\nTry 'inkamath --help'.\n")
     set(exit 2)
     check(check_${name}_extra_usage)
 endforeach()

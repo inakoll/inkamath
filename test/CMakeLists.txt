@@ -269,7 +269,8 @@ add_test(NAME prelude_header
 # The oracle: an instance compiled, and each of its terms held to the
 # interpreter's exact one by the program 'inkamath --check' writes. 'wild'
 # drifts from it, and its program says where and exits with a failure.
-# Each as file:instance, or file:instance:n with --steps n.
+# Each as file:instance, or file:instance:n with --steps n; with no instance,
+# the file's own sequences.
 foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brink drift:ledge
                          drift:rift drift:naught drift:zeroed drift:mirrored drift:nests drift:latch drift:tripped drift:toil
                          drift:late drift:radix drift:gone
@@ -337,13 +338,16 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          fallback:partway pendloop:cart motorloop:motor pidloop:ctl inner:robot:600
                          lcg:lcgs optional:seen optional:leaned
                          optional:steeped optional:first hessian:k hessian:z hessian:c
-                         accum:ol:300)
+                         accum:ol:300 fib::79)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
+    if(NOT instance)
+        set(name ${file})
+    endif()
     set(steps "")
     if(count)
-        set(name ${instance}_${count})
+        set(name ${name}_${count})
         set(steps --steps ${count})
     endif()
     # One named as another file's instance is named after its file too.
@@ -431,6 +435,8 @@ set_tests_properties(check_coast_1_report PROPERTIES PASS_REGULAR_EXPRESSION
 # A model checked by name is its instance with every default, coast's.
 set_tests_properties(check_steps_fall_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^fall: 100 steps from 0, against exact values\nfall\\.v: within 0\nfall\\.y: within 0\n$")
+set_tests_properties(check_fib_79_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^fib\\.ink: 79 steps from 0, against exact values\nfib: within 0\n$")
 set_tests_properties(check_runaway_150_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^runaway: 150 steps from 0, against exact values\nrunaway\\.x: within 0\n$")
 set_tests_properties(check_runaway_1000_report PROPERTIES PASS_REGULAR_EXPRESSION

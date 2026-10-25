@@ -41,7 +41,7 @@ using Outcome = LineEditor::Outcome;
 
 static const char help[] = R"(Usage: inkamath [options] [file...]
        inkamath --compile file [model] [-o header.h]
-       inkamath --check file instance -o check.c
+       inkamath --check file [instance] -o check.c
        inkamath --check transcript.ink
 
 Runs the files in order and exits; with no file, reads standard input.
@@ -58,9 +58,9 @@ At a terminal the prompt edits the line and keeps its history.
   --check     write a C program that steps an instance the file defines,
               compiled, on the inputs the interpreter gives it, holds each
               term to the interpreter's exact one and says where one drifts;
-              given a model, its instance with every default; given a
-              transcript alone, replay it and report each answer that is
-              not the one recorded
+              given a model, its instance with every default, and given
+              neither, the file's own sequences; given a transcript alone,
+              replay it and report each answer that is not the one recorded
   --float     with --compile or --check, write floats where they write
               doubles
   --steps n   with --check and an instance, step it n times rather than
@@ -259,11 +259,14 @@ static int check(const string& source, const string& name, const string& target,
         }
         const ReferenceStack<Value>::Within within(stack, &over);
         const auto                          unfed = named ? stack.Unfed(named) : nullptr;
-        if (!unfed) {
+        if (!unfed && !name.empty()) {
             cerr << "inkamath: " << file << " defines no instance or model " << name << '\n';
             return 1;
         }
-        program = CheckC::Program(p, name, named, module, name + " in " + file, *unfed, steps);
+        // Without a name, the file's own sequences, as --compile without a model has them.
+        program = CheckC::Program(p, name.empty() ? file : name, named, module,
+                                  name.empty() ? file : name + " in " + file,
+                                  unfed ? *unfed : stack.Session(), steps);
     } catch (const runtime_error& error) {
         cerr << "inkamath: " << error.what() << '\n';
         return 1;
@@ -393,12 +396,13 @@ int main(int argc, char* argv[]) {
 
     if (checking) {
         if (files.size() == 1 && target.empty()) return replay(files[0]);
-        if (files.size() != 2 || target.empty()) {
-            cerr << "inkamath: --check takes a transcript, or a file, an instance it defines and "
-                    "-o check.c\nTry 'inkamath --help'.\n";
+        if (files.empty() || files.size() > 2 || target.empty()) {
+            cerr << "inkamath: --check takes a transcript, or a file, optionally an instance or a "
+                    "model it defines, and -o check.c\nTry 'inkamath --help'.\n";
             return 2;
         }
-        return check(files[0], files[1], target, steps ? steps : 100);
+        return check(files[0], files.size() == 2 ? files[1] : string(), target,
+                     steps ? steps : 100);
     }
 
     // Every file is read before anything runs, so that a command line which
