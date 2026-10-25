@@ -338,34 +338,16 @@ Clang's `-fvisibility=hidden`), and so are `<name>_size_`,
 the struct's size, `<name>_count_`, the number of members,
 `<name>_members_`, each member's name, an instance's dotted, `f.x`, then a
 null pointer, `<name>_offsets_`, each member's offset, `<name>_types_`, its
-C type, `"long long"` or `"double[1][2][1]"`, a sequence's history first,
-and `<name>_inputs_`, the step's inputs in its order, then a null pointer,
-an optional one's name ending in `?`. None of it is a stable interface yet,
-while the language moves.
+C type, `"long long"` or `"double[1][2][1]"`, and `<name>_inputs_`, the
+step's inputs in its order, then a null pointer, an optional one's name
+ending in `?`. None of it is a stable interface yet, while the language moves.
 For the getting started's `pid.h`, built with
-`cc -O2 -shared -fPIC -x c -DPID_SHARED pid.h -o libpid.so -lm`, Python's
-ctypes reads each field at its offset, so the host does not mirror the struct:
-
-```python
-import ctypes as C
-lib = C.CDLL("./libpid.so")
-table = lambda name, t: C.cast(C.addressof(t.in_dll(lib, name)), C.POINTER(t))
-names, offsets = table("pid_members_", C.c_char_p), table("pid_offsets_", C.c_size_t)
-n = 0
-while names[n]: n += 1
-at = {names[k].decode(): offsets[k] for k in range(n)}
-lib.pid_init.argtypes = [C.c_void_p]
-lib.pid_step.argtypes = [C.c_void_p, C.c_double]
-m = (C.c_double * ((C.c_size_t.in_dll(lib, "pid_size_").value + 7) // 8))()
-u = C.c_double.from_buffer(m, at["u"])
-lib.pid_init(m)
-for y in (0, 0.1, 0.2): lib.pid_step(m, y)    # u.value is then 1.67, u_2
-```
-
-Built with `--float`, the fields and inputs are floats, `C.c_float`.
-[`tools/inkamath_model.py`](../tools/inkamath_model.py) does this for any
-model from the tables alone, in ctypes, its inputs passed in their order,
-`None` for an optional one absent:
+`cc -O2 -shared -fPIC -x c -DPID_SHARED pid.h -o libpid.so -lm`,
+[`tools/inkamath_model.py`](../tools/inkamath_model.py) reads it from the
+tables alone, in ctypes, so the host does not mirror the struct: each member
+at its offset, the members after `index_` the sequences and their flags,
+each a sequence's history first, and the inputs in their order, `None` for
+an optional one absent:
 
 ```python
 from inkamath_model import Model
@@ -395,11 +377,11 @@ const size_t ink_u = offsetof(pid, u), ink_kp = offsetof(pid, kp);
 
 built with `cc -O2 -shared -fPIC pid_host.c -o libpid.so` (on Windows, each
 function `__declspec(dllexport)`), and called as `lib.ink_run(m, y, 3, out)`,
-its `argtypes` `[C.c_void_p, C.c_void_p, C.c_long, C.c_void_p]`.
+its `argtypes` `[c_void_p, c_void_p, c_long, c_void_p]`.
 
 - **An optional input.** The step of a model `track` with an optional input
   `z_n?` takes the input's flag after it, `track_step(m, z, ok)`: one more
-  `int`, a `C.c_int` in `argtypes`. A driver that says absent by NaN converts
+  `int`, a `c_int` in `argtypes`. A driver that says absent by NaN converts
   in its own C, `track_step(m, z, !isnan(z))`, where the choice is seen.
 - **`argtypes`.** Declare each function's: without them an address held as a
   Python int, as numpy's `a.ctypes.data` is, is passed as a C int and cut to
