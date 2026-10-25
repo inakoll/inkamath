@@ -33,6 +33,17 @@ typedef struct inkamath_prelude {
     double d[1];
 } inkamath_prelude;
 
+/* A shared library, built alone as C, not C++, with -DINKAMATH_PRELUDE_SHARED: these
+ * functions exported and, at its end, the struct's size and its members'
+ * names, nested ones dotted, and offsets, not yet a stable interface. */
+#ifndef INKAMATH_PRELUDE_SHARED
+#define INKAMATH_PRELUDE_API_ static inline
+#elif defined(_WIN32)
+#define INKAMATH_PRELUDE_API_ __declspec(dllexport)
+#else
+#define INKAMATH_PRELUDE_API_
+#endif
+
 static inline double inkamath_prelude_expp(double arg_r) {
     return arg_r * (1.0 + arg_r * (0.5 + arg_r * (0.16666666666666666 + arg_r * (0.041666666666666664 + arg_r * (0.008333333333333333 + arg_r * (0.001388888888888889 + arg_r * (0.0001984126984126984 + arg_r * (2.48015873015873e-05 + arg_r * (2.7557319223985893e-06 + arg_r * (2.755731922398589e-07 + arg_r * (2.505210838544172e-08 + arg_r * (2.08767569878681e-09 + arg_r * (1.6059043836821613e-10 + arg_r / 87178291200.0)))))))))))));
 }
@@ -330,18 +341,18 @@ static inline double inkamath_prelude_acosh_dx(double arg_x, double part_x) {
 }
 
 /* Computes what derives from the parameters: call it after assigning one. */
-static inline void inkamath_prelude_update(inkamath_prelude* m_) {
+INKAMATH_PRELUDE_API_ void inkamath_prelude_update(inkamath_prelude* m_) {
     (void)m_;
 }
 
-static inline void inkamath_prelude_init(inkamath_prelude* m_) {
+INKAMATH_PRELUDE_API_ void inkamath_prelude_init(inkamath_prelude* m_) {
     memset(m_, 0, sizeof *m_);
     m_->index_ = -1;
     inkamath_prelude_update(m_);
 }
 
 /* Advances to the next index, the first at 0, and computes its terms. */
-static inline void inkamath_prelude_step(inkamath_prelude* m_) {
+INKAMATH_PRELUDE_API_ void inkamath_prelude_step(inkamath_prelude* m_) {
     ++m_->index_;
     m_->c[0] = inkamath_prelude_exp((double)m_->index_) + inkamath_prelude_log((double)m_->index_ + 1.0) + inkamath_prelude_tanh((double)m_->index_) + inkamath_prelude_ilogb((double)m_->index_ + 1.0) + inkamath_prelude_sin((double)m_->index_) + inkamath_prelude_cos((double)m_->index_) + inkamath_prelude_atan((double)m_->index_) + inkamath_prelude_asin((double)m_->index_) + inkamath_prelude_acos((double)m_->index_) + inkamath_prelude_acosh((double)m_->index_ + 1.0);
     const double t0_ = inkamath_prelude_exp_jx((double)m_->index_);
@@ -365,5 +376,17 @@ static inline void inkamath_prelude_step(inkamath_prelude* m_) {
     const double t18_ = t0_ + t2_ + t4_ + t6_ + t8_ + t10_ + t12_ + t14_ + t16_;
     m_->d[0] = (isnan(t18_) ? NAN : t1_ + t3_ + t5_ + t7_ + t9_ + t11_ + t13_ + t15_ + t17_);
 }
+
+#ifdef INKAMATH_PRELUDE_SHARED
+#include <stddef.h>
+INKAMATH_PRELUDE_API_ const size_t inkamath_prelude_size_ = sizeof(inkamath_prelude);
+INKAMATH_PRELUDE_API_ const char* const inkamath_prelude_members_[] = {
+    "index_", "c", "d", 0
+};
+INKAMATH_PRELUDE_API_ const size_t inkamath_prelude_offsets_[] = {
+    offsetof(inkamath_prelude, index_), offsetof(inkamath_prelude, c),
+    offsetof(inkamath_prelude, d)
+};
+#endif
 
 #endif

@@ -34,16 +34,27 @@ typedef struct kernel {
     double y[1];
 } kernel;
 
+/* A shared library, built alone as C, not C++, with -DKERNEL_SHARED: these
+ * functions exported and, at its end, the struct's size and its members'
+ * names, nested ones dotted, and offsets, not yet a stable interface. */
+#ifndef KERNEL_SHARED
+#define KERNEL_API_ static inline
+#elif defined(_WIN32)
+#define KERNEL_API_ __declspec(dllexport)
+#else
+#define KERNEL_API_
+#endif
+
 static inline double kernel_ceil(double arg_x) {
     return 0.0 - floor(0.0 - arg_x);
 }
 
 /* Computes what derives from the parameters: call it after assigning one. */
-static inline void kernel_update(kernel* m_) {
+KERNEL_API_ void kernel_update(kernel* m_) {
     (void)m_;
 }
 
-static inline void kernel_init(kernel* m_) {
+KERNEL_API_ void kernel_init(kernel* m_) {
     memset(m_, 0, sizeof *m_);
     m_->lap[0][0] = 0.0;
     m_->lap[0][1] = 0.125;
@@ -59,7 +70,7 @@ static inline void kernel_init(kernel* m_) {
 }
 
 /* Advances to the next index, the first at 0, and computes its terms. */
-static inline void kernel_step(kernel* m_, double x_in_) {
+KERNEL_API_ void kernel_step(kernel* m_, double x_in_) {
     ++m_->index_;
     memcpy(m_->u[1], m_->u[0], sizeof m_->u[1]);
     m_->x[0] = x_in_;
@@ -76,5 +87,17 @@ static inline void kernel_step(kernel* m_, double x_in_) {
     m_->u[0][2][2] = m_->index_ == 0 ? 0.0 : m_->lap[0][0] * m_->u[1][1][1] + m_->lap[0][1] * m_->u[1][1][2] + m_->lap[0][2] * 0.0 + (m_->lap[1][0] * m_->u[1][2][1] + m_->lap[1][1] * m_->u[1][2][2] + m_->lap[1][2] * 0.0) + t1_;
     m_->y[0] = (m_->x[0] - 0.5 < 0.0 ? 0.0 : m_->x[0] - 0.5) + 32.0 + kernel_ceil(m_->x[0]);
 }
+
+#ifdef KERNEL_SHARED
+#include <stddef.h>
+KERNEL_API_ const size_t kernel_size_ = sizeof(kernel);
+KERNEL_API_ const char* const kernel_members_[] = {
+    "lap", "index_", "x", "u", "y", 0
+};
+KERNEL_API_ const size_t kernel_offsets_[] = {
+    offsetof(kernel, lap), offsetof(kernel, index_), offsetof(kernel, x),
+    offsetof(kernel, u), offsetof(kernel, y)
+};
+#endif
 
 #endif

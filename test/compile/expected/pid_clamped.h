@@ -43,12 +43,23 @@ typedef struct pid_clamped {
     double u[2];
 } pid_clamped;
 
+/* A shared library, built alone as C, not C++, with -DPID_CLAMPED_SHARED: these
+ * functions exported and, at its end, the struct's size and its members'
+ * names, nested ones dotted, and offsets, not yet a stable interface. */
+#ifndef PID_CLAMPED_SHARED
+#define PID_CLAMPED_API_ static inline
+#elif defined(_WIN32)
+#define PID_CLAMPED_API_ __declspec(dllexport)
+#else
+#define PID_CLAMPED_API_
+#endif
+
 /* Computes what derives from the parameters: call it after assigning one. */
-static inline void pid_clamped_update(pid_clamped* m_) {
+PID_CLAMPED_API_ void pid_clamped_update(pid_clamped* m_) {
     (void)m_;
 }
 
-static inline void pid_clamped_init(pid_clamped* m_) {
+PID_CLAMPED_API_ void pid_clamped_init(pid_clamped* m_) {
     memset(m_, 0, sizeof *m_);
     m_->dt = 0.1;
     m_->kd = 0.1;
@@ -61,7 +72,7 @@ static inline void pid_clamped_init(pid_clamped* m_) {
 }
 
 /* Advances to the next index, the first at 0, and computes its terms. */
-static inline void pid_clamped_step(pid_clamped* m_, double y_in_) {
+PID_CLAMPED_API_ void pid_clamped_step(pid_clamped* m_, double y_in_) {
     ++m_->index_;
     m_->e[1] = m_->e[0];
     m_->s[1] = m_->s[0];
@@ -73,5 +84,22 @@ static inline void pid_clamped_step(pid_clamped* m_, double y_in_) {
     m_->v[0] = m_->kp * m_->e[0] + m_->ki * m_->s[0] + m_->kd * m_->d[0];
     m_->u[0] = m_->v[0] > m_->umax ? m_->umax : m_->v[0] < 0.0 - m_->umax ? 0.0 - m_->umax : m_->v[0];
 }
+
+#ifdef PID_CLAMPED_SHARED
+#include <stddef.h>
+PID_CLAMPED_API_ const size_t pid_clamped_size_ = sizeof(pid_clamped);
+PID_CLAMPED_API_ const char* const pid_clamped_members_[] = {
+    "dt", "kd", "ki", "kp", "r", "umax", "index_", "y", "e", "d", "s", "v", "u",
+    0
+};
+PID_CLAMPED_API_ const size_t pid_clamped_offsets_[] = {
+    offsetof(pid_clamped, dt), offsetof(pid_clamped, kd),
+    offsetof(pid_clamped, ki), offsetof(pid_clamped, kp),
+    offsetof(pid_clamped, r), offsetof(pid_clamped, umax),
+    offsetof(pid_clamped, index_), offsetof(pid_clamped, y),
+    offsetof(pid_clamped, e), offsetof(pid_clamped, d),
+    offsetof(pid_clamped, s), offsetof(pid_clamped, v), offsetof(pid_clamped, u)
+};
+#endif
 
 #endif

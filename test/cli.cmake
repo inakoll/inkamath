@@ -1280,7 +1280,7 @@ set(args --compile "${CMAKE_CURRENT_LIST_DIR}/compile/pid_clamped.ink" -o NAN_cl
 check(compile_nan_named)
 file(READ "${OUT}/NAN_clamped.h" named)
 file(READ "${CMAKE_CURRENT_LIST_DIR}/compile/expected/pid_clamped.h" expected)
-string(REPLACE "NAN_CLAMPED_H" "PID_CLAMPED_H" named "${named}")
+string(REPLACE "NAN_CLAMPED_" "PID_CLAMPED_" named "${named}")
 string(REPLACE "NAN_clamped" "pid_clamped" named "${named}")
 if(NOT named STREQUAL expected)
     message(SEND_ERROR "compile_nan_named: NAN_clamped.h is not pid_clamped.h renamed")
@@ -1316,7 +1316,7 @@ holds(compile_inputs_dot dot.h [[/* Using it:
     double x[1][2][1];
     double y[1];
 } dot;
-]] [[static inline void dot_step(dot* m_, const double x_in_[2]) {
+]] [[DOT_API_ void dot_step(dot* m_, const double x_in_[2]) {
     ++m_->index_;
     memcpy(m_->x[0], x_in_, sizeof m_->x[0]);
 ]])
@@ -1324,19 +1324,19 @@ holds(compile_inputs_ctl ctl.h [[
  * A step takes r_n and s_n (2x1), the inputs at its index. An input of more
  * than one cell is a pointer to its cells, row by row. After a step, m.name[k]
  * is name_(n-k) for each sequence: r, s and u.
-]] [[static inline void ctl_step(ctl* m_, double r_in_, const double s_in_[2]) {
+]] [[CTL_API_ void ctl_step(ctl* m_, double r_in_, const double s_in_[2]) {
     ++m_->index_;
     m_->r[0] = r_in_;
     memcpy(m_->s[0], s_in_, sizeof m_->s[0]);
 ]])
-holds(compile_inputs_turn turn.h [[static inline void turn_init(turn* m_) {
+holds(compile_inputs_turn turn.h [[TURN_API_ void turn_init(turn* m_) {
     memset(m_, 0, sizeof *m_);
     m_->x[0][0][0] = 1.0;
     m_->x[0][1][0] = -1.0;
     m_->index_ = -1;
     turn_update(m_);
 }
-]] [[static inline void turn_step(turn* m_, const double x_in_[2]) {
+]] [[TURN_API_ void turn_step(turn* m_, const double x_in_[2]) {
     ++m_->index_;
     memcpy(m_->x[1], m_->x[0], sizeof m_->x[1]);
     memcpy(m_->x[0], x_in_, sizeof m_->x[0]);
@@ -1651,7 +1651,7 @@ holds(float_dot float/dot.h [[typedef struct dot {
     float x[1][2][1];
     float y[1];
 } dot;
-]] [[static inline void dot_step(dot* m_, const float x_in_[2]) {
+]] [[DOT_API_ void dot_step(dot* m_, const float x_in_[2]) {
 ]])
 
 file(WRITE "${OUT}/vast.ink" "vast(x_n) = {\n    x_n | n < 0 = 10^39\n    c_n = x_(n-1)\n}\n")
@@ -2138,7 +2138,7 @@ holds(compile_tensor_mha mha.h [=[ *     mha_step(&m, X);  once for each index, 
     double X[1][2][3][4];
     double O[1][2][3][4];
 } mha;
-]=] [=[static inline void mha_step(mha* m_, const double X_in_[24]) {
+]=] [=[MHA_API_ void mha_step(mha* m_, const double X_in_[24]) {
     ++m_->index_;
     memcpy(m_->X[0], X_in_, sizeof m_->X[0]);
 ]=])
@@ -2178,7 +2178,7 @@ holds(compile_tensor_ring ring.h [=[/* Using it:
     double q[1][2][1][2];
     double u[1][2][1][2];
 } ring;
-]=] [=[static inline void ring_init(ring* m_) {
+]=] [=[RING_API_ void ring_init(ring* m_) {
     memset(m_, 0, sizeof *m_);
     m_->s0[0][0][0] = 1.0;
     m_->s0[0][0][1] = 0.0;
@@ -2190,7 +2190,7 @@ holds(compile_tensor_ring ring.h [=[/* Using it:
     m_->index_ = -1;
     ring_update(m_);
 }
-]=] [=[static inline void ring_step(ring* m_, const double X_in_[4]) {
+]=] [=[RING_API_ void ring_step(ring* m_, const double X_in_[4]) {
     ++m_->index_;
     memcpy(m_->X[1], m_->X[0], sizeof m_->X[1]);
     memcpy(m_->s[1], m_->s[0], sizeof m_->s[1]);
@@ -2210,7 +2210,7 @@ holds(compile_tensor_ring_float float/ring.h [=[typedef struct ring {
     float s0[2][1][2];
     long long index_;
     float X[2][2][1][2];
-]=] [=[static inline void ring_step(ring* m_, const float X_in_[4]) {
+]=] [=[RING_API_ void ring_step(ring* m_, const float X_in_[4]) {
 ]=] [=[    m_->s[0][1][0][0] = m_->index_ == 0 ? m_->s0[1][0][0] : m_->s[1][1][0][0] * 0.0f + m_->s[1][1][0][1] * -1.0f + m_->X[0][1][0][0];
 ]=])
 set(args --compile ${tensor} sgd -o sgd.h)
@@ -2222,7 +2222,7 @@ holds(compile_tensor_sgd sgd.h [=[typedef struct sgd {
     double Y[1][2][2][1];
     double w[2][2][1];
 } sgd;
-]=] [=[static inline void sgd_step(sgd* m_, const double X_in_[8], const double Y_in_[4]) {
+]=] [=[SGD_API_ void sgd_step(sgd* m_, const double X_in_[8], const double Y_in_[4]) {
 ]=])
 
 # A sequence with parameters read at a constant index, compiled (DESIGN.md,
@@ -2708,7 +2708,7 @@ check(compile_reduce)
 set(args --compile ${CMAKE_CURRENT_LIST_DIR}/compile/optional.ink track -o track.h)
 check(compile_optional)
 holds(compile_optional track.h
-      "static inline void track_step(track* m_, double z_in_, int z_present_in_) {\n"
+      "TRACK_API_ void track_step(track* m_, double z_in_, int z_present_in_) {\n"
       " *     track_step(&m, z, z_present);  once for each index, the first 0\n"
       "    int z_present[4];\n" "    m_->z[0] = z_present_in_ ? z_in_ : NAN;\n")
 strict(compile_optional track.h)
@@ -2720,12 +2720,12 @@ set(story "${CMAKE_CURRENT_LIST_DIR}/compile/inner.ink")
 set(args --compile ${story} fw -o fw.h)
 check(compile_inner)
 holds(compile_inner fw.h
-      "static inline void fw_step(fw* m_, double z_in_, int z_present_in_, double w_in_) {\n"
+      "FW_API_ void fw_step(fw* m_, double z_in_, int z_present_in_, double w_in_) {\n"
       "        int z_present[4];\n")
 strict(compile_inner fw.h)
 set(args --compile ${story} loop -o loop.h)
 check(compile_inner_loop)
-holds(compile_inner_loop loop.h "static inline void loop_step(loop* m_) {\n"
+holds(compile_inner_loop loop.h "LOOP_API_ void loop_step(loop* m_) {\n"
       "        int z_present[1];\n")
 strict(compile_inner_loop loop.h)
 set(args --compile ${story} alone -o alone.h)

@@ -47,6 +47,17 @@ typedef struct kalman2 {
     double x[2][2][1];
 } kalman2;
 
+/* A shared library, built alone as C, not C++, with -DKALMAN2_SHARED: these
+ * functions exported and, at its end, the struct's size and its members'
+ * names, nested ones dotted, and offsets, not yet a stable interface. */
+#ifndef KALMAN2_SHARED
+#define KALMAN2_API_ static inline
+#elif defined(_WIN32)
+#define KALMAN2_API_ __declspec(dllexport)
+#else
+#define KALMAN2_API_
+#endif
+
 /* The inverse of a 2x2 matrix, in place, as the interpreter takes it: Gauss-Jordan
  * on the largest pivot, and NaN in every cell where there is none. */
 static inline void kalman2_inverse2_(double a_[2][2]) {
@@ -89,11 +100,11 @@ static inline void kalman2_inverse2_(double a_[2][2]) {
 }
 
 /* Computes what derives from the parameters: call it after assigning one. */
-static inline void kalman2_update(kalman2* m_) {
+KALMAN2_API_ void kalman2_update(kalman2* m_) {
     (void)m_;
 }
 
-static inline void kalman2_init(kalman2* m_) {
+KALMAN2_API_ void kalman2_init(kalman2* m_) {
     memset(m_, 0, sizeof *m_);
     m_->H[0][0] = 1.0;
     m_->H[0][1] = 0.0;
@@ -117,7 +128,7 @@ static inline void kalman2_init(kalman2* m_) {
 }
 
 /* Advances to the next index, the first at 0, and computes its terms. */
-static inline void kalman2_step(kalman2* m_, double zp_in_, double zs_in_) {
+KALMAN2_API_ void kalman2_step(kalman2* m_, double zp_in_, double zs_in_) {
     ++m_->index_;
     memcpy(m_->P[1], m_->P[0], sizeof m_->P[1]);
     memcpy(m_->x[1], m_->x[0], sizeof m_->x[1]);
@@ -186,5 +197,21 @@ static inline void kalman2_step(kalman2* m_, double zp_in_, double zs_in_) {
         for (int i_ = 0; i_ < 2; ++i_)
             for (int j_ = 0; j_ < 1; ++j_) m_->x[0][i_][j_] = NAN;
 }
+
+#ifdef KALMAN2_SHARED
+#include <stddef.h>
+KALMAN2_API_ const size_t kalman2_size_ = sizeof(kalman2);
+KALMAN2_API_ const char* const kalman2_members_[] = {
+    "H", "I", "Q", "R", "dt", "index_", "zp", "zs", "Pp", "K", "P", "xp", "z",
+    "x", 0
+};
+KALMAN2_API_ const size_t kalman2_offsets_[] = {
+    offsetof(kalman2, H), offsetof(kalman2, I), offsetof(kalman2, Q),
+    offsetof(kalman2, R), offsetof(kalman2, dt), offsetof(kalman2, index_),
+    offsetof(kalman2, zp), offsetof(kalman2, zs), offsetof(kalman2, Pp),
+    offsetof(kalman2, K), offsetof(kalman2, P), offsetof(kalman2, xp),
+    offsetof(kalman2, z), offsetof(kalman2, x)
+};
+#endif
 
 #endif

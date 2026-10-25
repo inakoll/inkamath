@@ -139,9 +139,10 @@ Building a header
 -----------------
 
 The header is C99, warning-free under `-std=c99 -Wpedantic` with GCC and
-Clang, and C++ as well; it includes `<math.h>` and `<string.h>`, and
-`<float.h>` where a limit is compiled, and allocates nothing: the struct holds
-all the step keeps.
+Clang, and C++ as well, though only as C does it build as a shared library
+([Hosting](#hosting-from-c-and-python)); it includes `<math.h>` and
+`<string.h>`, and `<float.h>` where a limit is compiled, and allocates
+nothing: the struct holds all the step keeps.
 
 | Flag | Use |
 |---|---|
@@ -328,10 +329,36 @@ Hosting from C and Python
 -------------------------
 
 A host in C includes the header, as README's
-[getting started](../README.md#getting-started) does. A header's functions are
-`static inline`, so a host that calls a shared library, Python's say, needs a
-small C file that includes the header and exports what the host calls (on
-Windows, each `__declspec(dllexport)`). For the getting started's `pid.h`:
+[getting started](../README.md#getting-started) does. Built alone as C, not
+C++, with its macro defined, `-D<NAME>_SHARED` for a module `<name>`, the
+header is a shared library instead: its `init`, `update` and `step` are
+exported (on Windows, `__declspec(dllexport)`), and so are `<name>_size_`,
+the struct's size, `<name>_members_`, each member's name, an instance's
+dotted, `f.x`, then a null pointer, and `<name>_offsets_`, each member's
+offset. None of it is a stable interface yet, while the language moves.
+For the getting started's `pid.h`, built with
+`cc -O2 -shared -fPIC -x c -DPID_SHARED pid.h -o libpid.so`, Python's ctypes
+reads each field at its offset, so the host does not mirror the struct:
+
+```python
+import ctypes as C
+lib = C.CDLL("./libpid.so")
+table = lambda name, t: C.cast(C.addressof(t.in_dll(lib, name)), C.POINTER(t))
+names, offsets = table("pid_members_", C.c_char_p), table("pid_offsets_", C.c_size_t)
+n = 0
+while names[n]: n += 1
+at = {names[k].decode(): offsets[k] for k in range(n)}
+lib.pid_init.argtypes = [C.c_void_p]
+lib.pid_step.argtypes = [C.c_void_p, C.c_double]
+m = (C.c_double * ((C.c_size_t.in_dll(lib, "pid_size_").value + 7) // 8))()
+u = C.c_double.from_buffer(m, at["u"])
+lib.pid_init(m)
+for y in (0, 0.1, 0.2): lib.pid_step(m, y)    # u.value is then 1.67, u_2
+```
+
+Built with `--float`, the fields and inputs are floats, `C.c_float`. To
+batch steps in C, as a small model's cost advises (below), a host writes a
+small C file that includes the header and exports its loop:
 
 ```c
 /* pid_host.c: what a shared library of pid.h exports. */
@@ -348,21 +375,9 @@ void ink_run(pid* m, const double* y, long n, double* u) {
 const size_t ink_u = offsetof(pid, u), ink_kp = offsetof(pid, kp);
 ```
 
-A field is read at its `offsetof`, so the host does not mirror the struct.
-Built with `cc -O2 -shared -fPIC pid_host.c -o libpid.so`, Python's ctypes
-drives it:
-
-```python
-import ctypes as C
-lib = C.CDLL("./libpid.so")
-lib.ink_size.restype = C.c_size_t
-lib.ink_init.argtypes = [C.c_void_p]
-lib.ink_run.argtypes = [C.c_void_p, C.c_void_p, C.c_long, C.c_void_p]
-m = (C.c_double * ((lib.ink_size() + 7) // 8))()
-u = C.c_double.from_buffer(m, C.c_size_t.in_dll(lib, "ink_u").value)
-y, out = (C.c_double * 3)(0, 0.1, 0.2), (C.c_double * 3)()
-lib.ink_init(m); lib.ink_run(m, y, 3, out)    # u.value is out[2]
-```
+built with `cc -O2 -shared -fPIC pid_host.c -o libpid.so` (on Windows, each
+function `__declspec(dllexport)`), and called as `lib.ink_run(m, y, 3, out)`,
+its `argtypes` `[C.c_void_p, C.c_void_p, C.c_long, C.c_void_p]`.
 
 - **An optional input.** The step of a model `track` with an optional input
   `z_n?` takes the input's flag after it, `track_step(m, z, ok)`: one more

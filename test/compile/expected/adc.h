@@ -42,12 +42,23 @@ typedef struct adc {
     double rising[1];
 } adc;
 
+/* A shared library, built alone as C, not C++, with -DADC_SHARED: these
+ * functions exported and, at its end, the struct's size and its members'
+ * names, nested ones dotted, and offsets, not yet a stable interface. */
+#ifndef ADC_SHARED
+#define ADC_API_ static inline
+#elif defined(_WIN32)
+#define ADC_API_ __declspec(dllexport)
+#else
+#define ADC_API_
+#endif
+
 /* Computes what derives from the parameters: call it after assigning one. */
-static inline void adc_update(adc* m_) {
+ADC_API_ void adc_update(adc* m_) {
     (void)m_;
 }
 
-static inline void adc_init(adc* m_) {
+ADC_API_ void adc_init(adc* m_) {
     memset(m_, 0, sizeof *m_);
     m_->hi = 1.0;
     m_->lo = -1.0;
@@ -57,7 +68,7 @@ static inline void adc_init(adc* m_) {
 }
 
 /* Advances to the next index, the first at 0, and computes its terms. */
-static inline void adc_step(adc* m_, double x_in_) {
+ADC_API_ void adc_step(adc* m_, double x_in_) {
     ++m_->index_;
     m_->held[1] = m_->held[0];
     m_->x[0] = x_in_;
@@ -70,5 +81,18 @@ static inline void adc_step(adc* m_, double x_in_) {
     const double t3_ = ((double)m_->index_ > 0.0 ? 1.0 : 0.0);
     m_->rising[0] = (t3_ == 0.0 ? 0.0 : t3_ != t3_ ? NAN : (m_->index_ < 1 ? NAN : (isnan(m_->held[0]) || isnan(m_->held[1]) ? NAN : m_->held[0] > m_->held[1] ? 1.0 : 0.0)));
 }
+
+#ifdef ADC_SHARED
+#include <stddef.h>
+ADC_API_ const size_t adc_size_ = sizeof(adc);
+ADC_API_ const char* const adc_members_[] = {
+    "hi", "lo", "q", "index_", "x", "v", "held", "alarm", "rising", 0
+};
+ADC_API_ const size_t adc_offsets_[] = {
+    offsetof(adc, hi), offsetof(adc, lo), offsetof(adc, q),
+    offsetof(adc, index_), offsetof(adc, x), offsetof(adc, v),
+    offsetof(adc, held), offsetof(adc, alarm), offsetof(adc, rising)
+};
+#endif
 
 #endif

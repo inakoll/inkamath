@@ -13373,6 +13373,38 @@ for, which `eig` refuses complex:
   empty stdout moved: compile_c86, compile_log, compile_nothing_refused,
   history_cycled, history_cycled_long and compile_inner_file, with `--help`.
 
+### A header built as a shared library `[done]`
+
+The owner's ruling, option B of the evaluation: a header builds as a shared
+library under a macro, rather than with a C file of its own beside it, which
+`docs/compile.md` keeps as its example of batching steps in C. Built alone
+as C with `-D<NAME>_SHARED`, the module's name upper-cased as the other
+per-module macros are, it exports:
+
+- `<name>_init`, `<name>_update` and `<name>_step`, as the header declares
+  them; `<NAME>_API_` spells them, `static inline` without the macro, so a
+  header included preprocesses to what it did before. A split step's pieces
+  and the header's helpers stay static.
+- `const size_t <name>_size_`, the struct's size; `const char* const
+  <name>_members_[]`, each member's name, an instance's dotted, then a null
+  pointer; and `const size_t <name>_offsets_[]`, each one's `offsetof`, a
+  table wrapped at 80 columns. The tables give no type: a member is a double,
+  a float under `--float`, but for `index_`, a `long long`, and the `int`
+  flags, `_present`, `_given_` and `_clause_`. A split step's `v_` is not
+  listed.
+- On Windows each `__declspec(dllexport)`, so that MSVC builds it.
+
+C only: as C++ the names would be mangled and the tables' `const` internal.
+The ABI is not frozen: names, order and the compiler's own members move with
+the language until it stops moving (MANIFESTO, *Not yet a library*). Every
+expected header and the prelude's moved, by the macro, the three spellings
+and the tables, each read, as did the cli cases holding a step's or an init's
+first line, and compile_nan_named's renaming; no golden or check program
+moved. In 37 lines of `compile.hpp` for 4; `compile_shared` builds pid,
+track, pid under `--float` and bank as libraries and loads each, by `dlopen`
+or `LoadLibrary`, reading outputs through the tables against the
+interpreter's values.
+
 ---
 
 ## Next in line

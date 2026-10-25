@@ -68,12 +68,23 @@ typedef struct bank {
     } y_smooth;
 } bank;
 
+/* A shared library, built alone as C, not C++, with -DBANK_SHARED: these
+ * functions exported and, at its end, the struct's size and its members'
+ * names, nested ones dotted, and offsets, not yet a stable interface. */
+#ifndef BANK_SHARED
+#define BANK_API_ static inline
+#elif defined(_WIN32)
+#define BANK_API_ __declspec(dllexport)
+#else
+#define BANK_API_
+#endif
+
 /* Computes what derives from the parameters: call it after assigning one. */
-static inline void bank_update(bank* m_) {
+BANK_API_ void bank_update(bank* m_) {
     (void)m_;
 }
 
-static inline void bank_init(bank* m_) {
+BANK_API_ void bank_init(bank* m_) {
     memset(m_, 0, sizeof *m_);
     m_->bank_smooth_1.a = 0.25;
     m_->bank_smooth_2.a = 0.5;
@@ -85,7 +96,7 @@ static inline void bank_init(bank* m_) {
 }
 
 /* Advances to the next index, the first at 0, and computes its terms. */
-static inline void bank_step(bank* m_, double x_in_) {
+BANK_API_ void bank_step(bank* m_, double x_in_) {
     ++m_->index_;
     m_->bank_smooth_1.v[1] = m_->bank_smooth_1.v[0];
     m_->bank_smooth_2.v[1] = m_->bank_smooth_2.v[0];
@@ -111,5 +122,29 @@ static inline void bank_step(bank* m_, double x_in_) {
     m_->y_smooth.v[0] = m_->index_ == 0 ? 0.0 : m_->y_smooth.a * m_->y_smooth.u[0] + (1.0 + (0.0 - m_->y_smooth.a)) * m_->y_smooth.v[1];
     m_->y[0] = m_->y_smooth.v[0];
 }
+
+#ifdef BANK_SHARED
+#include <stddef.h>
+BANK_API_ const size_t bank_size_ = sizeof(bank);
+BANK_API_ const char* const bank_members_[] = {
+    "bank_smooth_1.a", "bank_smooth_2.a", "bank_smooth_3.a", "s_sharp.a",
+    "y_smooth.a", "index_", "x", "bank_smooth_1.u", "bank_smooth_1.v",
+    "bank_smooth_2.u", "bank_smooth_2.v", "bank_smooth_3.u", "bank_smooth_3.v",
+    "bank", "s_sharp.u", "s_sharp.v_smooth.u", "s_sharp.v_smooth.v",
+    "s_sharp.v", "s", "y_smooth.u", "y_smooth.v", "y", 0
+};
+BANK_API_ const size_t bank_offsets_[] = {
+    offsetof(bank, bank_smooth_1.a), offsetof(bank, bank_smooth_2.a),
+    offsetof(bank, bank_smooth_3.a), offsetof(bank, s_sharp.a),
+    offsetof(bank, y_smooth.a), offsetof(bank, index_), offsetof(bank, x),
+    offsetof(bank, bank_smooth_1.u), offsetof(bank, bank_smooth_1.v),
+    offsetof(bank, bank_smooth_2.u), offsetof(bank, bank_smooth_2.v),
+    offsetof(bank, bank_smooth_3.u), offsetof(bank, bank_smooth_3.v),
+    offsetof(bank, bank), offsetof(bank, s_sharp.u),
+    offsetof(bank, s_sharp.v_smooth.u), offsetof(bank, s_sharp.v_smooth.v),
+    offsetof(bank, s_sharp.v), offsetof(bank, s), offsetof(bank, y_smooth.u),
+    offsetof(bank, y_smooth.v), offsetof(bank, y)
+};
+#endif
 
 #endif

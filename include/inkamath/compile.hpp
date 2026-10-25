@@ -7147,11 +7147,20 @@ private:
         }
         out +=
             "typedef struct " + module + " {\n" + Nested(members, "    ") + "} " + module + ";\n\n";
+        // Included, the functions are static inline; built alone, a shared
+        // library's (DESIGN.md, *A header built as a shared library*).
+        const std::string api = upper_ + "_API_", shared = upper_ + "_SHARED";
+        out += "/* A shared library, built alone as C, not C++, with -D" + shared + ": these\n";
+        out += " * functions exported and, at its end, the struct's size and its members'\n";
+        out += " * names, nested ones dotted, and offsets, not yet a stable interface. */\n";
+        out += "#ifndef " + shared + "\n#define " + api + " static inline\n";
+        out += "#elif defined(_WIN32)\n#define " + api + " __declspec(dllexport)\n";
+        out += "#else\n#define " + api + "\n#endif\n\n";
 
         const std::size_t functions = out.size();
 
         out += "/* Computes what derives from the parameters: call it after assigning one. */\n";
-        out += "static inline void " + module + "_update(" + module + "* m_) {\n";
+        out += api + " void " + module + "_update(" + module + "* m_) {\n";
         const auto read = [](const Derived& derived) { return derived.read; };
         if (std::none_of(derived_.begin(), derived_.end(), read)) out += "    (void)m_;\n";
         for (const Derived& derived : derived_) {
@@ -7165,7 +7174,7 @@ private:
         }
         out += "}\n\n";
 
-        out += "static inline void " + module + "_init(" + module + "* m_) {\n";
+        out += api + " void " + module + "_init(" + module + "* m_) {\n";
         out += "    memset(m_, 0, sizeof *m_);\n";
         for (const auto& [name, parameter] : parameters_) {
             for (std::size_t c = 0; c < parameter.initial.size(); ++c)
@@ -7179,7 +7188,7 @@ private:
         const std::size_t stepping = out.size();
         out += "/* Advances to the next index, the first at " + std::to_string(earliest) +
                ", and computes its terms. */\n";
-        out += "static inline void " + module + "_step(" + module + "* m_";
+        out += api + " void " + module + "_step(" + module + "* m_";
         // An input x is 'x_in_', which neither 'm_', a temporary 't0_' nor
         // a function 'model_f' can be named (C342).
         for (const std::string& name : inputs)
@@ -7297,7 +7306,31 @@ private:
             out += written(name, assignments, indent);
             if (late) out += "    }\n";
         }
-        out += "}\n\n#endif\n";
+        out += "}\n\n";
+        // The layout, for a host that reads no C, as many to a line as fit;
+        // the names end with a null pointer, as argv does.
+        const auto table = [&](const std::string& head, const std::vector<std::string>& items) {
+            std::string text = api + " const " + head + "[] = {\n", line = "   ";
+            for (std::size_t i = 0; i < items.size(); ++i) {
+                const std::string item = " " + items[i] + (i + 1 < items.size() ? "," : "");
+                if (line.size() > 3 && line.size() + item.size() > 80) {
+                    text += line + "\n";
+                    line = "   ";
+                }
+                line += item;
+            }
+            return text + line + "\n};\n";
+        };
+        std::vector<std::string> names, offsets;
+        for (const Member& member : members) {
+            names.push_back("\"" + member.key + "\"");
+            offsets.push_back("offsetof(" + module + ", " + member.key + ")");
+        }
+        names.push_back("0");
+        out += "#ifdef " + shared + "\n#include <stddef.h>\n" + api + " const size_t " + module +
+               "_size_ = sizeof(" + module + ");\n" +
+               table("char* const " + module + "_members_", names) +
+               table("size_t " + module + "_offsets_", offsets) + "#endif\n\n#endif\n";
         if (splits_) {
             const std::string define = "#define " + upper_ + "_NOINLINE_";
             out.insert(stepping,

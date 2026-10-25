@@ -43,12 +43,23 @@ typedef struct kalman {
     double p[1];
 } kalman;
 
+/* A shared library, built alone as C, not C++, with -DKALMAN_SHARED: these
+ * functions exported and, at its end, the struct's size and its members'
+ * names, nested ones dotted, and offsets, not yet a stable interface. */
+#ifndef KALMAN_SHARED
+#define KALMAN_API_ static inline
+#elif defined(_WIN32)
+#define KALMAN_API_ __declspec(dllexport)
+#else
+#define KALMAN_API_
+#endif
+
 /* Computes what derives from the parameters: call it after assigning one. */
-static inline void kalman_update(kalman* m_) {
+KALMAN_API_ void kalman_update(kalman* m_) {
     (void)m_;
 }
 
-static inline void kalman_init(kalman* m_) {
+KALMAN_API_ void kalman_init(kalman* m_) {
     memset(m_, 0, sizeof *m_);
     m_->H[0][0] = 1.0;
     m_->H[0][1] = 0.0;
@@ -67,7 +78,7 @@ static inline void kalman_init(kalman* m_) {
 }
 
 /* Advances to the next index, the first at 0, and computes its terms. */
-static inline void kalman_step(kalman* m_, double z_in_) {
+KALMAN_API_ void kalman_step(kalman* m_, double z_in_) {
     ++m_->index_;
     memcpy(m_->P[1], m_->P[0], sizeof m_->P[1]);
     memcpy(m_->x[1], m_->x[0], sizeof m_->x[1]);
@@ -104,5 +115,20 @@ static inline void kalman_step(kalman* m_, double z_in_) {
     m_->x[0][1][0] = m_->index_ == 0 ? 0.0 : m_->xp[0][1][0] + m_->K[0][1][0] * t9_;
     m_->p[0] = m_->x[0][0][0];
 }
+
+#ifdef KALMAN_SHARED
+#include <stddef.h>
+KALMAN_API_ const size_t kalman_size_ = sizeof(kalman);
+KALMAN_API_ const char* const kalman_members_[] = {
+    "H", "I", "Q", "R", "dt", "index_", "z", "Pp", "K", "P", "xp", "x", "p", 0
+};
+KALMAN_API_ const size_t kalman_offsets_[] = {
+    offsetof(kalman, H), offsetof(kalman, I), offsetof(kalman, Q),
+    offsetof(kalman, R), offsetof(kalman, dt), offsetof(kalman, index_),
+    offsetof(kalman, z), offsetof(kalman, Pp), offsetof(kalman, K),
+    offsetof(kalman, P), offsetof(kalman, xp), offsetof(kalman, x),
+    offsetof(kalman, p)
+};
+#endif
 
 #endif

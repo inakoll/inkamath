@@ -33,12 +33,23 @@ typedef struct fir {
     double y[1];
 } fir;
 
+/* A shared library, built alone as C, not C++, with -DFIR_SHARED: these
+ * functions exported and, at its end, the struct's size and its members'
+ * names, nested ones dotted, and offsets, not yet a stable interface. */
+#ifndef FIR_SHARED
+#define FIR_API_ static inline
+#elif defined(_WIN32)
+#define FIR_API_ __declspec(dllexport)
+#else
+#define FIR_API_
+#endif
+
 /* Computes what derives from the parameters: call it after assigning one. */
-static inline void fir_update(fir* m_) {
+FIR_API_ void fir_update(fir* m_) {
     (void)m_;
 }
 
-static inline void fir_init(fir* m_) {
+FIR_API_ void fir_init(fir* m_) {
     memset(m_, 0, sizeof *m_);
     m_->b[0][0] = 0.1;
     m_->b[0][1] = 0.2;
@@ -49,7 +60,7 @@ static inline void fir_init(fir* m_) {
 }
 
 /* Advances to the next index, the first at 0, and computes its terms. */
-static inline void fir_step(fir* m_, double x_in_) {
+FIR_API_ void fir_step(fir* m_, double x_in_) {
     ++m_->index_;
     m_->x[3] = m_->x[2];
     m_->x[2] = m_->x[1];
@@ -59,5 +70,16 @@ static inline void fir_step(fir* m_, double x_in_) {
         m_->y[0] = m_->b[0][0] * m_->x[0] + m_->b[0][1] * m_->x[1] + m_->b[0][2] * m_->x[2] + m_->b[0][3] * m_->x[3];
     }
 }
+
+#ifdef FIR_SHARED
+#include <stddef.h>
+FIR_API_ const size_t fir_size_ = sizeof(fir);
+FIR_API_ const char* const fir_members_[] = {
+    "b", "index_", "x", "y", 0
+};
+FIR_API_ const size_t fir_offsets_[] = {
+    offsetof(fir, b), offsetof(fir, index_), offsetof(fir, x), offsetof(fir, y)
+};
+#endif
 
 #endif
