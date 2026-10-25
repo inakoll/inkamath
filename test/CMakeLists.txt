@@ -246,7 +246,7 @@ add_test(NAME compile_shared COMMAND compile_shared ${shared_libraries})
 find_package(Python3 3.10 COMPONENTS Interpreter QUIET)
 if(Python3_Interpreter_FOUND AND NOT INKAMATH_SANITIZE)
     add_test(NAME compile_shared_python
-             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/compile/shared_test.py
+             COMMAND ${Python3_EXECUTABLE} -B ${CMAKE_CURRENT_SOURCE_DIR}/compile/shared_test.py
                      ${shared_libraries})
 endif()
 
