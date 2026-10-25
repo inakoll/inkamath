@@ -35,7 +35,10 @@ The header holds, in order:
 - **The struct**, named after the header: the parameters and each sequence's
   latest terms, `m.name[k]` being `name_(n-k)`.
 - **`update`**, which computes what derives from the parameters alone. `init`
-  calls it, and the host calls it again after assigning a parameter.
+  calls it, and the host calls it again after assigning a parameter. A
+  default reading another parameter, `Kc = gain(1, R)`, is a value derived
+  from it, recomputed by `update`, so a host that assigns it directly has it
+  overwritten.
 - **`init`**, which sets the parameters to their values.
 - **`step`**, which advances to the next index, the first 0, and computes its
   terms.
