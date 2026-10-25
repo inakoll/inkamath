@@ -204,7 +204,7 @@ set(stdout "a=5\n6\n")
 check(then_input)
 
 set(args --version)
-set(stdout "inkamath 1.0.0\n")
+set(stdout "inkamath 2.0.0\n")
 check(version)
 
 set(args --help)
