@@ -1,5 +1,6 @@
 # Arithmetic, precedence and built-in constants.
-# Examples are taken from README.md so the tests double as documentation checks.
+# Examples are taken from README.md and docs/language.md so the tests double as
+# documentation checks.
 
 >> 1+1
 2
@@ -41,8 +42,8 @@ error: a is not defined
 >> !0
 1
 
-# Unary plus, which README.md section 1 has always listed and the parser has
-# never had: '+5' was 'unexpected' (DESIGN.md, C37). It binds exactly
+# Unary plus, which docs/language.md section 1 has always listed and the parser
+# has never had: '+5' was 'unexpected' (DESIGN.md, C37). It binds exactly
 # as unary minus does.
 >> +5
 5

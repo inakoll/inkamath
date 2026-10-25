@@ -1,5 +1,5 @@
 # 200 points [1, a, b], a and b uniform in [-2, 2], labelled 1 where
-# a + b > 0. Written by README.md's ink() under:
+# a + b > 0. Written by docs/language.md's ink() under:
 #   random.seed(1)
 #   rows = [(1.0, random.uniform(-2, 2), random.uniform(-2, 2)) for _ in range(200)]
 #   ink("X", rows) + ink("y", [[1.0 if a + b > 0 else 0.0] for _, a, b in rows])

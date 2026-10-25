@@ -141,7 +141,7 @@ ex(x)_n = sum_(k=0)^n x^k/!k
 error: the sum did not converge within 100 terms (last partial sum 5050)
 
 # Converging and being summed are not the same thing: 1/k^2 converges, too
-# slowly for a hundred terms to show it -- README.md section 4, and C36.
+# slowly for a hundred terms to show it -- docs/language.md section 4, and C36.
 >> sum_(k=1) 1/k^2
 error: the sum did not converge within 100 terms (last partial sum ~1.6349839)
 

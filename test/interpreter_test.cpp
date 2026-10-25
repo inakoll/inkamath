@@ -65,11 +65,12 @@ void check_transcript(const std::string& name) {
     }
 }
 
-// Every fenced block in README.md is a session, and they run as one. The
-// documentation cannot drift from the interpreter without failing here. It is
-// never recorded: prose is not ours to rewrite.
-void check_readme() {
-    const std::filesystem::path path = std::filesystem::path(INKAMATH_SOURCE_DIR) / "README.md";
+// Every fenced block in a documented file is a session, and a file's blocks
+// run as one, in an interpreter of their own. The documentation cannot drift
+// from the interpreter without failing here. It is never recorded: prose is
+// not ours to rewrite.
+void check_doc(const std::string& name) {
+    const std::filesystem::path path = std::filesystem::path(INKAMATH_SOURCE_DIR) / name;
 
     std::ifstream in(path);
     REQUIRE_MESSAGE(in.good(), "cannot open ", path.string());
@@ -77,7 +78,7 @@ void check_readme() {
     std::vector<transcript::Item> items = transcript::parse(fenced);
 
     REQUIRE_MESSAGE(!items.empty(), "no fenced blocks in ", path.string());
-    replay(items, path.filename().string(), false);
+    replay(items, name, false);
 }
 
 }  // namespace
@@ -347,7 +348,10 @@ TEST_CASE("robot_loop") {
     check_transcript("robot_loop.ink");
 }
 TEST_CASE("readme") {
-    check_readme();
+    check_doc("README.md");
+}
+TEST_CASE("language") {
+    check_doc("docs/language.md");
 }
 
 // Not a transcript entry: the transcript format strips a trailing '\r', so

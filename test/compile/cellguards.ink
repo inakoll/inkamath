@@ -118,13 +118,13 @@ layer = net(x_n = (-1)^n*n/4)
 # [1 1] times a function of [t; 1] whose second cell is constant. c, the
 # one-line ReLU z*(z > 0) of sizes.ink: 0 below 2, NaN at 2, where its
 # comparison jumps and the interpreter refuses, then 1. g, guarded by '> 0':
-# 0 to 2, where the clause taken is 0 and has no part, then 1. h, README's
-# order, '< 0' first: 0 below 2, then 1, at 2 too. e, of [t; t - 1], each
-# cell 0 where it is 0 by an equality and its square elsewhere: 4t - 2, so
-# 4n - 10, but NaN at 2 and 3, where cell 1 and then cell 2 take a clause
-# that holds at the point alone, as the interpreter refuses, 'pk[1,1] takes a
-# clause at t = 0 that holds only there'. The definition has a part where
-# any cell's clause has one, and a cell read from it moves with it, as a
+# 0 to 2, where the clause taken is 0 and has no part, then 1. h,
+# docs/language.md's order, '< 0' first: 0 below 2, then 1, at 2 too. e, of
+# [t; t - 1], each cell 0 where it is 0 by an equality and its square elsewhere:
+# 4t - 2, so 4n - 10, but NaN at 2 and 3, where cell 1 and then cell 2 take a
+# clause that holds at the point alone, as the interpreter refuses, 'pk[1,1]
+# takes a clause at t = 0 that holds only there'. The definition has a part
+# where any cell's clause has one, and a cell read from it moves with it, as a
 # literal's does. d, a dead cell's mask, t*(up([t; t])[2] > 0): 0 to 2, both
 # cells dead and nothing moving where 0 > 0 meets, then 1. m, t*(up([t;
 # -1])[2] < 0): 0 to 2, then NaN, cell 2 dead but cell 1 alive, where the

@@ -60,8 +60,8 @@ stagedosc(h = 1/10) = {
 o = osc()
 stagedo = stagedosc()
 
-# Read twice, README's sq: y is (u + 1)^2 + c, c (p + 1)^2 = 16 computed
-# where p is set, its s its own, where the model's would make it 400; z
+# Read twice, docs/language.md's sq: y is (u + 1)^2 + c, c (p + 1)^2 = 16
+# computed where p is set, its s its own, where the model's would make it 400; z
 # calls a local's function twice, each call binding its own s, (u + 1)^2 +
 # (2u + 1)^2; w's callee reads the model's s, 100, not its caller's local,
 # so w is u + 100; v reads the model's s before its local, 100 + u^2; a's

@@ -123,7 +123,8 @@ H(m)[j<=m] = j*m
  6;
  9]
 
-# The delay line of README.md section 4, without the column it never needed.
+# The delay line of docs/language.md section 4, without the column it
+# never needed.
 >> tap_0[j<=3] = 0
 tap_0[j<=3] = 0
 

@@ -402,7 +402,7 @@ private:
 // where |y| > |x|, else atan(y/x) moved by pi, so that no partial of the
 // quotient overflows; asin and acos atan2 of x and the root of (1 -
 // x)(1 + x), exact near 1; acosh log(x + r), what x + r rounded added back,
-// and below 17/16 log's series. abs, max and min are README's, a guard
+// and below 17/16 log's series. abs, max and min are docs/language.md's, a guard
 // each: at a tie the first argument's slope.
 inline constexpr const char* prelude[] = {
     "ceil(x) = -floor(-x)",

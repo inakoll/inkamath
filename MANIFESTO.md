@@ -47,7 +47,7 @@ has lost before it starts. Tensor Comprehensions is the precedent (see
 
 **Not continuous time.** No solver for differential equations, no plant
 modelling. A model that needs one is discretised by hand, as `plant` in
-`README.md` section 5 is, and what the language offers is to say that
+`docs/language.md` section 5 is, and what the language offers is to say that
 discretisation exactly.
 
 **Not a computer algebra system.** The reasons are in `DESIGN.md`,
@@ -243,10 +243,10 @@ every such guard.
 The largest change, and the one most papers will force first. Machine learning
 is written in rank 3 and rank 4: batch, channel, height, width, heads. Tensors
 stop at rank 3, matrices stacked by `;;` along the first index, interpreted,
-differentiated and compiled (`README.md` section 2; `test/compile/tensor.ink`,
-`tensorgrad.ink`), and a column is read by one index. The way forward should
-be **indexed tensors of any rank**, defined by their cells exactly as matrices
-are now, and not matrices of matrices.
+differentiated and compiled (`docs/language.md` section 2;
+`test/compile/tensor.ink`, `tensorgrad.ink`), and a column is read by one
+index. The way forward should be **indexed tensors of any rank**, defined by
+their cells exactly as matrices are now, and not matrices of matrices.
 
 What the language already has is the right foundation. A definition by cells
 with its bounds, `W[j<=n, k<=m]`, is what Dex calls an index set, so shapes are
@@ -269,13 +269,13 @@ Three notational decisions have to be made out loud before anything else:
   reconsidering only if the cell form proves too heavy on real transcriptions.
   Attention will be the test. Taken: the cell form, a bound left out read
   from the matrix its index reads, so a ReLU is one line of any size
-  (`README.md` section 2); attention's softmax is written so
+  (`docs/language.md` section 2); attention's softmax is written so
   (`test/compile/attention.ink`).
 - **Slices.** `a[1]` as a whole row, which would make a reduction natural
   rather than a recurrence over cells, and give chained indexing a reason to
   exist. At rank 3 they stop being a convenience, since a head, a batch
   element and a channel are each a slice. Taken: one index reads a tensor's
-  slice, so `B[2][1,2]` chains (`README.md` section 2).
+  slice, so `B[2][1,2]` chains (`docs/language.md` section 2).
 - **Subscripts.** Papers use one notation for time and for components, `x_t`
   and `W_jk`. This language separates them, `_` and `[,]`. The separation is
   defensible and should probably stay, but it is the first thing a student will
@@ -310,10 +310,10 @@ Hints, in the order they cost:
   truncation is a lag, and lags are already compiled in as sizes.
 
 Taken: `grad_(w = point) L`, an expression by a name at a point, or by
-several names at once, read by its parts, `g.W` (`README.md` section 4); its
-order, `grad_(x = a)^n`, to 8 interpreted and 2 compiled, a vector's Hessian
-symmetric exactly; a derivative in a direction by a grad inside a grad; a
-Jacobian by its cells. Forward mode as parts carried beside each value, not a
+several names at once, read by its parts, `g.W` (`docs/language.md` section
+4); its order, `grad_(x = a)^n`, to 8 interpreted and 2 compiled, a vector's
+Hessian symmetric exactly; a derivative in a direction by a grad inside a grad;
+a Jacobian by its cells. Forward mode as parts carried beside each value, not a
 dual type; reverse mode for a matrix or several names, a tape in the
 interpreter and an adjoint step compiled (`DESIGN.md`, *Differentiation*,
 *Reverse mode in the interpreter*, *The compiler's adjoint step*;
@@ -339,9 +339,9 @@ Compiled code already receives inputs as the arguments of its step, so a
 stream of samples is an input sequence indexed by sample and a minibatch is
 index arithmetic over it. The interpreter reads such a sequence from a file
 of definitions, a matrix literal written by whatever holds the samples and
-read by `use` (`README.md` section 5), which keeps files holding definitions
-only; anything more, a stream or a sensor, would be the language's first real
-input from outside, and deserves its own decision.
+read by `use` (`docs/language.md` section 5), which keeps files holding
+definitions only; anything more, a stream or a sensor, would be the
+language's first real input from outside, and deserves its own decision.
 
 A deterministic shuffle needs no new construct: a linear congruential
 generator is a recurrence over `mod`, which the prelude has. Its terms are
@@ -360,7 +360,7 @@ units in the last place of a double, and compiled as the header's own C
 functions. With them come `ceil`, `mod`, `abs`, `max` and `min`, and of
 matrices `charpoly`, `conv`, `polyval`, `roots`, `hurwitz`, `schurcohn`, `rho`
 and `abscissa` with their brackets `rhob` and `abscissab`, `eig` with `eigb`,
-`chol`, `smax`, `hinf` and `dhinf` (`README.md` sections 1, 2 and 5;
+`chol`, `smax`, `hinf` and `dhinf` (`docs/language.md` sections 1, 2 and 5;
 `DESIGN.md`, *`exp`, `log` and `tanh` accurate, bounded and compiled*).
 
 ### One compiler, several printers
@@ -431,7 +431,7 @@ Two features that would do more for a student than any target:
   transcribes, and a transcription mistake becomes a visible difference from
   the page. This gives what Fortress wanted, source that looks like
   mathematics, without paying for it in the parser. Taken: `tex ?name`, of
-  clauses, cells, grads and models (`README.md` section 6;
+  clauses, cells, grads and models (`docs/language.md` section 6;
   `test/data/tex.ink`, `grad.ink`).
 - **Numerical lessons the oracle can teach.** Softmax written naively
   overflows in float32 where the exact result is a perfectly good number, and

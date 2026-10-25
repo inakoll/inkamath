@@ -246,7 +246,7 @@ error: tl has no size, as nothing reads a matrix at j alone; write it as tl(z)[i
 
 # --- guards ------------------------------------------------------------------
 
-# A guard's reads give a size as the value's do, so the ReLU of README.md
+# A guard's reads give a size as the value's do, so the ReLU of docs/language.md
 # section 4 needs no bound.
 >> relu(z)[i,j] = z[i,j]
 relu(z)[i,j] = z[i,j]

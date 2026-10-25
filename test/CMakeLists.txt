@@ -56,7 +56,7 @@ foreach(suite IN ITEMS bignum line_editor matrix prelude)
     add_test(NAME ${suite} COMMAND inkamath_tests --test-suite=${suite} --no-intro)
     set_tests_properties(${suite} PROPERTIES TIMEOUT 60)
 endforeach()
-# The interpreter's cases that are not goldens: README.md's sessions and the rest.
+# The interpreter's cases that are not goldens: the docs' sessions and the rest.
 string(REPLACE ";" "," golden_cases "${golden_cases}")
 add_test(NAME interpreter COMMAND inkamath_tests --test-suite=interpreter --no-intro
          --test-case-exclude=${golden_cases})
@@ -77,7 +77,8 @@ elseif(MSVC)
     set(cli_timeout 360)
 elseif(CMAKE_BUILD_TYPE STREQUAL "Debug")
     # A Debug part takes 18 to 27 s alone and ran out of 120 where two CI
-    # runs shared the runner.
+    # runs shared the runner; compile_scratch ran out of 60 the same way.
+    set(cli_case_timeout 180)
     set(cli_timeout 360)
 endif()
 # C is enabled before the cli tests, which are given its compiler (C374).

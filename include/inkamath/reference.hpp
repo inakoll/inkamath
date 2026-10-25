@@ -1261,7 +1261,7 @@ private:
         // every call -- a plain definition, or the general clause -- is the
         // definition's default and is tried last wherever it stands, so that
         // a base case beats the general one however the two were written
-        // (README.md section 4) and so that a definition can be patched up
+        // (docs/language.md section 4) and so that a definition can be patched up
         // afterwards with the cases it turned out to need.
         for(const Clause<T>& clause : clauses_) {
             if(IsGeneral(clause) || IsPlain(clause)) continue;
@@ -1324,7 +1324,7 @@ private:
                                     : ""));
     }
 
-    // A matrix defined by its cells (README.md section 2). Its size is the
+    // A matrix defined by its cells (docs/language.md section 2). Its size is the
     // matrix written whole's or its clauses' for all cells, by their bounds or
     // their reads (Measured); the matrix written whole gives every cell no
     // clause does.
@@ -1460,7 +1460,7 @@ private:
         return std::nullopt;
     }
 
-    // A term of a sequence defined by its cells (README.md section 4). From
+    // A term of a sequence defined by its cells (docs/language.md section 4). From
     // the most specific clause to the least: one for this index and this
     // cell; the base term at this index, written whole or by its cells; one
     // for this cell of every term; the general clauses, by their cells and

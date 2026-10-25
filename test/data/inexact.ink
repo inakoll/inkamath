@@ -76,7 +76,7 @@ digits = 17
 >> digits = 9
 digits = 9
 
-# The answers of the prelude that printed bare (README.md, section 2).
+# The answers of the prelude that printed bare (docs/language.md, section 2).
 >> rho([0 1; 0 0])
 ~0
 
@@ -480,7 +480,7 @@ Du(n)[j<=n, k<=n] = (j == k)*10^(j-1)*ua
 >> grad_(t = ~(1.5e-300)) log(t*10^200*10^200)
 ~6.66666667e+299
 
-# README.md's examples that move.
+# docs/language.md's examples that move.
 >> 2+3*i
 ~(2+i*3)
 
