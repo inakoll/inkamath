@@ -6,7 +6,7 @@
  * optional.ink's seen; and bank's y_3 and, by its dotted name, its instance
  * s_sharp's v_3, for an input of 1. Each library's tables are held to one
  * another: its count to its names, its types to its offsets, and its inputs
- * to what its step takes. */
+ * to what its step takes, for inputs.ink's ctl a value and a column. */
 #ifdef _WIN32
 #include <windows.h>
 #else
@@ -210,16 +210,17 @@ static int bank(void* library) {
 }
 
 int main(int argc, char** argv) {
-    void* libraries[4];
-    if (argc != 5) {
-        puts("usage: compile_shared libpid libtrack libpidf libbank");
+    void* libraries[5];
+    if (argc != 6) {
+        puts("usage: compile_shared libpid libtrack libpidf libbank libctl");
         return 2;
     }
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < 5; ++i) {
         libraries[i] = load(argv[i + 1]);
         if (!libraries[i]) return 1;
     }
     return pid(libraries[0]) | track(libraries[1]) | pidf(libraries[2]) | bank(libraries[3]) |
            tables(libraries[0], "pid", "y") | tables(libraries[1], "track", "z?") |
-           tables(libraries[2], "pidf", "y") | tables(libraries[3], "bank", "x");
+           tables(libraries[2], "pidf", "y") | tables(libraries[3], "bank", "x") |
+           tables(libraries[4], "ctl", "r s");
 }

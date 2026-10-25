@@ -1,5 +1,7 @@
 """compile_shared's libraries, loaded by tools/inkamath_model.py against the
-values shared_test.c holds them to, and pid's u_2 for r = 2: 2*1.8 + 0.37 - 0.1."""
+values shared_test.c holds them to, pid's u_2 for r = 2: 2*1.8 + 0.37 - 0.1,
+and ctl's u_2 for r = 1 and s = [2; 1]: 1 - 3/2*2 - 1/2; and refusing a value
+that is not its input's, absent where it is not optional or short of cells."""
 import pathlib
 import sys
 
@@ -16,7 +18,7 @@ def held(what, got, exact, within=0.0):
         failed = 1
 
 
-path = dict(zip(("pid", "track", "pidf", "bank"), sys.argv[1:], strict=True))
+path = dict(zip(("pid", "track", "pidf", "bank", "ctl"), sys.argv[1:], strict=True))
 pid, raised = Model(path["pid"], "pid"), Model(path["pid"], "pid")
 raised["r"] = 2
 for n in range(11):
@@ -45,4 +47,18 @@ for n in range(4):
     bank.step(1.0)
 held("bank's y_3", bank["y"][0], 105 / 128)
 held("bank's s_sharp.v_3", bank["s_sharp.v"][0], 1.125)
+
+ctl = Model(path["ctl"], "ctl")
+for n in range(3):
+    ctl.step(1, [n, 1])
+held("ctl's u_2", ctl["u"][0], -2.5)
+for name, refused in (("pid.step(None)", lambda: pid.step(None)),
+                      ("ctl.step(1, [2])", lambda: ctl.step(1, [2])),
+                      ('pid["e"] = [1]', lambda: pid.__setitem__("e", [1]))):
+    try:
+        refused()
+        print(f"{name} is not refused")
+        failed = 1
+    except ValueError:
+        pass
 sys.exit(failed)

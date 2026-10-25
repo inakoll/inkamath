@@ -209,10 +209,12 @@ set_target_properties(compile_host PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED 
 add_test(NAME compile_host COMMAND compile_host)
 
 # A header built as a shared library (DESIGN.md): pid's, track's with its
-# optional input, pid's in floats and bank's with its instances, each
-# compiled alone as C under its macro and loaded by a host that reads no C.
+# optional input, pid's in floats, bank's with its instances and ctl's with
+# a column input, each compiled alone as C under its macro and loaded by a
+# host that reads no C.
 set(shared_libraries "")
-foreach(shared IN ITEMS pid:pid track:optional:track pidf:pid:--float bank:bank)
+foreach(shared IN ITEMS pid:pid track:optional:track pidf:pid:--float bank:bank
+                     ctl:inputs:ctl)
     string(REPLACE ":" ";" shared ${shared})
     list(POP_FRONT shared name file)
     set(header ${CMAKE_CURRENT_BINARY_DIR}/compile/shared/${name}.h)
