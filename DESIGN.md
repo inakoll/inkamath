@@ -13506,9 +13506,9 @@ Decided:
 - **What a file defines, `--names file`**, the one change to the binary,
   accepted by the owner: each name the file leaves in the session, run as
   `--compile` runs it, one a line, sorted as bytes, after what it is:
-  `model`, `instance`, `sequence`, `function` (any other definition with
-  parameters, a sequence with parameters and a function by cells among
-  them), `value` (any other without an index, a matrix by cells among
+  `model`, `instance`, `sequence` (one with parameters among them, which
+  no call reads), `function` (any other definition with parameters, a
+  function by cells among them), `value` (any other without an index, a matrix by cells among
   them) or `file` (one used); a name brought in by `use f (a)` is what it
   is in f, and a prelude name only where the file defines it again.
   Refused as `--compile` refuses a file, and with anything else on the
@@ -13711,16 +13711,13 @@ CMake C compiler. `pip install -e .` checked with hatchling: `import
 inkamath` from a venv, its interpreter `build/inkamath`; the wheel holds
 `inkamath.py` alone.
 
-Departures, and one open:
-- **Open: three of the test's entries contradict its rows.** `ev("[1/4,
-  2^0.5]")[0]` is held to `F(1, 4)`, `[1/3, 2^0.5]`'s `[0]` to `1/3`, and
-  `[~0/~0, 1/~0, -1/~0]` to a list of three, where each is a 1x2 or 1x3 row,
-  which the entry, ruled by the owner, gives as `[[a, b]]`, as the same
-  test holds `[1 2 3]` to `[[1, 2, 3]]`. The module gives the rows, so
-  `compile_shared_python` fails there, the `[0]` of a row being a list and
-  its `[1]` an `IndexError`, which stops the test. With those four reads
-  indexed `[0][...]`, every other entry passes. Not changed: an expected
-  value, for whoever rules.
+Departures:
+- **Three of the test's entries contradicted its rows**: `[1/4, 2^0.5]`'s
+  and `[1/3, 2^0.5]`'s cells and `[~0/~0, 1/~0, -1/~0]` were read as flat
+  lists where the owner's row rule gives `[[a, b]]`; the four reads now index
+  the row, no expected value moved.
+- **A sequence with parameters is a `sequence`**, the review finding a
+  callable `t(x)` that could only be refused, "index it".
 - `main.cpp` 46 lines, 21,213 to 21,259 lines of sources over checkmodel,
   for about 34: the classification as conditions, since a model's or a
   file's reference has no clause to read, and the usage's test.

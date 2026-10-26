@@ -280,7 +280,7 @@ set(stdout "model conv\nvalue lap\nmodel power\nfunction relu\nsequence u\nseque
 check(names_kernel)
 
 # A definition by cells is a value, or a function with parameters; a
-# sequence with parameters is a function, read at an index; a name
+# sequence with parameters is a sequence, which no call reads; a name
 # brought in is what it is in its file. Sorted as bytes, capitals first.
 file(COPY ${compiled}/filters.ink DESTINATION "${OUT}")
 file(WRITE "${OUT}/kinds.ink" [=[
@@ -293,7 +293,7 @@ w = lowpass(u_n = n)
 z_n = w.v_n
 ]=])
 set(args --names kinds.ink)
-set(stdout "value E\nfunction f\nfile filters\nmodel lowpass\nfunction t\ninstance w\nsequence z\n")
+set(stdout "value E\nfunction f\nfile filters\nmodel lowpass\nsequence t\ninstance w\nsequence z\n")
 check(names_kinds)
 
 # A transcript's entries are its definitions; a file of none lists none.

@@ -298,9 +298,9 @@ static int names(const string& source) {
             if (!kind && stack.InstanceScope(definition)) kind = "instance";
             if (!kind) {
                 const auto& said = definition->Clauses().front().parameters;
-                kind             = !said.parameters_names().empty() ? "function"
-                                   : said.indexed()                 ? "sequence"
-                                                                    : "value";
+                kind             = said.indexed()                   ? "sequence"
+                                   : !said.parameters_names().empty() ? "function"
+                                                                      : "value";
             }
             kinds[name] = kind;
         }
