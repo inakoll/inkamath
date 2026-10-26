@@ -63,8 +63,8 @@ At a terminal the prompt edits the line and keeps its history.
               replay it and report each answer that is not the one recorded
   --float     with --compile or --check, write floats where they write
               doubles
-  --steps n   with --check and an instance, step it n times rather than
-              100, n from 1 to 100000
+  --steps n   with --check and -o, step n times rather than 100, n from
+              1 to 100000
   --help      print this and exit
 
 A file whose first line that is not blank or a comment starts with '>>'
@@ -216,8 +216,9 @@ static int compile(const string& source, const string& name, const string& targe
     return write(target, header) ? 0 : 2;
 }
 
-// The oracle (DESIGN.md, next in line): an instance the file defines,
-// compiled, and the program that holds it to the interpreter.
+// The oracle (DESIGN.md, next in line): an instance the file defines, a
+// model's with every default or the file's own sequences, compiled, and the
+// program that holds them to the interpreter.
 static int check(const string& source, const string& name, const string& target, int steps) {
     ifstream in(source);
     if (!in) {
@@ -373,16 +374,16 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // Any --check but a transcript's replay is an instance's, and one
+    // Any --check but a transcript's replay writes a program, and one
     // malformed is told --check's usage.
     const bool instance = checking && (files.size() != 1 || !target.empty());
     if (CompileC::floats && !compiling && !instance) {
-        cerr << "inkamath: --float takes --compile, or --check with an instance\n"
+        cerr << "inkamath: --float takes --compile, or --check with -o check.c\n"
                 "Try 'inkamath --help'.\n";
         return 2;
     }
     if (steps && (compiling || !instance)) {
-        cerr << "inkamath: --steps takes --check with an instance\nTry 'inkamath --help'.\n";
+        cerr << "inkamath: --steps takes --check with -o check.c\nTry 'inkamath --help'.\n";
         return 2;
     }
     if (compiling) {

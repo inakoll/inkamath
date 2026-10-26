@@ -233,8 +233,8 @@ At a terminal the prompt edits the line and keeps its history.
               replay it and report each answer that is not the one recorded
   --float     with --compile or --check, write floats where they write
               doubles
-  --steps n   with --check and an instance, step it n times rather than
-              100, n from 1 to 100000
+  --steps n   with --check and -o, step n times rather than 100, n from
+              1 to 100000
   --help      print this and exit
 
 A file whose first line that is not blank or a comment starts with '>>'
@@ -748,15 +748,15 @@ foreach(twice IN ITEMS --compile --check --echo -i)
     check(twice_${twice})
 endforeach()
 
-# Only an instance's check has steps: not a header, a transcript replayed,
-# or files run.
+# Only a check that writes a program has steps: not a header, a transcript
+# replayed, or files run.
 file(WRITE "${OUT}/said.ink" ">> 1+1\n2\n")
 foreach(case IN ITEMS "compile;--compile;coast.ink;fall;-o;fall.h"
                       "transcript;--check;said.ink"
                       "run;coast.ink")
     list(POP_FRONT case name)
     set(args ${case} --steps 10)
-    set(stderr "inkamath: --steps takes --check with an instance\nTry 'inkamath --help'.\n")
+    set(stderr "inkamath: --steps takes --check with -o check.c\nTry 'inkamath --help'.\n")
     set(exit 2)
     check(check_steps_${name}_refused)
 endforeach()
@@ -1663,10 +1663,10 @@ set(exit 1)
 check(check_not_transcript)
 
 
-# A float target (DESIGN.md, compile/float.ink): beside --compile or an
-# instance's --check, floats where the header writes doubles.
+# A float target (DESIGN.md, compile/float.ink): beside --compile or a
+# --check that writes a program, floats where the header writes doubles.
 set(args --float first.txt)
-set(stderr "inkamath: --float takes --compile, or --check with an instance\nTry 'inkamath --help'.\n")
+set(stderr "inkamath: --float takes --compile, or --check with -o check.c\nTry 'inkamath --help'.\n")
 set(exit 2)
 check(float_usage)
 

@@ -240,9 +240,9 @@ nothing defines is refused, and so is a file of models alone.
 
 A report reads, in order:
 
-1. **What was run**: the instance, its steps, `in float` under `--float`, and
-   whether the interpreter's terms were exact throughout: `against exact
-   values`, or `against exact values until 6 and inexact ones from there`.
+1. **What was run**: the instance, or the file, its steps, `in float` under
+   `--float`, and whether the interpreter's terms were exact throughout:
+   `against exact values`, or `against exact values until 6 and inexact ones from there`.
 2. **A disturbed run's other clause**, if any: the first step at which a
    disturbed run takes another clause than the interpreter, at a sequence's
    guard or a function's the file writes, in the words of 3. There the
@@ -306,10 +306,10 @@ braked.wheels: where lim nv runs out, 'wheels_n[j<=2] | lim nv(j*c_n/2) < 1 = 1'
 
 ### Steps
 
-`--steps n` beside an instance's `--check` steps it n times rather than a
-hundred, n from 1 to 100000. n counts the step's calls, the one that computes
-the first term among them, so a model of N steps after its initial term, `y_0`
-to `y_N`, is checked whole with `--steps` N + 1
+`--steps n` beside a `--check` that writes a program steps it n times rather
+than a hundred, n from 1 to 100000. n counts the step's calls, the one that
+computes the first term among them, so a model of N steps after its initial
+term, `y_0` to `y_N`, is checked whole with `--steps` N + 1
 ([`steps.ink`](../test/compile/steps.ink)).
 
 Given a transcript alone, `--check` replays it instead
@@ -318,10 +318,11 @@ Given a transcript alone, `--check` replays it instead
 In float
 --------
 
-`--float`, beside `--compile` or an instance's `--check`, writes floats where
-the header writes doubles, every constant the nearest float, for a target that
-computes in float; its first comment names what reads a constant folded from
-inexact numbers, computed at the interpreter's precision, not a float's.
+`--float`, beside `--compile` or a `--check` that writes a program, writes
+floats where the header writes doubles, every constant the nearest float, for
+a target that computes in float; its first comment names what reads a constant
+folded from inexact numbers, computed at the interpreter's precision, not a
+float's.
 
 Its check holds each term within a thousandth of one plus the interpreter's
 and says the most any term came in units of a float, the spacing of floats at
