@@ -13819,7 +13819,7 @@ The owner's request, a Python interface over the binary:
   - **What a file defines, `--names file`**, the one change to the binary,
     accepted by the owner: each name the file leaves in the session, run as
     `--compile` runs it, one a line, sorted as bytes, after what it is:
-    `model`, `instance`, `sequence`, `function` (any definition with
+    `model`, `instance`, `sequence`, `function` (any other definition with
     parameters, a sequence with parameters and a function by cells among
     them), `value` (any other without an index, a matrix by cells among
     them) or `file` (one used); a name brought in by `use f (a)` is what it
@@ -13856,6 +13856,7 @@ The owner's request, a Python interface over the binary:
     `-nan`, `~1e+30`), `~(a+i*b)` a `complex` in each of its forms (`~(i)`,
     `~(-2-i*3)`, `~(-nan+i*inf)`). A 1x1 matrix is a single value, a column
     a list, a row or a matrix a list of rows, a tensor a list of slices,
+    each a list of rows whatever its shape, `[1;;2]` `[[[1]], [[2]]]`,
     always. `ValueError` with the diagnostic; an expression of more than one
     line is refused. A row is `[[a, b]]`, so that it is given back as a row,
     where `m[key]` gives `[a, b]`; accepted by the owner. A known limit,
@@ -13864,19 +13865,21 @@ The owner's request, a Python interface over the binary:
     float `~0.33333333333333333`. Cell-wise `frac` would fix it and move the
     goldens of frac's refusal; not taken.
   - **An argument**: `.tolist()` first (a numpy array or scalar), then
-    `bool` and `int` as digits, `Fraction` `p/q`, `float` its `repr` read
-    as written (0.1 is 1/10, as data is, `docs/language.md` section 5),
+    `bool` and `int` as digits, `Fraction` `p/q`, `float` its `repr` read as
+    written (0.1 is 1/10, as data is, `docs/language.md` section 5),
     `complex` `(re+(im)*i)` of reprs, a sequence of numbers a column, of
     sequences rows, of those slices. Ragged or empty is `ValueError`,
-    anything else `TypeError`; an infinity or NaN is the interpreter's to
-    refuse.
+    anything else `TypeError`, a `str` among them; an infinity or NaN is the
+    interpreter's to refuse.
   - **The prelude**: `pi`, `e`, `i` read lazily by the module's
     `__getattr__`, and the functions the request names, each `name(*args)`
-    through `eval`. `describe(name, *, file=None)` is `?name` and
-    `tex(name, *, file=None)` `tex ?name`, run as `eval` runs. `eval`,
-    `abs`, `max`, `min` and `re` are importable by name and left out of
-    `__all__`; Python's `re` is imported under another name, and the
-    module calls no builtin it shadows.
+    through `eval`: the built-ins `floor`, `re` and `im`, the prelude's
+    functions docs/language.md section 5 lists but `rhob`, `abscissab` and
+    `eigb`, sequences, and `ilogb`, which log's reduction names.
+    `describe(name, *, file=None)` is `?name` and `tex(name, *, file=None)`
+    `tex ?name`, run as `eval` runs. `eval`, `abs`, `max`, `min` and `re`
+    are importable by name and left out of `__all__`; Python's `re` is
+    imported under another name, and the module calls no builtin it shadows.
   - **One process per call**: rejected, a persistent interpreter, which
     needs a sentinel to frame a multi-line answer, leaks one call's
     definitions into the next and must recover from a runaway.
@@ -13898,9 +13901,11 @@ The owner's request, a Python interface over the binary:
     refused. `m[key]` is the current term and `m.history(key)` the window
     `[key_n, key_(n-1), ...]`, refused for a parameter; a term is a float,
     or an int for an integer member, a 1x1 a single value, a row or a column
-    a list, a matrix a list of rows, a tensor a list of slices.
-    **Breaking**: `m["u"][0]` is now `m["u"]`, and docs/compile.md's example
-    moves.
+    a list, a matrix a list of rows, a tensor a list of slices, each a list
+    of rows. A name the struct does not hold is `KeyError`, given as a
+    parameter too, a parameter the header compiles in, a size, an exponent
+    or a constant the step needs, among them. **Breaking**: `m["u"][0]` is
+    now `m["u"]`, and docs/compile.md's example moves.
   - **The cache**: `$XDG_CACHE_HOME/inkamath`, else `~/.cache/inkamath`,
     made private, never the shared temporary directory, where another user
     could place a library to be loaded: made with mode 0700, and on POSIX
