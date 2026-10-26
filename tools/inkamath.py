@@ -159,7 +159,8 @@ def _ask(line, file):
     """The last answer of a session, after the file's, any error among them raised."""
     if "\n" in line or "\r" in line:
         raise ValueError("an expression of more than one line")
-    args = ["--echo"] + ([os.path.abspath(file), "-i"] if file is not None else [])
+    line = "(q)" if line == "q" else line  # 'q' alone ends a session
+    args =["--echo"] + ([os.path.abspath(file), "-i"] if file is not None else [])
     out = _inkamath(*args, given=f"digits = 17\n{line}\n", ok=(0, 1))  # 1: an error answered
     answers = []
     for text in out.splitlines():

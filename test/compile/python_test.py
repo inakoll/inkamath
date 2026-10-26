@@ -233,6 +233,9 @@ refused("a file that fails", ValueError, lambda: ev("a", file=work / "broken.ink
 (work / "quits.ink").write_text("x = 7\nx\nq\n")
 refused("2 after a file that quits", ValueError, lambda: ev("2", file=work / "quits.ink"),
         "the session ended before the answer")
+# A value q is asked as one, 2^0.5 shown approximated, which frac refuses (C423).
+(work / "flux.ink").write_text("q = 2^0.5\n")
+ulps("flux.ink's q", ev("q", file=work / "flux.ink"), math.sqrt(2), 1)
 
 # '?name' and 'tex ?name' (docs/language.md, sections 1 and 6).
 same('describe("mod")', inkamath.describe("mod"), "mod(a, b) = a - b*floor(a/b)")
