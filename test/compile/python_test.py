@@ -428,6 +428,13 @@ compiler = os.environ["CC"]
 os.environ["CC"] = f'"{sys.executable}" -c "import sys; sys.exit(\'no compiler here\')"'
 refused("a C compiler that fails", RuntimeError, mix, "no compiler here")
 os.environ["CC"] = compiler
+# A file placed where the cache would be is refused as a directory not the
+# user's own is (C427).
+(work / "planted").mkdir()
+(work / "planted" / "inkamath").write_text("")
+os.environ["XDG_CACHE_HOME"] = str(work / "planted")
+refused("a file where the cache would be", RuntimeError, mix, "is not a directory")
+os.environ["XDG_CACHE_HOME"] = str(work / "cache")
 
 # README's getting started: pid for r = 2 as above, and the loop closed on
 # its plant: x_1 = 0.2, x_2 = 0.2 + 0.1*(1.48 - 0.2) = 0.328, u_0 = 2, u_1 =

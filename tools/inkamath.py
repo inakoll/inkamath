@@ -227,10 +227,13 @@ def _cache():
     """Private: on POSIX a directory the user owns that no one else may write."""
     root = os.environ.get("XDG_CACHE_HOME") or os.path.join(os.path.expanduser("~"), ".cache")
     path = os.path.join(root, "inkamath")
-    os.makedirs(path, mode=0o700, exist_ok=True)
+    try:
+        os.makedirs(path, mode=0o700, exist_ok=True)
+    except FileExistsError:  # not a directory: refused below
+        pass
     found = os.stat(path)
-    if os.name == "posix" and (not stat.S_ISDIR(found.st_mode) or found.st_uid != os.getuid()
-                               or found.st_mode & 0o022):
+    if not stat.S_ISDIR(found.st_mode) or os.name == "posix" and (
+            found.st_uid != os.getuid() or found.st_mode & 0o022):
         raise RuntimeError(f"{path} is not a directory of the user's own that only they write")
     return path
 
