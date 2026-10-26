@@ -13865,8 +13865,8 @@ The owner's request, a Python interface over the binary:
   - **The prelude**: `pi`, `e`, `i` read lazily by the module's
     `__getattr__`, and the functions the request names, each `name(*args)`
     through `eval`. `describe(name)` is `?name` and `tex(name)` `tex
-    ?name`. `eval`, `abs`, `max`, `min`, `re` and `compile` are importable
-    by name and left out of `__all__`; Python's `re` is imported under
+    ?name`. `eval`, `abs`, `max`, `min` and `re` are importable by name
+    and left out of `__all__`; Python's `re` is imported under
     another name, and the module calls no builtin it shadows.
   - **One process per call**: rejected, a persistent interpreter, which
     needs a sentinel to frame a multi-line answer, leaks one call's
@@ -13895,8 +13895,9 @@ The owner's request, a Python interface over the binary:
     processes build the same at worst; on Windows, where a loaded DLL
     cannot be replaced, one already there is taken. `--compile` runs at
     every instantiation, the header being the key; `cc` only on a miss.
-    `compile(path, name=None, *, float32=False)` returns that library's
-    path, loaded as `Model(lib, "model")`.
+    No `compile`, by the owner's ruling: `Model("x.ink")` compiles and
+    caches, and `inkamath --compile` gives a header, so the library's
+    path and its `model_` prefix stay the module's own.
   - **Flags**: `cc -O2 -shared -fPIC -x c -DMODEL_SHARED model.h -o lib
     -lm`, as docs/compile.md builds a library, and the check program `cc
     -O2 check.c -o check -lm`, so the check holds the step as built.
@@ -13963,8 +13964,7 @@ The owner's request, a Python interface over the binary:
     inkamath_model.py, `--names` beside the shared tables; README's
     command-line paragraph names `--names`.
 
-  Proposed, for the owner: `compile` is in the request's heading only, and through
-  it the `model_` prefix becomes interface. `eval` gives a row as `[[a,
+  Proposed, for the owner: `eval` gives a row as `[[a,
   b]]`, so that it formats back as a row, where `m[key]` gives it as `[a,
   b]`, as asked. `M(**params)` takes no `float32` where `M.check` does. A
   parameter named `name`, `file`, `steps`, `float32` or `path` is given by

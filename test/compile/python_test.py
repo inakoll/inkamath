@@ -298,7 +298,7 @@ near("roots(s^2 + 2s + 2)", roots([1, 2, 2]), [-1 - 1j, -1 + 1j], 1e-15)
 # Python's builtins are not taken by a star import; each is there by name.
 star = {}
 exec("from inkamath import *", star)
-for name in ("eval", "abs", "max", "min", "re", "compile"):
+for name in ("eval", "abs", "max", "min", "re"):
     if name in star:
         fail(f"from inkamath import * takes {name}")
     if not hasattr(inkamath, name):
@@ -386,11 +386,12 @@ built = {p: p.stat().st_mtime_ns for p in cache.iterdir()}
 same("libraries after mix()", len(built), 1)
 again = mix(g=F(1, 3))
 same("the cache after mix() again", {p: p.stat().st_mtime_ns for p in cache.iterdir()}, built)
-same("compile's library", inkamath.compile(mixfile) in built, True)
-lib = Model(inkamath.compile(mixfile), "model")
+lib = Model(mixfile)
 for u, b in ((1, 0), (1, 0), (0, 1)):
     lib.step(u, b)
-same("the library's v_2 for g = 1/2: 1/8 + 3/4*1/8", lib["v"], 7 / 32)
+same("Model(mix.ink)'s v_2 for g = 1/2: 1/8 + 3/4*1/8", lib["v"], 7 / 32)
+same("the cache after Model(mix.ink)", {p: p.stat().st_mtime_ns for p in cache.iterdir()},
+     built)
 single = Model(mixfile, float32=True)
 for u, b in ((1, 0), (1, 0), (0, 1)):
     single.step(u, b)
