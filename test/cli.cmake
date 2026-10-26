@@ -648,6 +648,12 @@ set(args --check gains.ink -o gains.c)
 set(stderr "inkamath: gains.ink defines no sequence of its own; check a model by name\n")
 set(exit 1)
 check(check_models_only)
+# C420: a file of no model is not told to check one.
+file(WRITE "${OUT}/constant.ink" "x = 1\n")
+set(args --check constant.ink -o constant.c)
+set(stderr "inkamath: constant.ink defines no sequence\n")
+set(exit 1)
+check(check_no_sequence)
 
 file(WRITE "${OUT}/fed.ink" "y_0 = 0\ny_n = y_(n-1) + x_n\n")
 set(args --check fed.ink -o fed.c)

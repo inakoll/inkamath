@@ -44,8 +44,12 @@ public:
         const CompileC::Compiled compiled =
             CompileC::Build(stack, module, source, unfed.model, &unfed, true);
         if (!definition && compiled.sequences.empty())
-            throw std::runtime_error(source +
-                                     " defines no sequence of its own; check a model by name");
+            throw std::runtime_error(
+                source + " defines no sequence" +
+                (std::ranges::any_of(unfed.names,
+                                     [](const auto& n) { return n.second->model != nullptr; })
+                     ? " of its own; check a model by name"
+                     : ""));
         if (!definition && (!compiled.inputs.empty() || !compiled.undefined.empty()))
             throw std::runtime_error(
                 source + " reads " +
