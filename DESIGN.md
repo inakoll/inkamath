@@ -13812,8 +13812,8 @@ The owner's request, a Python interface over the binary:
   registered while they fail: `INKAMATH=build/inkamath CC=cc python3 -B
   test/compile/python_test.py`, and `cmake -DEXE=$PWD/build/inkamath
   -DCASE_TIMEOUT=60 -DPART=spec -DOUT=build/cli_spec -P test/cli.cmake`.
-  Not a stable interface, as the
-  library's tables are not (MANIFESTO, *Not yet a library*).
+  Not a stable interface, as the library's tables are not (MANIFESTO, *Not
+  yet a library*).
 
   Decided:
   - **What a file defines, `--names file`**, the one change to the binary,
@@ -13898,14 +13898,16 @@ The owner's request, a Python interface over the binary:
     the struct's name is nobody's. Parameters applied, then one update;
     `set(**params)` one update; `m[key] = value` a parameter, a member
     before `index_`, a number or nested sequences in C order, a sequence
-    refused. `m[key]` is the current term and `m.history(key)` the window
-    `[key_n, key_(n-1), ...]`, refused for a parameter; a term is a float,
-    or an int for an integer member, a 1x1 a single value, a row or a column
-    a list, a matrix a list of rows, a tensor a list of slices, each a list
-    of rows. A name the struct does not hold is `KeyError`, given as a
-    parameter too, a parameter the header compiles in, a size, an exponent
-    or a constant the step needs, among them. **Breaking**: `m["u"][0]` is
-    now `m["u"]`, and docs/compile.md's example moves.
+    refused, `ValueError`, as are a parameter's history, a step given other
+    than its inputs, and a library's `m.check()`, which has no `.ink`.
+    `m[key]` is the current term and `m.history(key)` the window `[key_n,
+    key_(n-1), ...]`, refused for a parameter; a term is a float, or an int
+    for an integer member, a 1x1 a single value, a row or a column a list, a
+    matrix a list of rows, a tensor a list of slices, each a list of rows. A
+    name the struct does not hold is `KeyError`, given as a parameter too, a
+    parameter the header compiles in, a size, an exponent or a constant the
+    step needs, among them. **Breaking**: `m["u"][0]` is now `m["u"]`, and
+    docs/compile.md's example moves.
   - **The cache**: `$XDG_CACHE_HOME/inkamath`, else `~/.cache/inkamath`,
     made private, never the shared temporary directory, where another user
     could place a library to be loaded: made with mode 0700, and on POSIX
@@ -13924,13 +13926,14 @@ The owner's request, a Python interface over the binary:
     and `inkamath --compile` gives a header, so the library's path and its
     `model_` prefix stay the module's own.
   - **Flags**: `cc -O2 -ffp-contract=off -shared -fPIC -x c -DMODEL_SHARED
-    model.h -o lib -lm`, as docs/compile.md builds a library, and the check
-    program `cc -O2 -ffp-contract=off check.c -o check -lm`, so the check
-    holds the step as built. `-ffp-contract=off` as `test/CMakeLists.txt`
-    builds every check (C97): GCC fuses by default and Clang within an
-    expression, wherever the target has a fused multiply-add, as every
-    arm64 has, and a fused step is not the interpreter's rounding, nor the
-    values the test works out in Python's doubles.
+    model.h -o lib -lm`, docs/compile.md's library with contraction off, and
+    the check program `cc -O2 -ffp-contract=off check.c -o check -lm`, so
+    the check holds the step as built. `-ffp-contract=off` as
+    `test/CMakeLists.txt` builds every check (C97): GCC fuses by default and
+    Clang within an expression, wherever the target has a fused
+    multiply-add, as every arm64 has, and a fused step is not the
+    interpreter's rounding, nor the values the test works out in Python's
+    doubles.
   - **`check(path, name=None, *, steps=100, float32=False, **params)`**,
     `M.check(*, steps=100, float32=False, **params)` and
     `m.check(steps=100)`, in float where `m` was built so: `--check` with
