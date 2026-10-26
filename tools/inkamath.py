@@ -484,6 +484,8 @@ class _Loader:
         if stem not in {name for _, name in names} and {"sequence", "instance"} & {
                 kind for kind, _ in names}:
             given[stem] = _Maker(path, None)
+        for _, name in names:  # as read before a reload
+            vars(module).pop(name, None)
         vars(module).update(given, __all__=sorted([*given, *values]))
 
         def read(name):  # a value read at its first access, and kept

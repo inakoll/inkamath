@@ -360,6 +360,13 @@ try:
     fail("a file that fails is imported")
 except ValueError:
     pass
+# Reloaded, a value read before is read again, as a .py's would be (C424).
+(work / "again.ink").write_text("v = 1\n")
+import again
+same("again.v", again.v, 1)
+(work / "again.ink").write_text("v = 2\n")
+importlib.reload(again)
+same("again.v reloaded", again.v, 2)
 
 from mix import mix
 same("mix.describe()", mix.describe(), model_lines("mix.ink", "mix("))
