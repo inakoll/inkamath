@@ -392,11 +392,11 @@ for u, b in ((1, 0), (1, 0), (0, 1)):
 same("Model(mix.ink)'s v_2 for g = 1/2: 1/8 + 3/4*1/8", lib["v"], 7 / 32)
 same("the cache after Model(mix.ink)", {p: p.stat().st_mtime_ns for p in cache.iterdir()},
      built)
-single = Model(mixfile, float32=True)
-for u, b in ((1, 0), (1, 0), (0, 1)):
-    single.step(u, b)
-same("mix's v_2 in float", single["v"], 7 / 32)
-same("libraries after mix in float", len(list(cache.iterdir())), 2)
+for single in (Model(mixfile, float32=True), mix(float32=True)):
+    for u, b in ((1, 0), (1, 0), (0, 1)):
+        single.step(u, b)
+    same("mix's v_2 in float", single["v"], 7 / 32)
+same("libraries after mix in float, twice", len(list(cache.iterdir())), 2)
 refused("a model the file does not define", ValueError, lambda: Model(mixfile, "nomix"),
         "mix.ink defines no model nomix")
 compiler = os.environ["CC"]

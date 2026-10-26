@@ -13864,10 +13864,11 @@ The owner's request, a Python interface over the binary:
     refuse.
   - **The prelude**: `pi`, `e`, `i` read lazily by the module's
     `__getattr__`, and the functions the request names, each `name(*args)`
-    through `eval`. `describe(name)` is `?name` and `tex(name)` `tex
-    ?name`. `eval`, `abs`, `max`, `min` and `re` are importable by name
-    and left out of `__all__`; Python's `re` is imported under
-    another name, and the module calls no builtin it shadows.
+    through `eval`. `describe(name, *, file=None)` is `?name` and
+    `tex(name, *, file=None)` `tex ?name`, run as `eval` runs. `eval`,
+    `abs`, `max`, `min` and `re` are importable by name and left out of
+    `__all__`; Python's `re` is imported under another name, and the
+    module calls no builtin it shadows.
   - **One process per call**: rejected, a persistent interpreter, which
     needs a sentinel to frame a multi-line answer, leaks one call's
     definitions into the next and must recover from a runaway.
@@ -13876,9 +13877,13 @@ The owner's request, a Python interface over the binary:
     by `--compile path [name] [--float] -o model.h` in a temporary
     directory, `name` defaulting to the file's own step where `--names`
     lists a sequence or an instance, else the model named as the file;
-    `float32` beside a library is refused. The header's module is always
-    `model`, `MODEL_SHARED`: a file's stem may be a word C keeps
-    (`float.ink`), and the struct's name is nobody's. Parameters applied,
+    `float32` beside a library is refused. `path` and `name` are
+    positional only, here and in `check`, and so is `set`'s receiver, so a
+    parameter clashes only with `float32`, or `steps` in a check; such a
+    parameter is given by `m.set(**{"steps": 2})`, and checked by
+    `m.check()`. The header's module is always `model`, `MODEL_SHARED`: a
+    file's stem may be a word C keeps (`float.ink`), and the struct's name
+    is nobody's. Parameters applied,
     then one update; `set(**params)` one update; `m[key] = value` a
     parameter, a member before `index_`, a number or nested sequences in C
     order, a sequence refused. `m[key]` is the current term and
@@ -13902,41 +13907,41 @@ The owner's request, a Python interface over the binary:
     -lm`, as docs/compile.md builds a library, and the check program `cc
     -O2 check.c -o check -lm`, so the check holds the step as built.
   - **`check(path, name=None, *, steps=100, float32=False, **params)`**,
-    `M.check(...)` and `m.check(steps=100)`: `--check` with `--steps` and
-    `--float`, the program built and run, its report returned, a non-zero
-    exit `RuntimeError` with the report, the interpreter's refusal
-    `ValueError`, the compiler's `RuntimeError`. An instance, `check(path,
-    "ctl")`, is checked as named, parameters refused; a file's own step by
-    the `checkmodel` branch's `--check path -o check.c`. A model is
-    checked through a wrapper, `use inkamathsource` and `M =
+    `M.check(*, steps=100, float32=False, **params)` and
+    `m.check(steps=100)`, in float where `m` was built so: `--check` with
+    `--steps` and `--float`, the program built and run, its report returned,
+    a non-zero exit `RuntimeError` with the report, the interpreter's
+    refusal `ValueError`, the compiler's `RuntimeError`. An instance,
+    `check(path, "ctl")`, is checked as named, parameters refused; a file's
+    own step by the `checkmodel` branch's `--check path -o check.c`. A model
+    is checked through a wrapper, `use inkamathsource` and `M =
     inkamathsource.M(k = v)` with every default otherwise, so the report
-    names M; its file is read under that stem, since `use mix` beside
-    `mix = mix.mix()` binds `mix` twice. With parameters, a file's own step
-    is checked from a copy of it with `k = v` lines after its own, an
-    entry `>> k = v` in a transcript. Both run in a temporary directory
-    holding a copy of every `.ink` beside the file, all that `use` reads.
-    `m.check()` gives the values assigned to `m`, as assigned, since
-    construction. Rejected: the wrapper beside the file, which writes into
-    the user's directory, fails where it is read-only and leaves files where
-    a process is killed; renaming the report's instance afterwards; a
-    parameter syntax on the command line, a second way to write an
-    instance.
+    names M; its file is read under that stem, since `use mix` beside `mix =
+    mix.mix()` binds `mix` twice. With parameters, a file's own step is
+    checked from a copy of it with `k = v` lines after its own, an entry `>>
+    k = v` in a transcript. Both run in a temporary directory holding a copy
+    of every `.ink` beside the file, all that `use` reads. `m.check()` gives
+    the values assigned to `m`, as assigned, since construction. Rejected:
+    the wrapper beside the file, which writes into the user's directory,
+    fails where it is read-only and leaves files where a process is killed;
+    renaming the report's instance afterwards; a parameter syntax on the
+    command line, a second way to write an instance.
   - **Import**: a finder appended to `sys.meta_path` on `import inkamath`,
     after Python's own, so a `.py` of the same stem wins; it searches a
     package's `__path__`, or `sys.path` then `sys.argv[0]`'s directory and
     the working directory. `load(path)` makes the same module from a path,
     outside `sys.modules`. `--names` runs once at import: a model is an
-    object at once, `M(**params)` a `Model`, `M.check(...)`, `M.describe()`
-    and `M.tex()`; a function a callable through `eval`; a value read at its
+    object at once, `M(float32=False, **params)` a `Model`, as `Model(path,
+    "M", ...)` is, by the owner's ruling, `M.check(...)`, `M.describe()` and
+    `M.tex()`; a function a callable through `eval`; a value read at its
     first access and kept. A file whose own step `--names` shows, by a
-    sequence or an instance, gets it as its stem, an object of the same
-    kind but for `describe` and `tex`, `pidloop(**params)` and
-    `pidloop.check(...)`, where the file defines no name of its stem;
-    where it does, the step is `Model(path)`. Nothing module-level stands
-    for it, by the owner's ruling. Sequences, instances and files used are
-    not attributes: `eval(..., file=m.__file__)` reads them. `__all__`
-    lists what the file gives; a file that fails raises `ValueError` at
-    import.
+    sequence or an instance, gets it as its stem, an object of the same kind
+    but for `describe` and `tex`, `pidloop(**params)` and
+    `pidloop.check(...)`, where the file defines no name of its stem; where
+    it does, the step is `Model(path)`. Nothing module-level stands for it,
+    by the owner's ruling. Sequences, instances and files used are not
+    attributes: `eval(..., file=m.__file__)` reads them. `__all__` lists
+    what the file gives; a file that fails raises `ValueError` at import.
   - **The C compiler on Windows**: a cc-compatible driver only, GCC, Clang
     or MinGW. MSVC's `cl` takes other flags, and CI's MSVC job runs ctest
     outside a developer prompt, where `cl` finds no headers. The test is
@@ -13966,9 +13971,7 @@ The owner's request, a Python interface over the binary:
 
   Proposed, for the owner: `eval` gives a row as `[[a,
   b]]`, so that it formats back as a row, where `m[key]` gives it as `[a,
-  b]`, as asked. `M(**params)` takes no `float32` where `M.check` does. A
-  parameter named `name`, `file`, `steps`, `float32` or `path` is given by
-  `set(**{...})` only.
+  b]`, as asked.
 
   Cost: `tools/inkamath.py` about 380 lines for the 74 deleted;
   `pyproject.toml` 12; `main.cpp` 34, `include/` and `src/` 21,160 to about
