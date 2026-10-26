@@ -13815,45 +13815,46 @@ The owner's request, a Python interface over the binary:
   library's tables are not (MANIFESTO, *Not yet a library*).
 
   Decided:
-  - **What a file defines, `--names file`**, the one change to the binary:
-    each name the file leaves in the session, run as `--compile` runs it,
-    one a line, sorted as bytes, after what it is: `model`, `instance`,
-    `sequence`, `function` (any definition with parameters, a sequence with
-    parameters and a function by cells among them), `value` (any other
-    without an index, a matrix by cells among them) or `file` (one used); a
-    name brought in by `use f (a)` is what it is in f, and a prelude name
-    only where the file defines it again. Refused as `--compile` refuses a
-    file, and with anything else on the line. Nothing offers this today:
-    `?f` of a file prints `use f`, as written, `?name` a definition whose
-    kind only its syntax tells, and an instance looks like a call until its
-    callee is found to be a model, which only the interpreter can find.
-    About 30 lines of `main.cpp` and 4 of `--help`. Rejected: a session
-    query, `?` alone or `?f` listing a file, which moves queries.ink's
-    goldens for what only a host reads; reading the file in Python, a
-    second parser of the language; and probing kinds by the wording of
-    errors.
+  - **What a file defines, `--names file`**, the one change to the binary,
+    accepted by the owner: each name the file leaves in the session, run as
+    `--compile` runs it, one a line, sorted as bytes, after what it is:
+    `model`, `instance`, `sequence`, `function` (any definition with
+    parameters, a sequence with parameters and a function by cells among
+    them), `value` (any other without an index, a matrix by cells among
+    them) or `file` (one used); a name brought in by `use f (a)` is what it
+    is in f, and a prelude name only where the file defines it again.
+    Refused as `--compile` refuses a file, and with anything else on the
+    line. Nothing offers this today: `?f` of a file prints `use f`, as
+    written, `?name` a definition whose kind only its syntax tells, and an
+    instance looks like a call until its callee is found to be a model,
+    which only the interpreter can find. About 30 lines of `main.cpp` and 4
+    of `--help`. Rejected: a session query, `?` alone or `?f` listing a
+    file, which moves queries.ink's goldens for what only a host reads;
+    reading the file in Python, a second parser of the language; and probing
+    kinds by the wording of errors.
   - **Locating**: the interpreter from `$INKAMATH`, `shutil.which`, then
     `<repo>/build/inkamath`, and the C compiler from `$CC` (split as a shell
     would, so it may carry flags) or `cc`, each read at every call.
-  - **A value, `eval(expr, *, file=None)`**: a process of its own,
-    `inkamath --echo [file -i]` given `digits = 17` and `frac expr`; the
-    answer is the last entry of the transcript, so a file's own answers,
-    however many lines each, are skipped, and an error among them is
-    raised. Where `frac` refuses, approximated, complex or an error, the
-    plain value is asked in a second process and its error, if any, is
-    raised: exact values, the language's point, cost one process (8 ms
-    with the prelude) and nothing hangs on an error's wording. Parsed with
-    no knowledge of layout: a trailing `# ...` comment dropped, `;;` slices,
-    `;` rows, `,` cells, spacing ignored; a bare cell exact, `int` or
-    `Fraction` (which reads `p/q`, `0.25` and `1e-05`), a `~` cell or a
-    NaN a `float` (`~inf`, `-nan`, `~1e+30`), `~(a+i*b)` a `complex` in
-    each of its forms (`~(i)`, `~(-2-i*3)`, `~(-nan+i*inf)`). A 1x1 matrix is a
-    single value, a column a list, a row or a matrix a list of rows, a
-    tensor a list of slices, always. `ValueError` with the diagnostic; an
-    expression of more than one line is refused. Departure from the owner's
-    ruling: frac refuses a matrix with one approximated cell, so its exact
-    cells are read as shown, and an exact 1/3 among them is the float
-    `~0.33333333333333333`. Cell-wise `frac` would fix it and move the
+  - **A value, `eval(expr, *, file=None)`**: a process of its own, `inkamath
+    --echo [file -i]` given `digits = 17` and `frac expr`; the answer is the
+    last entry of the transcript, so a file's own answers, however many
+    lines each, are skipped, and an error among them is raised. Where `frac`
+    refuses, approximated, complex or an error, the plain value is asked in
+    a second process and its error, if any, is raised: exact values, the
+    language's point, cost one process (8 ms with the prelude) and nothing
+    hangs on an error's wording. Parsed with no knowledge of layout: a
+    trailing `# ...` comment dropped, `;;` slices, `;` rows, `,` cells,
+    spacing ignored; a bare cell exact, `int` or `Fraction` (which reads
+    `p/q`, `0.25` and `1e-05`), a `~` cell or a NaN a `float` (`~inf`,
+    `-nan`, `~1e+30`), `~(a+i*b)` a `complex` in each of its forms (`~(i)`,
+    `~(-2-i*3)`, `~(-nan+i*inf)`). A 1x1 matrix is a single value, a column
+    a list, a row or a matrix a list of rows, a tensor a list of slices,
+    always. `ValueError` with the diagnostic; an expression of more than one
+    line is refused. A row is `[[a, b]]`, so that it is given back as a row,
+    where `m[key]` gives `[a, b]`; accepted by the owner. A known limit,
+    accepted by the owner: frac refuses a matrix with one approximated cell,
+    so its exact cells are read as shown, and an exact 1/3 among them is the
+    float `~0.33333333333333333`. Cell-wise `frac` would fix it and move the
     goldens of frac's refusal; not taken.
   - **An argument**: `.tolist()` first (a numpy array or scalar), then
     `bool` and `int` as digits, `Fraction` `p/q`, `float` its `repr` read
@@ -13924,8 +13925,10 @@ The owner's request, a Python interface over the binary:
     the values assigned to `m`, as assigned, since construction. Rejected:
     the wrapper beside the file, which writes into the user's directory,
     fails where it is read-only and leaves files where a process is killed;
-    renaming the report's instance afterwards; a parameter syntax on the
-    command line, a second way to write an instance.
+    renaming the report's instance afterwards; by the owner's ruling, an
+    instance as `--check`'s argument, `--check mix.ink "mix(g = 1/3)"`, a
+    second way to write an instance which removes none of this, a file's own
+    parameters still needing the copy.
   - **Import**: a finder appended to `sys.meta_path` on `import inkamath`,
     after Python's own, so a `.py` of the same stem wins; it searches a
     package's `__path__`, or `sys.path` then `sys.argv[0]`'s directory and
@@ -13948,16 +13951,17 @@ The owner's request, a Python interface over the binary:
     given `CC=${CMAKE_C_COMPILER}` where the compiler's id is GNU, Clang or
     AppleClang, and without it skips what compiles a `.ink`, saying so;
     the prebuilt libraries, values, the prelude and imports run everywhere.
-  - **Tests**: `python_test.py` replaces `shared_test.py`, deleted, with the
-    same values read the new way; `compile_shared_python` runs it with
+  - **Tests**, accepted by the owner with the deletions and the cli part:
+    `python_test.py` replaces `shared_test.py`, deleted, with
+    `tools/inkamath_model.py`, the same values read the new way;
+    `compile_shared_python` runs it with
     `INKAMATH=$<TARGET_FILE:inkamath_cli>` and the compiler above, still not
     under the sanitizers, in a temporary copy of the fixtures, the cache
     inside it. A new file rather than `shared_test.py` rewritten, so that
     the registered test stays green until the module exists. A file's own
     check is held only to name its terms, its report being checkmodel's to
-    write. The cli
-    `spec` part moves into part 1, its `--help` lines into the help case,
-    merged with checkmodel's usage.
+    write. The cli `spec` part moves into part 1, its `--help` lines into
+    the help case, merged with checkmodel's usage.
   - **`pyproject.toml`**: `[build-system]` hatchling, `[project]` name
     `inkamath`, version 1.0.0, `requires-python = ">=3.10"`, no
     dependencies, and `[tool.hatch.build.targets.wheel]` `only-include =
@@ -13968,10 +13972,6 @@ The owner's request, a Python interface over the binary:
   - **Docs**: docs/compile.md's Hosting gives the module in place of
     inkamath_model.py, `--names` beside the shared tables; README's
     command-line paragraph names `--names`.
-
-  Proposed, for the owner: `eval` gives a row as `[[a,
-  b]]`, so that it formats back as a row, where `m[key]` gives it as `[a,
-  b]`, as asked.
 
   Cost: `tools/inkamath.py` about 380 lines for the 74 deleted;
   `pyproject.toml` 12; `main.cpp` 34, `include/` and `src/` 21,160 to about
