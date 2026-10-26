@@ -128,9 +128,9 @@ _COMPLEX = _re.compile(r"(.*?)([+-]?)i(?:\*(.+))?")
 
 
 def _cell(text):
-    if text.startswith("~("):
-        real, sign, size = _COMPLEX.fullmatch(text[2:-1]).groups()
-        return complex(float(real or 0), float(sign + (size or "1")))
+    if "i" in text.replace("inf", ""):  # ~(a+i*b), or a NaN's -nan+i*-nan without ~
+        real, sign, size = _COMPLEX.fullmatch(text.removeprefix("~(").removesuffix(")")).groups()
+        return complex(float(real or 0), float(sign + "1") * float(size or 1))
     if text.startswith("~") or "nan" in text:
         return float(text.lstrip("~"))
     value = Fraction(text)

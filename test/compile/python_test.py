@@ -211,6 +211,11 @@ same("[1/3, 2^0.5]'s exact third, shown as ~", ev("[1/3, 2^0.5]")[0][0], 1 / 3)
 lost = ev("[~0/~0, 1/~0, -1/~0]")[0]
 if not (len(lost) == 3 and math.isnan(lost[0]) and lost[1:] == [math.inf, -math.inf]):
     fail(f"[~0/~0, 1/~0, -1/~0] is {lost!r}, not [nan, inf, -inf]")
+# (nan + 0i)(0 + 1i) = (nan*0 - 0*1) + (nan*1 + 0*0)i, shown -nan+i*-nan,
+# without a ~ (C421).
+nans = ev("[(~0/~0)*i, 1]")[0][0]
+if not (type(nans) is complex and math.isnan(nans.real) and math.isnan(nans.imag)):
+    fail(f"(~0/~0)*i is {nans!r}, not nan+nanj")
 same("2^4000, approximated past a thousand digits", ev("2^4000"), math.inf)
 refused("undefined", ValueError, lambda: ev("undefined"), "undefined is not defined")
 refused("an expression of two lines", ValueError, lambda: ev("1\n2"))
