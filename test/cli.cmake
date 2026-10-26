@@ -211,7 +211,7 @@ set(args --help)
 set(stdout [=[
 Usage: inkamath [options] [file...]
        inkamath --compile file [model] [-o header.h]
-       inkamath --check file [instance] -o check.c
+       inkamath --check file [instance or model] -o check.c
        inkamath --check transcript.ink
 
 Runs the files in order and exits; with no file, reads standard input.
