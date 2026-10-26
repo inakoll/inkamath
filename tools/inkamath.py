@@ -34,7 +34,7 @@ def _which(command):
     if os.sep in command or (os.altsep and os.altsep in command):
         return os.path.abspath(command)
     for folder in os.environ.get("PATH", "").split(os.pathsep):
-        for ext in ("", *os.environ.get("PATHEXT", "").split(os.pathsep)) if _EXE else ("",):
+        for ext in (*os.environ.get("PATHEXT", "").split(os.pathsep), "") if _EXE else ("",):
             found = os.path.join(folder, command + ext)
             if os.path.isabs(folder) and os.path.isfile(found) and os.access(found, os.X_OK):
                 return found
@@ -306,7 +306,7 @@ class Model:
     def __init__(self, path, name=None, /, *, float32=False, **params):
         self._path, self._name, self._float32, self._given = None, name, float32, {}
         said = ""
-        if os.path.splitext(path)[1] in (".so", ".dll", ".dylib"):
+        if os.path.splitext(path)[1].lower() in (".so", ".dll", ".dylib"):
             if name is None or float32:
                 raise ValueError("a library is loaded by its model's name, and built already")
             prefix, path = name, os.path.abspath(path)
