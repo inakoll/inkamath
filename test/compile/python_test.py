@@ -13,6 +13,7 @@ interpreter, else the module finds its own; CC is a cc-compatible C
 compiler, without which no .ink is compiled. The fixtures are copied to a
 temporary directory, which holds the cache too, so nothing is written
 beside the sources."""
+import importlib
 import math
 import os
 import pathlib
@@ -22,8 +23,8 @@ import tempfile
 from fractions import Fraction as F
 
 here = pathlib.Path(__file__).resolve().parent
-# Removed at exit, whatever fails.
-scratch = tempfile.TemporaryDirectory()
+# Removed at exit, whatever fails, but a DLL Windows holds loaded.
+scratch = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
 work = pathlib.Path(scratch.name)
 for fixture in here.glob("*.ink"):
     shutil.copy(fixture, work)
@@ -337,6 +338,8 @@ same("load", inkamath.load(work / "shapes.ink").back(2), 2)
 # The finder comes after Python's own: a .py beside a .ink of its stem wins.
 (work / "shadow.py").write_text("found = 'py'\n")
 (work / "shadow.ink").write_text("found = 1\n")
+# Python's finder may hold work's listing from before shadow.py.
+importlib.invalidate_caches()
 import shadow
 same("a .py beside a .ink", shadow.found, "py")
 try:
@@ -357,7 +360,8 @@ same("pidloop's names", sorted(loopfile.__all__), ["pid", "pidloop", "plant"])
 for name in ("model", "check"):
     if hasattr(loopfile, name):
         fail(f"pidloop has a module-level {name}")
-same("pidloop's __file__", pathlib.Path(loopfile.__file__), work / "pidloop.ink")
+same("pidloop's __file__", pathlib.Path(loopfile.__file__).resolve(),
+     (work / "pidloop.ink").resolve())
 refused('Model("pid.txt")', ValueError, lambda: Model(work / "pid.txt"))
 
 if not os.environ.get("CC"):
