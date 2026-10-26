@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -43,6 +44,7 @@ static const char help[] = R"(Usage: inkamath [options] [file...]
        inkamath --compile file [model] [-o header.h]
        inkamath --check file [instance or model] -o check.c
        inkamath --check transcript.ink
+       inkamath --names file
 
 Runs the files in order and exits; with no file, reads standard input.
 At a terminal the prompt edits the line and keeps its history.
@@ -65,6 +67,8 @@ At a terminal the prompt edits the line and keeps its history.
               doubles
   --steps n   with --check and -o, step n times rather than 100, n from
               1 to 100000
+  --names     print each name the file defines, one a line, sorted, after
+              what it is: model, instance, sequence, function, value or file
   --help      print this and exit
 
 A file whose first line that is not blank or a comment starts with '>>'
@@ -275,6 +279,39 @@ static int check(const string& source, const string& name, const string& target,
     return write(target, program) ? 0 : 2;
 }
 
+// What a file leaves in the session, for a host that reads no inkamath
+// (DESIGN.md, hosting from Python).
+static int names(const string& source) {
+    ifstream in(source);
+    if (!in) {
+        cerr << "inkamath: cannot open '" << source << "'\n";
+        return 2;
+    }
+    Interp p;
+    p.Directory(filesystem::path(source).parent_path());
+    map<string, const char*> kinds;
+    try {
+        if (!run(source, in, p)) return 1;
+        auto& stack = p.Definitions();
+        for (const auto& [name, definition] : stack.Session().names) {
+            const char* kind = definition->model ? "model" : definition->file ? "file" : nullptr;
+            if (!kind && stack.InstanceScope(definition)) kind = "instance";
+            if (!kind) {
+                const auto& said = definition->Clauses().front().parameters;
+                kind             = !said.parameters_names().empty() ? "function"
+                                   : said.indexed()                 ? "sequence"
+                                                                    : "value";
+            }
+            kinds[name] = kind;
+        }
+    } catch (const runtime_error& error) {
+        cerr << "inkamath: " << error.what() << '\n';
+        return 1;
+    }
+    for (const auto& [name, kind] : kinds) cout << kind << ' ' << name << '\n';
+    return 0;
+}
+
 // A transcript replayed, each answer held to the one it records: one that is
 // not is shown as recorded, '-', and as given now, '+'.
 static int replay(const string& source) {
@@ -325,7 +362,7 @@ static int replay(const string& source) {
 }
 
 int main(int argc, char* argv[]) {
-    bool           echo = false, then_input = false, compiling = false, checking = false;
+    bool echo = false, then_input = false, compiling = false, checking = false, naming = false;
     int            steps = 0;  // not given
     string         target;
     vector<string> files;
@@ -341,6 +378,7 @@ int main(int argc, char* argv[]) {
         }
         bool* const flag = arg == "--compile" ? &compiling
                            : arg == "--check" ? &checking
+                           : arg == "--names" ? &naming
                            : arg == "--float" ? &CompileC::floats
                            : arg == "--echo"  ? &echo
                            : arg == "-i"      ? &then_input
@@ -372,6 +410,14 @@ int main(int argc, char* argv[]) {
         } else {
             files.push_back(arg);
         }
+    }
+
+    if (naming) {
+        if (files.size() != 1 || argc != 3) {
+            cerr << "inkamath: --names takes a file and nothing else\nTry 'inkamath --help'.\n";
+            return 2;
+        }
+        return names(files[0]);
     }
 
     // Any --check but a transcript's replay writes a program, and one
