@@ -205,10 +205,10 @@ same("[i, 1; 2, -i]", ev("[i, 1; 2, -i]"), [[1j, 1], [2, -1j]])
 # frac refuses a matrix with an approximated cell, so its cells are read as
 # shown: a bare one exact, one marked ~ a float, an exact 1/3 among them.
 mixed = ev("[1/4, 2^0.5]")
-same("[1/4, 2^0.5]'s exact cell", mixed[0], F(1, 4))
-ulps("[1/4, 2^0.5]'s root", mixed[1], math.sqrt(2), 1)
-same("[1/3, 2^0.5]'s exact third, shown as ~", ev("[1/3, 2^0.5]")[0], 1 / 3)
-lost = ev("[~0/~0, 1/~0, -1/~0]")
+same("[1/4, 2^0.5]'s exact cell", mixed[0][0], F(1, 4))
+ulps("[1/4, 2^0.5]'s root", mixed[0][1], math.sqrt(2), 1)
+same("[1/3, 2^0.5]'s exact third, shown as ~", ev("[1/3, 2^0.5]")[0][0], 1 / 3)
+lost = ev("[~0/~0, 1/~0, -1/~0]")[0]
 if not (len(lost) == 3 and math.isnan(lost[0]) and lost[1:] == [math.inf, -math.inf]):
     fail(f"[~0/~0, 1/~0, -1/~0] is {lost!r}, not [nan, inf, -inf]")
 same("2^4000, approximated past a thousand digits", ev("2^4000"), math.inf)
