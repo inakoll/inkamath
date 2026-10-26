@@ -13913,22 +13913,28 @@ The owner's request, a Python interface over the binary:
     `--steps` and `--float`, the program built and run, its report returned,
     a non-zero exit `RuntimeError` with the report, the interpreter's
     refusal `ValueError`, the compiler's `RuntimeError`. An instance,
-    `check(path, "ctl")`, is checked as named, parameters refused; a file's
-    own step by the `checkmodel` branch's `--check path -o check.c`. A model
-    is checked through a wrapper, `use inkamathsource` and `M =
-    inkamathsource.M(k = v)` with every default otherwise, so the report
-    names M; its file is read under that stem, since `use mix` beside `mix =
-    mix.mix()` binds `mix` twice. With parameters, a file's own step is
-    checked from a copy of it with `k = v` lines after its own, an entry `>>
-    k = v` in a transcript. Both run in a temporary directory holding a copy
-    of every `.ink` beside the file, all that `use` reads. `m.check()` gives
-    the values assigned to `m`, as assigned, since construction. Rejected:
-    the wrapper beside the file, which writes into the user's directory,
-    fails where it is read-only and leaves files where a process is killed;
-    renaming the report's instance afterwards; by the owner's ruling, an
-    instance as `--check`'s argument, `--check mix.ink "mix(g = 1/3)"`, a
-    second way to write an instance which removes none of this, a file's own
-    parameters still needing the copy.
+    `check(path, "ctl")`, is checked as named, parameters refused. Given
+    none, a model and a file's own step are checked as the `checkmodel`
+    branch, which lands first, checks them: `--check path M -o check.c`, the
+    report named M, `fall: 100 steps from 0` and `fall.v: within 0`, or
+    refused where M takes an input or a parameter with no default; and
+    `--check path -o check.c`, the report named after the file and each term
+    by its own name, `decade.ink: 100 steps from 0` and `d: within 0`. Given
+    parameters, a model is checked through a wrapper, `use inkamathsource`
+    and `M = inkamathsource.M(k = v)` with every default otherwise, so that
+    the report names M as checkmodel's does; its file is read under that
+    stem, since `use mix` beside `mix = mix.mix()` binds `mix` twice. With
+    parameters, a file's own step is checked from a copy of it with `k = v`
+    lines after its own, an entry `>> k = v` in a transcript. Both run in a
+    temporary directory holding a copy of every `.ink` beside the file, all
+    that `use` reads. `m.check()` gives the values assigned to `m`, as
+    assigned, since construction. Rejected: the wrapper beside the file,
+    which writes into the user's directory, fails where it is read-only and
+    leaves files where a process is killed; renaming the report's instance
+    afterwards; by the owner's ruling, an instance as `--check`'s argument,
+    `--check mix.ink "mix(g = 1/3)"`, a second way to write an instance
+    which removes none of this, a file's own parameters still needing the
+    copy.
   - **Import**: a finder appended to `sys.meta_path` on `import inkamath`,
     after Python's own, so a `.py` of the same stem wins; it searches a
     package's `__path__`, or `sys.path` then `sys.argv[0]`'s directory and
@@ -13958,10 +13964,10 @@ The owner's request, a Python interface over the binary:
     `INKAMATH=$<TARGET_FILE:inkamath_cli>` and the compiler above, still not
     under the sanitizers, in a temporary copy of the fixtures, the cache
     inside it. A new file rather than `shared_test.py` rewritten, so that
-    the registered test stays green until the module exists. A file's own
-    check is held only to name its terms, its report being checkmodel's to
-    write. The cli `spec` part moves into part 1, its `--help` lines into
-    the help case, merged with checkmodel's usage.
+    the registered test stays green until the module exists. A report is
+    held to checkmodel's words, and a file's own whole where its terms are
+    known apart, decade's. The cli `spec` part moves into part 1, its
+    `--help` lines into the help case, merged with checkmodel's usage.
   - **`pyproject.toml`**: `[build-system]` hatchling, `[project]` name
     `inkamath`, version 1.0.0, `requires-python = ">=3.10"`, no
     dependencies, and `[tool.hatch.build.targets.wheel]` `only-include =

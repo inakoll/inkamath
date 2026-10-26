@@ -377,7 +377,8 @@ same("mix's g and a", [m["g"], m["a"]], [0.25, 0.25])
 m.set(g=1, a=F(1, 2))
 m.step(2, 5)
 same("mix's v_3 for g = 1, a = 1/2", m["v"], 143 / 128)
-refused("mix.check(), its inputs not given", ValueError, mix.check)
+refused("mix.check(), its inputs not given", ValueError, mix.check,
+        "mix in mix.ink takes u, which has no default")
 
 # Instantiated again, with other parameters, the same library is loaded,
 # not built again; in float, another.
@@ -418,17 +419,22 @@ for n in range(3):
     closed.step()
 near("the loop's ctl.u_2", closed["ctl.u"], 1.3632, 1e-14)
 near("the loop's plt.x_2", closed["plt.x"], 0.328, 1e-15)
-refused("pid.check(), its input not given", ValueError, pid.check)
+refused("pid.check(), its input not given", ValueError, pid.check,
+        "pid in pidloop.ink takes y, which has no default")
 report = inkamath.check(loopfile.__file__, "ctl").splitlines()
 same("ctl's report's first line", report[0], "ctl: 100 steps from 0, against exact values")
 same("ctl's report's terms", [line.split(": within ")[0] for line in report[1:]],
      ["ctl.e", "ctl.d", "ctl.s", "ctl.u"])
 refused("an instance given parameters", ValueError,
         lambda: inkamath.check(loopfile.__file__, "ctl", r=2))
-whole = loopfile.pidloop.check()
+# A file's own step reported as checkmodel reports it: after the file, each
+# term by its own name.
+whole = loopfile.pidloop.check().splitlines()
+same("pidloop's own report's first line", whole[0],
+     "pidloop.ink: 100 steps from 0, against exact values")
 for name in ("ctl.u", "plt.x"):
-    if name not in whole:
-        fail(f"pidloop's own check does not report {name}:\n{whole}")
+    if not any(line.startswith(name + ": within ") for line in whole[1:]):
+        fail(f"pidloop's own check does not hold {name}: {whole!r}")
 
 # drift.ink's tenfold: for c = 1 each term is 1, exactly; for c = 1/10 what
 # rounding puts in, each step multiplies by ten, the step's doubles as
@@ -462,8 +468,8 @@ refused("turn.check(steps=0)", ValueError, lambda: turn.check(steps=0),
 
 # A file's own sequences, its value c given as a parameter.
 (work / "decade.ink").write_text("c = 1\nd_0 = c\nd_n = 10*d_(n-1) - 9*c\n")
-if "d: within 0" not in inkamath.check(work / "decade.ink"):
-    fail("decade.ink's own check for c = 1 does not hold d within 0")
+same("decade.ink's own check for c = 1", inkamath.check(work / "decade.ink"),
+     "decade.ink: 100 steps from 0, against exact values\nd: within 0\n")
 refused("decade.ink's own check for c = 1/10", RuntimeError,
         lambda: inkamath.check(work / "decade.ink", c=F(1, 10)), parted)
 import decade
