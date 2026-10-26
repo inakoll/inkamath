@@ -164,13 +164,17 @@ def _ask(line, file):
     answers = []
     for text in out.splitlines():
         if text.startswith(">> "):
-            answers.append([])
+            answers.append([text])
         elif answers and not text.startswith(".. "):
             answers[-1].append(text)
-    answers = ["\n".join(answer).rstrip("\n") for answer in answers]
-    for answer in answers[:-1]:
+    # A line 'q' ends a session, so the last answer may be the file's.
+    reached = bool(answers) and answers[-1][0] == ">> " + line
+    answers = ["\n".join(answer[1:]).rstrip("\n") for answer in answers]
+    for answer in answers[:-1] if reached else answers:
         if answer.startswith("error: "):
             raise ValueError(answer.removeprefix("error: "))
+    if not reached:
+        raise ValueError("the session ended before the answer")
     return answers[-1]
 
 

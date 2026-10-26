@@ -228,6 +228,11 @@ same("chain.ink's filters.a0", ev("filters.a0", file=work / "chain.ink"), F(1, 1
 (work / "broken.ink").write_text("a = 1\nb = 1+\n")
 refused("a file that fails", ValueError, lambda: ev("a", file=work / "broken.ink"),
         "unexpected end of input after '+'")
+# A line 'q' ends a session: the expression after it has no answer, and the
+# file's last, 7, is not its (C422).
+(work / "quits.ink").write_text("x = 7\nx\nq\n")
+refused("2 after a file that quits", ValueError, lambda: ev("2", file=work / "quits.ink"),
+        "the session ended before the answer")
 
 # '?name' and 'tex ?name' (docs/language.md, sections 1 and 6).
 same('describe("mod")', inkamath.describe("mod"), "mod(a, b) = a - b*floor(a/b)")
