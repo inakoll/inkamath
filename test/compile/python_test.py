@@ -353,7 +353,10 @@ lines = mix.tex().splitlines()
 if len(lines) != 4 or not lines[0].startswith(r"\operatorname{mix}("):
     fail(f"mix.tex() is {lines!r}, not a head and three lines")
 import pidloop as loopfile
-same("pidloop's names", sorted(loopfile.__all__), ["check", "model", "pid", "pidloop", "plant"])
+same("pidloop's names", sorted(loopfile.__all__), ["pid", "pidloop", "plant"])
+for name in ("model", "check"):
+    if hasattr(loopfile, name):
+        fail(f"pidloop has a module-level {name}")
 same("pidloop's __file__", pathlib.Path(loopfile.__file__), work / "pidloop.ink")
 refused('Model("pid.txt")', ValueError, lambda: Model(work / "pid.txt"))
 
@@ -409,11 +412,11 @@ for n in range(3):
     p.step(n / 10)
 near("pidloop's pid's u_2 for r = 2", p["u"], 3.87, 1e-14)
 near("its [e_2, e_1]", p.history("e"), [1.8, 1.9], 1e-15)
-for closed in (loopfile.pidloop(), loopfile.model()):
-    for n in range(3):
-        closed.step()
-    near("the loop's ctl.u_2", closed["ctl.u"], 1.3632, 1e-14)
-    near("the loop's plt.x_2", closed["plt.x"], 0.328, 1e-15)
+closed = loopfile.pidloop()
+for n in range(3):
+    closed.step()
+near("the loop's ctl.u_2", closed["ctl.u"], 1.3632, 1e-14)
+near("the loop's plt.x_2", closed["plt.x"], 0.328, 1e-15)
 refused("pid.check(), its input not given", ValueError, pid.check)
 report = inkamath.check(loopfile.__file__, "ctl").splitlines()
 same("ctl's report's first line", report[0], "ctl: 100 steps from 0, against exact values")
@@ -421,7 +424,7 @@ same("ctl's report's terms", [line.split(": within ")[0] for line in report[1:]]
      ["ctl.e", "ctl.d", "ctl.s", "ctl.u"])
 refused("an instance given parameters", ValueError,
         lambda: inkamath.check(loopfile.__file__, "ctl", r=2))
-whole = loopfile.check()
+whole = loopfile.pidloop.check()
 for name in ("ctl.u", "plt.x"):
     if name not in whole:
         fail(f"pidloop's own check does not report {name}:\n{whole}")
@@ -463,7 +466,8 @@ if "d: within 0" not in inkamath.check(work / "decade.ink"):
 refused("decade.ink's own check for c = 1/10", RuntimeError,
         lambda: inkamath.check(work / "decade.ink", c=F(1, 10)), parted)
 import decade
-refused("decade's check(c=1/10)", RuntimeError, lambda: decade.check(c=F(1, 10)), parted)
+refused("decade.decade.check(c=1/10)", RuntimeError, lambda: decade.decade.check(c=F(1, 10)),
+        parted)
 refused("decade's Model's check, c = 1/10", RuntimeError,
         Model(work / "decade.ink", c=F(1, 10)).check, parted)
 
@@ -510,7 +514,7 @@ same("noise's q_1", gen["q"], float(16807 * 777 % (2**31 - 1)))
 # chain.ink, its use of filters.ink compiled: y_0 = 0 + (1 - 0) + 1/10 and
 # y_1 = 1/10*1/2 + (1 - 1/4) + 1/10.
 import chain
-linked = chain.model()
+linked = chain.chain()
 linked.step(1)
 near("chain's y_0", linked["y"], 1.1, 1e-15)
 linked.step(1)
@@ -519,13 +523,13 @@ near("chain's y_1", linked["y"], 0.9, 1e-15)
 # kalman.ink: Pp_1 = F*10*I*F' + Q = [20.01, 10; 10, 10.01], K_1 = [20.01;
 # 10]/21.01, x_1 = K_1*z_1; for Q = 0, [20; 10]/21 and z_1 = 21.
 import kalman
-kf = kalman.model()
+kf = kalman.kalman()
 kf.step(0)
 kf.step(21.01)
 near("kalman's x_1", kf["x"], [20.01, 10.0], 1e-12)
 same("kalman's H, a row", kf["H"], [1.0, 0.0])
 same("kalman's Q", kf["Q"], [[0.01, 0.0], [0.0, 0.01]])
-still = kalman.model(Q=Rows([[0, 0], [0, 0]]))
+still = kalman.kalman(Q=Rows([[0, 0], [0, 0]]))
 still.step(0)
 still.step(21)
 near("kalman's [x_1, x_0] for Q = 0", still.history("x"), [[20.0, 10.0], [0.0, 0.0]], 1e-12)

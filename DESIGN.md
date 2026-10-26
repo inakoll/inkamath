@@ -13928,11 +13928,14 @@ The owner's request, a Python interface over the binary:
     object at once, `M(**params)` a `Model`, `M.check(...)`, `M.describe()`
     and `M.tex()`; a function a callable through `eval`; a value read at its
     first access and kept. A file whose own step `--names` shows, by a
-    sequence or an instance, gets `model(**params)` and `check(...)`, and
-    its stem the same as an object, each only where the file defines no
-    such name. Sequences, instances and files used are not attributes:
-    `eval(..., file=m.__file__)` reads them. `__all__` lists what the file
-    gives; a file that fails raises `ValueError` at import.
+    sequence or an instance, gets it as its stem, an object of the same
+    kind but for `describe` and `tex`, `pidloop(**params)` and
+    `pidloop.check(...)`, where the file defines no name of its stem;
+    where it does, the step is `Model(path)`. Nothing module-level stands
+    for it, by the owner's ruling. Sequences, instances and files used are
+    not attributes: `eval(..., file=m.__file__)` reads them. `__all__`
+    lists what the file gives; a file that fails raises `ValueError` at
+    import.
   - **The C compiler on Windows**: a cc-compatible driver only, GCC, Clang
     or MinGW. MSVC's `cl` takes other flags, and CI's MSVC job runs ctest
     outside a developer prompt, where `cl` finds no headers. The test is
@@ -13960,9 +13963,7 @@ The owner's request, a Python interface over the binary:
     inkamath_model.py, `--names` beside the shared tables; README's
     command-line paragraph names `--names`.
 
-  Proposed, for the owner: module-level `model` and `check` say what the
-  stem's object says, and take two names a file may well define; the stem
-  alone would do. `compile` is in the request's heading only, and through
+  Proposed, for the owner: `compile` is in the request's heading only, and through
   it the `model_` prefix becomes interface. `eval` gives a row as `[[a,
   b]]`, so that it formats back as a row, where `m[key]` gives it as `[a,
   b]`, as asked. `M(**params)` takes no `float32` where `M.check` does. A
