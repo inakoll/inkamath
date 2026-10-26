@@ -13904,9 +13904,14 @@ The owner's request, a Python interface over the binary:
     No `compile`, by the owner's ruling: `Model("x.ink")` compiles and
     caches, and `inkamath --compile` gives a header, so the library's
     path and its `model_` prefix stay the module's own.
-  - **Flags**: `cc -O2 -shared -fPIC -x c -DMODEL_SHARED model.h -o lib
-    -lm`, as docs/compile.md builds a library, and the check program `cc
-    -O2 check.c -o check -lm`, so the check holds the step as built.
+  - **Flags**: `cc -O2 -ffp-contract=off -shared -fPIC -x c -DMODEL_SHARED
+    model.h -o lib -lm`, as docs/compile.md builds a library, and the check
+    program `cc -O2 -ffp-contract=off check.c -o check -lm`, so the check
+    holds the step as built. `-ffp-contract=off` as `test/CMakeLists.txt`
+    builds every check (C97): GCC fuses by default and Clang within an
+    expression, wherever the target has a fused multiply-add, as every
+    arm64 has, and a fused step is not the interpreter's rounding, nor the
+    values the test works out in Python's doubles.
   - **`check(path, name=None, *, steps=100, float32=False, **params)`**,
     `M.check(*, steps=100, float32=False, **params)` and
     `m.check(steps=100)`, in float where `m` was built so: `--check` with
