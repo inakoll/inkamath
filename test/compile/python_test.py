@@ -1,4 +1,4 @@
-"""tools/inkamath.py, specified before it is built (DESIGN.md, *Hosting from
+"""tools/inkamath.py (DESIGN.md, *Hosting from
 Python*): compile_shared's libraries read through Model, the interpreter's
 values and the prelude through eval, and .ink files imported, compiled,
 stepped and checked. Every expected value is worked out apart from the

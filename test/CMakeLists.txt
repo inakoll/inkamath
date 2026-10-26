@@ -241,13 +241,20 @@ target_link_libraries(compile_shared PRIVATE inkamath_warnings ${CMAKE_DL_LIBS}
                       $<$<NOT:$<C_COMPILER_ID:MSVC>>:m>)
 set_target_properties(compile_shared PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
 add_test(NAME compile_shared COMMAND compile_shared ${shared_libraries})
-# The same through tools/inkamath_model.py, where a Python runs it; not under
-# the sanitizers, whose runtime a Python does not load first.
+# The same through tools/inkamath.py, and .ink files compiled, stepped and
+# checked by it, where a Python runs it; not under the sanitizers, whose
+# runtime a Python does not load first. Only a cc-compatible compiler builds
+# a .ink; without one, the test says what it skips.
 find_package(Python3 3.10 COMPONENTS Interpreter QUIET)
 if(Python3_Interpreter_FOUND AND NOT INKAMATH_SANITIZE)
     add_test(NAME compile_shared_python
-             COMMAND ${Python3_EXECUTABLE} -B ${CMAKE_CURRENT_SOURCE_DIR}/compile/shared_test.py
+             COMMAND ${Python3_EXECUTABLE} -B ${CMAKE_CURRENT_SOURCE_DIR}/compile/python_test.py
                      ${shared_libraries})
+    set(python_env "INKAMATH=$<TARGET_FILE:inkamath_cli>")
+    if(CMAKE_C_COMPILER_ID MATCHES "^(GNU|Clang|AppleClang)$")
+        list(APPEND python_env "CC=\"${CMAKE_C_COMPILER}\"")
+    endif()
+    set_tests_properties(compile_shared_python PROPERTIES ENVIRONMENT "${python_env}")
 endif()
 
 # The prelude's functions the interpreter calls on a double (DESIGN.md),
