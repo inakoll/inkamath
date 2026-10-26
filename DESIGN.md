@@ -13485,6 +13485,245 @@ of `check.hpp` for 19 and 8 of `main.cpp` for 6, with 3 of comment;
 `check_fib_79_report` holds docs/language.md's Fibonacci,
 `test/compile/fib.ink`, to the bit through fib_78, the last below 2^53.
 
+### Hosting from Python `[done]`
+
+The owner's request, a Python interface over the binary. `tools/inkamath.py`
+replaces `tools/inkamath_model.py`: the standard library alone, Python 3.10,
+and `pip install -e .` by a root `pyproject.toml` makes `import inkamath`
+work. It evaluates in the interpreter, compiles and loads a model, checks
+it, and imports a `.ink` file as a module. Not a stable interface, as the
+library's tables are not (MANIFESTO, *Not yet a library*).
+
+Decided:
+- **What a file defines, `--names file`**, the one change to the binary,
+  accepted by the owner: each name the file leaves in the session, run as
+  `--compile` runs it, one a line, sorted as bytes, after what it is:
+  `model`, `instance`, `sequence`, `function` (any other definition with
+  parameters, a sequence with parameters and a function by cells among
+  them), `value` (any other without an index, a matrix by cells among
+  them) or `file` (one used); a name brought in by `use f (a)` is what it
+  is in f, and a prelude name only where the file defines it again.
+  Refused as `--compile` refuses a file, and with anything else on the
+  line. Nothing offers this today: `?f` of a file prints `use f`, as
+  written, `?name` a definition whose kind only its syntax tells, and an
+  instance looks like a call until its callee is found to be a model,
+  which only the interpreter can find. About 30 lines of `main.cpp` and 4
+  of `--help`. Rejected: a session query, `?` alone or `?f` listing a
+  file, which moves queries.ink's goldens for what only a host reads;
+  reading the file in Python, a second parser of the language; and probing
+  kinds by the wording of errors.
+- **Locating**: the interpreter from `$INKAMATH`, `shutil.which`, then
+  `<repo>/build/inkamath`, and the C compiler from `$CC` (split by
+  `shlex.split`, so it may carry flags, and a Windows path in it is
+  quoted or written with `/`) or `cc`, each read at every call and made
+  an absolute path then: a relative one would be read from the temporary
+  directory a process runs in, and a bare name is looked for on `PATH`
+  alone, never in the working directory, where Windows' `CreateProcess`
+  and Python 3.10's `shutil.which` look first, so that a directory
+  holding a planted `inkamath.exe` or `cc.exe` runs neither.
+- **A value, `eval(expr, *, file=None)`**: a process of its own, `inkamath
+  --echo [file -i]` given `digits = 17` and `frac expr`; the answer is the
+  last entry of the transcript, so a file's own answers, however many
+  lines each, are skipped, and an error among them is raised. Where `frac`
+  refuses, approximated, complex or an error, the plain value is asked in
+  a second process and its error, if any, is raised: exact values, the
+  language's point, cost one process (8 ms with the prelude) and nothing
+  hangs on an error's wording. Parsed with no knowledge of layout: a
+  trailing `# ...` comment dropped, `;;` slices, `;` rows, `,` cells,
+  spacing ignored; a bare cell exact, `int` or `Fraction` (which reads
+  `p/q`, `0.25` and `1e-05`), a `~` cell or a NaN a `float` (`~inf`,
+  `-nan`, `~1e+30`), `~(a+i*b)` a `complex` in each of its forms (`~(i)`,
+  `~(-2-i*3)`, `~(-nan+i*inf)`). A 1x1 matrix is a single value, a column
+  a list, a row or a matrix a list of rows, a tensor a list of slices,
+  each a list of rows whatever its shape, `[1;;2]` `[[[1]], [[2]]]`,
+  always. `ValueError` with the diagnostic; an expression of more than one
+  line is refused. A row is `[[a, b]]`, so that it is given back as a row,
+  where `m[key]` gives `[a, b]`; accepted by the owner. A known limit,
+  accepted by the owner: frac refuses a matrix with one approximated cell,
+  so its exact cells are read as shown, and an exact 1/3 among them is the
+  float `~0.33333333333333333`. Cell-wise `frac` would fix it and move the
+  goldens of frac's refusal; not taken.
+- **An argument**: `.tolist()` first (a numpy array or scalar), then
+  `bool` and `int` as digits, `Fraction` `p/q`, `float` its `repr` read as
+  written (0.1 is 1/10, as data is, `docs/language.md` section 5),
+  `complex` `(re+(im)*i)` of reprs, a sequence of numbers a column, of
+  sequences rows, of those slices. Ragged or empty is `ValueError`,
+  anything else `TypeError`, a `str` among them; an infinity or NaN is the
+  interpreter's to refuse.
+- **The prelude**: `pi`, `e`, `i` read lazily by the module's
+  `__getattr__`, and the functions the request names, each `name(*args)`
+  through `eval`: the built-ins `floor`, `re` and `im`, the prelude's
+  functions docs/language.md section 5 lists but `rhob`, `abscissab` and
+  `eigb`, sequences, and `ilogb`, which log's reduction names.
+  `describe(name, *, file=None)` is `?name` and `tex(name, *, file=None)`
+  `tex ?name`, run as `eval` runs. `eval`, `abs`, `max`, `min` and `re`
+  are importable by name and left out of `__all__`; Python's `re` is
+  imported under another name, and the module calls no builtin it shadows.
+- **One process per call**: rejected, a persistent interpreter, which
+  needs a sentinel to frame a multi-line answer, leaks one call's
+  definitions into the next and must recover from a runaway.
+- **`Model(path, name=None, *, float32=False, **params)`**: a `.so`, `.dll` or
+  `.dylib` loaded as today, its name required, by its absolute path, so that
+  `Model("libpid.so", "pid")` loads the file named and not one the loader's
+  search finds; a `.ink` compiled by `--compile path [name] [--float] -o
+  model.h` in a temporary directory, `name` defaulting to the file's own step
+  where `--names` lists a sequence or an instance, else the model named as the
+  file; `float32` beside a library is refused. `path` and `name` are
+  positional only, here and in `check`, and so is `set`'s receiver, so a
+  parameter clashes only with `float32`, or `steps` in a check; such a
+  parameter is given by `m.set(**{"steps": 2})`, and checked by `m.check()`.
+  The header's module is always `model`, `MODEL_SHARED`: a file's stem may be
+  a word C keeps (`float.ink`), and the struct's name is nobody's. Parameters
+  applied, then one update; `set(**params)` one update; `m[key] = value` a
+  parameter, a member before `index_`, a number or nested sequences in C
+  order, a sequence refused, `ValueError`, as are a parameter's history, a
+  step given other than its inputs, and a library's `m.check()`, which has no
+  `.ink`. `m[key]` is the current term and `m.history(key)` the window
+  `[key_n, key_(n-1), ...]`, refused for a parameter; a term is a float, or an
+  int for an integer member, a 1x1 a single value, a row or a column a list, a
+  matrix a list of rows, a tensor a list of slices, each a list of rows. A
+  name the struct does not hold is `KeyError`, given as a parameter too, a
+  parameter the header compiles in, a size, an exponent or a constant the step
+  needs, among them; one the header's comment names as compiled in says to
+  give it through `.check()`, or by an instance the file defines, or, of a
+  file's own step, to change it in the file, by ruling. A stem `use` cannot
+  read, `my-model.ink` or `2nd.ink`, is refused in `use`'s words wherever a
+  `.ink` is compiled, checked or imported, by ruling. **Breaking**:
+  `m["u"][0]` is now `m["u"]`, and docs/compile.md's example moves.
+- **The cache**: `$XDG_CACHE_HOME/inkamath`, else `~/.cache/inkamath`, made
+  private, never the shared temporary directory, where another user could
+  place a library to be loaded: made with mode 0700, and on POSIX used only
+  where `os.stat` finds it a directory the user owns that neither group nor
+  others may write, else `RuntimeError`, so that a directory or a link placed
+  before it is not trusted. Keyed by SHA-256 of the header and the compiler's
+  command line, its output path aside, `--float` being in the header, and the
+  compiler's identity, the first line of `<cc> --version`, read once a
+  process, by ruling; one file a key, the library, `<key>.so`, `.dylib` or
+  `.dll`, nothing else kept. The header is written in a directory of
+  `tempfile.mkdtemp`'s, the library built under a name of `tempfile.mkstemp`'s
+  in the cache and moved by `os.replace`, so two processes build the same at
+  worst; on Windows, where a loaded DLL cannot be replaced, one already there
+  is taken. `--compile` runs at every instantiation, the header being the key;
+  `cc` only on a miss. No `compile`, by the owner's ruling: `Model("x.ink")`
+  compiles and caches, and `inkamath --compile` gives a header, so the
+  library's path and its `model_` prefix stay the module's own. No eviction:
+  docs/compile.md names the directory.
+- **Flags**: `cc -O2 -ffp-contract=off -shared -fPIC -x c -DMODEL_SHARED
+  model.h -o lib -lm`, docs/compile.md's library with contraction off, and
+  the check program `cc -O2 -ffp-contract=off check.c -o check -lm`, so
+  the check holds the step as built. `-ffp-contract=off` as
+  `test/CMakeLists.txt` builds every check (C97): GCC fuses by default and
+  Clang within an expression, wherever the target has a fused
+  multiply-add, as every arm64 has, and a fused step is not the
+  interpreter's rounding, nor the values the test works out in Python's
+  doubles.
+- **`check(path, name=None, *, steps=100, float32=False, **params)`**,
+  `M.check(*, steps=100, float32=False, **params)` and
+  `m.check(steps=100)`, in float where `m` was built so: `--check` with
+  `--steps` and `--float`, the program built and run, its report returned,
+  a non-zero exit `RuntimeError` with the report, the interpreter's
+  refusal `ValueError`, the compiler's `RuntimeError`. An instance,
+  `check(path, "ctl")`, is checked as named, parameters refused. Given
+  none, a model and a file's own step are checked as the `checkmodel`
+  branch, which lands first, checks them: `--check path M -o check.c`, the
+  report named M, `fall: 100 steps from 0` and `fall.v: within 0`, or
+  refused where M takes an input or a parameter with no default; and
+  `--check path -o check.c`, the report named after the file and each term
+  by its own name, `decade.ink: 100 steps from 0` and `d: within 0`. Given
+  parameters, a model is checked through a wrapper, `use inkamathsource`
+  and `M = inkamathsource.M(k = v)` with every default otherwise, the
+  instance named after the model by ruling, so that the report names M as
+  checkmodel's does; its file is read under that
+  stem, since `use mix` beside `mix = mix.mix()` binds `mix` twice. With
+  parameters, a file's own step is checked from a copy of it with `k = v`
+  lines after its own, an entry `>> k = v` in a transcript. Both run in a
+  temporary directory holding a copy of every `.ink` beside the file, all
+  that `use` reads. `m.check()` gives the values assigned to `m`, as
+  assigned, since construction. Rejected: the wrapper beside the file,
+  which writes into the user's directory, fails where it is read-only and
+  leaves files where a process is killed; renaming the report's instance
+  afterwards; by the owner's ruling, an instance as `--check`'s argument,
+  `--check mix.ink "mix(g = 1/3)"`, a second way to write an instance
+  which removes none of this, a file's own parameters still needing the
+  copy.
+- **Import**: a finder appended to `sys.meta_path` on `import inkamath`, after
+  Python's own, so a `.py` of the same stem wins; it searches a package's
+  `__path__`, or `sys.path` then `sys.argv[0]`'s directory and the working
+  directory, as the owner asked, these two skipped under `-I` or `-P`,
+  `sys.flags.isolated` or `safe_path`, by ruling. `build/inkamath` beside the
+  module serves `pip install -e .`, by ruling. `load(path)` makes the same
+  module from a path, outside `sys.modules`. `--names` runs once at import: a
+  model is an object at once, `M(float32=False, **params)` a `Model`, as
+  `Model(path, "M", ...)` is, by the owner's ruling, `M.check(...)`,
+  `M.describe()` and `M.tex()`, kept beside `describe(name, file=)` by the
+  owner's request; a function a callable through `eval`; a value read at its
+  first access and kept. A file whose own step `--names` shows, by a sequence
+  or an instance, gets it as its stem, an object of the same kind but for
+  `describe` and `tex`, `pidloop(**params)` and `pidloop.check(...)`, where
+  the file defines no name of its stem; where it does, the step is
+  `Model(path)`. Nothing module-level stands for it, by the owner's ruling.
+  Sequences, instances and files used are not attributes: `eval(...,
+  file=m.__file__)` reads them. `__all__` lists what the file gives; a file
+  that fails raises `ValueError` at import.
+- **The C compiler on Windows**: a cc-compatible driver only, GCC, Clang
+  or MinGW. MSVC's `cl` takes other flags, and CI's MSVC job runs ctest
+  outside a developer prompt, where `cl` finds no headers. The test is
+  given `CC="${CMAKE_C_COMPILER}"`, quoted, as a path may hold a space,
+  where the compiler's id is GNU, Clang or AppleClang, and without it
+  skips what compiles a `.ink`, saying so; the prebuilt libraries, values,
+  the prelude and imports run everywhere.
+- **Tests**, accepted by the owner with the deletions and the cli part:
+  `python_test.py` replaces `shared_test.py`, deleted, with
+  `tools/inkamath_model.py`, the same values read the new way;
+  `compile_shared_python` runs it with
+  `INKAMATH=$<TARGET_FILE:inkamath_cli>` and the compiler above, still not
+  under the sanitizers, in a temporary copy of the fixtures, the cache
+  inside it. A new file rather than `shared_test.py` rewritten, so that
+  the registered test stays green until the module exists. A report is
+  held to checkmodel's words, and a file's own whole where its terms are
+  known apart, decade's. The cli `spec` part moves into part 1, its
+  `--help` lines into the help case, merged with checkmodel's usage.
+- **`pyproject.toml`**: `[build-system]` hatchling, `[project]` name
+  `inkamath`, version 1.0.0, `requires-python = ">=3.10"`, no
+  dependencies, and `[tool.hatch.build.targets.wheel]` `only-include =
+  ["tools/inkamath.py"]` with `sources = ["tools"]`; checked with
+  hatchling 1.32: the wheel holds `inkamath.py` at its root, and the
+  editable install puts `tools/` on the path. A download at build time,
+  as the owner asked; nothing at run time.
+- **Docs**: docs/compile.md's Hosting gives the module in place of
+  inkamath_model.py, `--names` beside the shared tables; README's
+  command-line paragraph names `--names`.
+
+Built as decided. `--names` classifies each name by its reference: a
+model or a file it holds, an instance by `InstanceScope`, the rest by its
+first clause's parameters and index. The cli `spec` part moved into part 1,
+its `--help` lines into the help case. `compile_shared_python` ran on GCC
+and Clang, not under the sanitizers, its `.ink` parts compiled by the
+CMake C compiler. `pip install -e .` checked with hatchling: `import
+inkamath` from a venv, its interpreter `build/inkamath`; the wheel holds
+`inkamath.py` alone.
+
+Departures, and one open:
+- **Open: three of the test's entries contradict its rows.** `ev("[1/4,
+  2^0.5]")[0]` is held to `F(1, 4)`, `[1/3, 2^0.5]`'s `[0]` to `1/3`, and
+  `[~0/~0, 1/~0, -1/~0]` to a list of three, where each is a 1x2 or 1x3 row,
+  which the entry, ruled by the owner, gives as `[[a, b]]`, as the same
+  test holds `[1 2 3]` to `[[1, 2, 3]]`. The module gives the rows, so
+  `compile_shared_python` fails there, the `[0]` of a row being a list and
+  its `[1]` an `IndexError`, which stops the test. With those four reads
+  indexed `[0][...]`, every other entry passes. Not changed: an expected
+  value, for whoever rules.
+- `main.cpp` 46 lines, 21,213 to 21,259 lines of sources over checkmodel,
+  for about 34: the classification as conditions, since a model's or a
+  file's reference has no clause to read, and the usage's test.
+- `tools/inkamath.py` 518 lines, 424 not blank, for about 390: the
+  locating, the cache's trust and the rulings above as specified, a step's
+  and an assignment's refusals in words of their own. With `main.cpp`'s,
+  564 for about 424, a third over and within the half §8 allows.
+- `pyproject.toml` 15; `test/CMakeLists.txt` 13 for 6; docs/compile.md's
+  Hosting 30 lines for 13 of Python, with `-ffp-contract=off` in its build;
+  README's command-line paragraph names `--names`.
+
 ---
 
 ## Next in line
@@ -13800,216 +14039,3 @@ LQR), whose defects are C376 to C379, 49 lines, 19,288 to 19,337 at
   evidence for MANIFESTO's clock question.
 - **`lim_n` is unusable**, `lim` being reserved, and a file name must be
   letters then digits, so `use e2e` is refused.
-
-The owner's request, a Python interface over the binary:
-
-- **Hosting from Python.** `tools/inkamath.py` replaces
-  `tools/inkamath_model.py`: the standard library alone, Python 3.10, and
-  `pip install -e .` by a root `pyproject.toml` makes `import inkamath`
-  work. It evaluates in the interpreter, compiles and loads a model, checks
-  it, and imports a `.ink` file as a module. Specified by
-  `test/compile/python_test.py` and cli.cmake's `spec` part, neither
-  registered while they fail: `INKAMATH=build/inkamath CC=cc python3 -B
-  test/compile/python_test.py`, and `cmake -DEXE=$PWD/build/inkamath
-  -DCASE_TIMEOUT=60 -DPART=spec -DOUT=build/cli_spec -P test/cli.cmake`.
-  Not a stable interface, as the library's tables are not (MANIFESTO, *Not
-  yet a library*).
-
-  Decided:
-  - **What a file defines, `--names file`**, the one change to the binary,
-    accepted by the owner: each name the file leaves in the session, run as
-    `--compile` runs it, one a line, sorted as bytes, after what it is:
-    `model`, `instance`, `sequence`, `function` (any other definition with
-    parameters, a sequence with parameters and a function by cells among
-    them), `value` (any other without an index, a matrix by cells among
-    them) or `file` (one used); a name brought in by `use f (a)` is what it
-    is in f, and a prelude name only where the file defines it again.
-    Refused as `--compile` refuses a file, and with anything else on the
-    line. Nothing offers this today: `?f` of a file prints `use f`, as
-    written, `?name` a definition whose kind only its syntax tells, and an
-    instance looks like a call until its callee is found to be a model,
-    which only the interpreter can find. About 30 lines of `main.cpp` and 4
-    of `--help`. Rejected: a session query, `?` alone or `?f` listing a
-    file, which moves queries.ink's goldens for what only a host reads;
-    reading the file in Python, a second parser of the language; and probing
-    kinds by the wording of errors.
-  - **Locating**: the interpreter from `$INKAMATH`, `shutil.which`, then
-    `<repo>/build/inkamath`, and the C compiler from `$CC` (split by
-    `shlex.split`, so it may carry flags, and a Windows path in it is
-    quoted or written with `/`) or `cc`, each read at every call and made
-    an absolute path then: a relative one would be read from the temporary
-    directory a process runs in, and a bare name is looked for on `PATH`
-    alone, never in the working directory, where Windows' `CreateProcess`
-    and Python 3.10's `shutil.which` look first, so that a directory
-    holding a planted `inkamath.exe` or `cc.exe` runs neither.
-  - **A value, `eval(expr, *, file=None)`**: a process of its own, `inkamath
-    --echo [file -i]` given `digits = 17` and `frac expr`; the answer is the
-    last entry of the transcript, so a file's own answers, however many
-    lines each, are skipped, and an error among them is raised. Where `frac`
-    refuses, approximated, complex or an error, the plain value is asked in
-    a second process and its error, if any, is raised: exact values, the
-    language's point, cost one process (8 ms with the prelude) and nothing
-    hangs on an error's wording. Parsed with no knowledge of layout: a
-    trailing `# ...` comment dropped, `;;` slices, `;` rows, `,` cells,
-    spacing ignored; a bare cell exact, `int` or `Fraction` (which reads
-    `p/q`, `0.25` and `1e-05`), a `~` cell or a NaN a `float` (`~inf`,
-    `-nan`, `~1e+30`), `~(a+i*b)` a `complex` in each of its forms (`~(i)`,
-    `~(-2-i*3)`, `~(-nan+i*inf)`). A 1x1 matrix is a single value, a column
-    a list, a row or a matrix a list of rows, a tensor a list of slices,
-    each a list of rows whatever its shape, `[1;;2]` `[[[1]], [[2]]]`,
-    always. `ValueError` with the diagnostic; an expression of more than one
-    line is refused. A row is `[[a, b]]`, so that it is given back as a row,
-    where `m[key]` gives `[a, b]`; accepted by the owner. A known limit,
-    accepted by the owner: frac refuses a matrix with one approximated cell,
-    so its exact cells are read as shown, and an exact 1/3 among them is the
-    float `~0.33333333333333333`. Cell-wise `frac` would fix it and move the
-    goldens of frac's refusal; not taken.
-  - **An argument**: `.tolist()` first (a numpy array or scalar), then
-    `bool` and `int` as digits, `Fraction` `p/q`, `float` its `repr` read as
-    written (0.1 is 1/10, as data is, `docs/language.md` section 5),
-    `complex` `(re+(im)*i)` of reprs, a sequence of numbers a column, of
-    sequences rows, of those slices. Ragged or empty is `ValueError`,
-    anything else `TypeError`, a `str` among them; an infinity or NaN is the
-    interpreter's to refuse.
-  - **The prelude**: `pi`, `e`, `i` read lazily by the module's
-    `__getattr__`, and the functions the request names, each `name(*args)`
-    through `eval`: the built-ins `floor`, `re` and `im`, the prelude's
-    functions docs/language.md section 5 lists but `rhob`, `abscissab` and
-    `eigb`, sequences, and `ilogb`, which log's reduction names.
-    `describe(name, *, file=None)` is `?name` and `tex(name, *, file=None)`
-    `tex ?name`, run as `eval` runs. `eval`, `abs`, `max`, `min` and `re`
-    are importable by name and left out of `__all__`; Python's `re` is
-    imported under another name, and the module calls no builtin it shadows.
-  - **One process per call**: rejected, a persistent interpreter, which
-    needs a sentinel to frame a multi-line answer, leaks one call's
-    definitions into the next and must recover from a runaway.
-  - **`Model(path, name=None, *, float32=False, **params)`**: a `.so`,
-    `.dll` or `.dylib` loaded as today, its name required, by its absolute
-    path, so that `Model("libpid.so", "pid")` loads the file named and not
-    one the loader's search finds; a `.ink` compiled by `--compile path
-    [name] [--float] -o model.h` in a temporary directory, `name` defaulting
-    to the file's own step where `--names` lists a sequence or an instance,
-    else the model named as the file; `float32` beside a library is refused.
-    `path` and `name` are positional only, here and in `check`, and so is
-    `set`'s receiver, so a parameter clashes only with `float32`, or `steps`
-    in a check; such a parameter is given by `m.set(**{"steps": 2})`, and
-    checked by `m.check()`. The header's module is always `model`,
-    `MODEL_SHARED`: a file's stem may be a word C keeps (`float.ink`), and
-    the struct's name is nobody's. Parameters applied, then one update;
-    `set(**params)` one update; `m[key] = value` a parameter, a member
-    before `index_`, a number or nested sequences in C order, a sequence
-    refused, `ValueError`, as are a parameter's history, a step given other
-    than its inputs, and a library's `m.check()`, which has no `.ink`.
-    `m[key]` is the current term and `m.history(key)` the window `[key_n,
-    key_(n-1), ...]`, refused for a parameter; a term is a float, or an int
-    for an integer member, a 1x1 a single value, a row or a column a list, a
-    matrix a list of rows, a tensor a list of slices, each a list of rows. A
-    name the struct does not hold is `KeyError`, given as a parameter too, a
-    parameter the header compiles in, a size, an exponent or a constant the
-    step needs, among them. **Breaking**: `m["u"][0]` is now `m["u"]`, and
-    docs/compile.md's example moves.
-  - **The cache**: `$XDG_CACHE_HOME/inkamath`, else `~/.cache/inkamath`,
-    made private, never the shared temporary directory, where another user
-    could place a library to be loaded: made with mode 0700, and on POSIX
-    used only where `os.stat` finds it a directory the user owns that
-    neither group nor others may write, else `RuntimeError`, so that a
-    directory or a link placed before it is not trusted. Keyed by SHA-256 of
-    the header and the compiler's command line, its output path aside,
-    `--float` being in the header; one file a key, the library, `<key>.so`,
-    `.dylib` or `.dll`, nothing else kept. The header is written in a
-    directory of `tempfile.mkdtemp`'s, the library built under a name of
-    `tempfile.mkstemp`'s in the cache and moved by `os.replace`, so two
-    processes build the same at worst; on Windows, where a loaded DLL cannot
-    be replaced, one already there is taken. `--compile` runs at every
-    instantiation, the header being the key; `cc` only on a miss. No
-    `compile`, by the owner's ruling: `Model("x.ink")` compiles and caches,
-    and `inkamath --compile` gives a header, so the library's path and its
-    `model_` prefix stay the module's own.
-  - **Flags**: `cc -O2 -ffp-contract=off -shared -fPIC -x c -DMODEL_SHARED
-    model.h -o lib -lm`, docs/compile.md's library with contraction off, and
-    the check program `cc -O2 -ffp-contract=off check.c -o check -lm`, so
-    the check holds the step as built. `-ffp-contract=off` as
-    `test/CMakeLists.txt` builds every check (C97): GCC fuses by default and
-    Clang within an expression, wherever the target has a fused
-    multiply-add, as every arm64 has, and a fused step is not the
-    interpreter's rounding, nor the values the test works out in Python's
-    doubles.
-  - **`check(path, name=None, *, steps=100, float32=False, **params)`**,
-    `M.check(*, steps=100, float32=False, **params)` and
-    `m.check(steps=100)`, in float where `m` was built so: `--check` with
-    `--steps` and `--float`, the program built and run, its report returned,
-    a non-zero exit `RuntimeError` with the report, the interpreter's
-    refusal `ValueError`, the compiler's `RuntimeError`. An instance,
-    `check(path, "ctl")`, is checked as named, parameters refused. Given
-    none, a model and a file's own step are checked as the `checkmodel`
-    branch, which lands first, checks them: `--check path M -o check.c`, the
-    report named M, `fall: 100 steps from 0` and `fall.v: within 0`, or
-    refused where M takes an input or a parameter with no default; and
-    `--check path -o check.c`, the report named after the file and each term
-    by its own name, `decade.ink: 100 steps from 0` and `d: within 0`. Given
-    parameters, a model is checked through a wrapper, `use inkamathsource`
-    and `M = inkamathsource.M(k = v)` with every default otherwise, so that
-    the report names M as checkmodel's does; its file is read under that
-    stem, since `use mix` beside `mix = mix.mix()` binds `mix` twice. With
-    parameters, a file's own step is checked from a copy of it with `k = v`
-    lines after its own, an entry `>> k = v` in a transcript. Both run in a
-    temporary directory holding a copy of every `.ink` beside the file, all
-    that `use` reads. `m.check()` gives the values assigned to `m`, as
-    assigned, since construction. Rejected: the wrapper beside the file,
-    which writes into the user's directory, fails where it is read-only and
-    leaves files where a process is killed; renaming the report's instance
-    afterwards; by the owner's ruling, an instance as `--check`'s argument,
-    `--check mix.ink "mix(g = 1/3)"`, a second way to write an instance
-    which removes none of this, a file's own parameters still needing the
-    copy.
-  - **Import**: a finder appended to `sys.meta_path` on `import inkamath`,
-    after Python's own, so a `.py` of the same stem wins; it searches a
-    package's `__path__`, or `sys.path` then `sys.argv[0]`'s directory and
-    the working directory. `load(path)` makes the same module from a path,
-    outside `sys.modules`. `--names` runs once at import: a model is an
-    object at once, `M(float32=False, **params)` a `Model`, as `Model(path,
-    "M", ...)` is, by the owner's ruling, `M.check(...)`, `M.describe()` and
-    `M.tex()`; a function a callable through `eval`; a value read at its
-    first access and kept. A file whose own step `--names` shows, by a
-    sequence or an instance, gets it as its stem, an object of the same kind
-    but for `describe` and `tex`, `pidloop(**params)` and
-    `pidloop.check(...)`, where the file defines no name of its stem; where
-    it does, the step is `Model(path)`. Nothing module-level stands for it,
-    by the owner's ruling. Sequences, instances and files used are not
-    attributes: `eval(..., file=m.__file__)` reads them. `__all__` lists
-    what the file gives; a file that fails raises `ValueError` at import.
-  - **The C compiler on Windows**: a cc-compatible driver only, GCC, Clang
-    or MinGW. MSVC's `cl` takes other flags, and CI's MSVC job runs ctest
-    outside a developer prompt, where `cl` finds no headers. The test is
-    given `CC="${CMAKE_C_COMPILER}"`, quoted, as a path may hold a space,
-    where the compiler's id is GNU, Clang or AppleClang, and without it
-    skips what compiles a `.ink`, saying so; the prebuilt libraries, values,
-    the prelude and imports run everywhere.
-  - **Tests**, accepted by the owner with the deletions and the cli part:
-    `python_test.py` replaces `shared_test.py`, deleted, with
-    `tools/inkamath_model.py`, the same values read the new way;
-    `compile_shared_python` runs it with
-    `INKAMATH=$<TARGET_FILE:inkamath_cli>` and the compiler above, still not
-    under the sanitizers, in a temporary copy of the fixtures, the cache
-    inside it. A new file rather than `shared_test.py` rewritten, so that
-    the registered test stays green until the module exists. A report is
-    held to checkmodel's words, and a file's own whole where its terms are
-    known apart, decade's. The cli `spec` part moves into part 1, its
-    `--help` lines into the help case, merged with checkmodel's usage.
-  - **`pyproject.toml`**: `[build-system]` hatchling, `[project]` name
-    `inkamath`, version 1.0.0, `requires-python = ">=3.10"`, no
-    dependencies, and `[tool.hatch.build.targets.wheel]` `only-include =
-    ["tools/inkamath.py"]` with `sources = ["tools"]`; checked with
-    hatchling 1.32: the wheel holds `inkamath.py` at its root, and the
-    editable install puts `tools/` on the path. A download at build time,
-    as the owner asked; nothing at run time.
-  - **Docs**: docs/compile.md's Hosting gives the module in place of
-    inkamath_model.py, `--names` beside the shared tables; README's
-    command-line paragraph names `--names`.
-
-  Cost: `tools/inkamath.py` about 390 lines for the 74 deleted, the
-  rulings' 10 fewer and the locating and the cache's trust 20 more;
-  `pyproject.toml` 12; `main.cpp` 34, `include/` and `src/` 21,160 to about
-  21,194 at 27028f8; `python_test.py` 548 for `shared_test.py`'s 64;
-  cli.cmake 90; `test/CMakeLists.txt` about 8; docs/compile.md about 40
-  for 30.

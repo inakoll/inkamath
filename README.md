@@ -300,7 +300,8 @@ of `test/data/*.ink`.
 `--compile` writes the sequences a file defines as a C header and `--check` holds it
 to the interpreter: [`docs/compile.md`](docs/compile.md) has the header, what
 compiles and what is refused, how to build it, rates and optional inputs, the
-check's report, `--float`, and hosting from C and Python.
+check's report, `--float`, and hosting from C and Python, where `--names`
+lists what a file defines for a host and `tools/inkamath.py` is one.
 
 `--check session.ink`, given a transcript alone, replays it and shows each
 answer that is not the one recorded, as recorded (`-`) and as given now (`+`),

@@ -67,6 +67,11 @@ exporting its functions and its struct's size, member names and offsets
 (`DESIGN.md`, *A header built as a shared library*). Its symbols are not a
 stable interface until the language stops moving.
 
+Taken: `tools/inkamath.py` hosts the interpreter and a compiled model from
+Python, a process a call and a library read from its tables, `--names` the
+binary's one addition (`DESIGN.md`, *Hosting from Python*). It is no more
+stable than they are.
+
 The size constraint at the top of `DESIGN.md` governs everything below.
 Several of these directions could each double the program. Where one does, the
 version worth having is the one that adds a capability without adding a second

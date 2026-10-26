@@ -353,22 +353,39 @@ null pointer, `<name>_offsets_`, each member's offset, `<name>_types_`, its
 C type, `"long long"` or `"double[1][2][1]"`, and `<name>_inputs_`, the
 step's inputs in its order, then a null pointer, an optional one's name
 ending in `?`. None of it is a stable interface yet, while the language moves.
-For the getting started's `pid.h`, built with
-`cc -O2 -shared -fPIC -x c -DPID_SHARED pid.h -o libpid.so -lm`,
-[`tools/inkamath_model.py`](../tools/inkamath_model.py) reads it from the
-tables alone, in ctypes, under Python 3.10 or later, so the host does not
-mirror the struct: each member
-at its offset, the members after `index_` the sequences and their flags,
-each a sequence's history first, and the inputs in their order, `None` for
-an optional one absent:
+`inkamath --names file` lists what a file defines, one a line, sorted, after
+what it is: `model`, `instance`, `sequence`, `function`, `value` or `file`.
+
+From Python 3.10 or later, [`tools/inkamath.py`](../tools/inkamath.py), the
+standard library alone, on `sys.path` or by `pip install -e .`, hosts both. It
+runs `$INKAMATH`, else `inkamath` on `PATH`, else `build/inkamath`, a process
+a call, and builds with `$CC`, else `cc`: GCC, Clang or MinGW, not `cl`.
 
 ```python
-from inkamath_model import Model   # tools/ on sys.path
-m = Model("./libpid.so", "pid")
-m["kp"] = 2.5                  # a parameter, and what derives from it
-for y in (0, 0.1, 0.2): m.step(y)
-m["u"][0]                      # u_n, as the struct holds it
+import inkamath
+inkamath.eval("[1; 2/3]")         # [1, Fraction(2, 3)]
+inkamath.eig([[2, 1], [1, 3]])    # the prelude's functions, pi, e and i
+lib = inkamath.Model("./libpid.so", "pid")
+from pidloop import pid           # test/compile/pidloop.ink's model
+m = pid(r=2)                      # compiled, built and loaded
+for y in (0, 0.1, 0.2): m.step(y) # None for an optional input absent
+m["u"], m.history("e")            # u_2, and [e_2, e_1]
+m["kp"] = 3                       # a parameter, and what derives from it
+inkamath.check("pidloop.ink", "ctl", steps=10)  # --check's report
 ```
+
+A value is exact an `int` or a `Fraction`, else a `float` or a `complex`; a
+column a list, a row or a matrix a list of rows, a tensor a list of slices.
+An argument is written alike, a float as its `repr` reads, 0.1 as 1/10.
+`libpid.so` is README's `pid.h` built with `cc -O2 -ffp-contract=off -shared
+-fPIC -x c -DPID_SHARED pid.h -o libpid.so -lm`; a `.ink` is compiled, the
+model named or the file's own step, and built so into
+`$XDG_CACHE_HOME/inkamath`, else `~/.cache/inkamath`, once for each header
+and compiler, never cleared. A check takes parameters too, and raises
+`RuntimeError` with its report where a term parts. An import finds
+`name.ink` after any `name.py`, or `load(path)` reads one: its models, each
+`M(**params)` with `M.check()`, `M.describe()` and `M.tex()`, its functions
+and values, and its own step under its stem where no name takes it.
 
 To batch steps in C, as a small model's cost advises (below), a host
 writes a small C file that includes the header and exports its loop:
