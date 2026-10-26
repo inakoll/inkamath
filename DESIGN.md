@@ -13810,8 +13810,9 @@ The owner's request, a Python interface over the binary:
   it, and imports a `.ink` file as a module. Specified by
   `test/compile/python_test.py` and cli.cmake's `spec` part, neither
   registered while they fail: `INKAMATH=build/inkamath CC=cc python3 -B
-  test/compile/python_test.py`, and `cmake -DEXE=build/inkamath -DPART=spec
-  -DOUT=build/cli_spec -P test/cli.cmake`. Not a stable interface, as the
+  test/compile/python_test.py`, and `cmake -DEXE=$PWD/build/inkamath
+  -DCASE_TIMEOUT=60 -DPART=spec -DOUT=build/cli_spec -P test/cli.cmake`.
+  Not a stable interface, as the
   library's tables are not (MANIFESTO, *Not yet a library*).
 
   Decided:

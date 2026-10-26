@@ -71,7 +71,8 @@ set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 # Specified, not yet built (DESIGN.md, *Hosting from Python*): --names lists
 # what a file defines, sorted by name, each after what it is, so that a host
 # reads no inkamath. Not registered while it is refused; run by hand, 'cmake
-# -DEXE=build/inkamath -DPART=spec -DOUT=build/cli_spec -P test/cli.cmake'.
+# -DEXE=$PWD/build/inkamath -DCASE_TIMEOUT=60 -DPART=spec -DOUT=build/cli_spec
+# -P test/cli.cmake', EXE absolute as the cases run in OUT.
 if(PART STREQUAL "spec")
     file(MAKE_DIRECTORY "${OUT}")
     set(compiled "${CMAKE_CURRENT_LIST_DIR}/compile")
