@@ -13834,8 +13834,14 @@ The owner's request, a Python interface over the binary:
     reading the file in Python, a second parser of the language; and probing
     kinds by the wording of errors.
   - **Locating**: the interpreter from `$INKAMATH`, `shutil.which`, then
-    `<repo>/build/inkamath`, and the C compiler from `$CC` (split as a shell
-    would, so it may carry flags) or `cc`, each read at every call.
+    `<repo>/build/inkamath`, and the C compiler from `$CC` (split by
+    `shlex.split`, so it may carry flags, and a Windows path in it is
+    quoted or written with `/`) or `cc`, each read at every call and made
+    an absolute path then: a relative one would be read from the temporary
+    directory a process runs in, and a bare name is looked for on `PATH`
+    alone, never in the working directory, where Windows' `CreateProcess`
+    and Python 3.10's `shutil.which` look first, so that a directory
+    holding a planted `inkamath.exe` or `cc.exe` runs neither.
   - **A value, `eval(expr, *, file=None)`**: a process of its own, `inkamath
     --echo [file -i]` given `digits = 17` and `frac expr`; the answer is the
     last entry of the transcript, so a file's own answers, however many
@@ -13875,36 +13881,43 @@ The owner's request, a Python interface over the binary:
     needs a sentinel to frame a multi-line answer, leaks one call's
     definitions into the next and must recover from a runaway.
   - **`Model(path, name=None, *, float32=False, **params)`**: a `.so`,
-    `.dll` or `.dylib` loaded as today, its name required; a `.ink` compiled
-    by `--compile path [name] [--float] -o model.h` in a temporary
-    directory, `name` defaulting to the file's own step where `--names`
-    lists a sequence or an instance, else the model named as the file;
-    `float32` beside a library is refused. `path` and `name` are
-    positional only, here and in `check`, and so is `set`'s receiver, so a
-    parameter clashes only with `float32`, or `steps` in a check; such a
-    parameter is given by `m.set(**{"steps": 2})`, and checked by
-    `m.check()`. The header's module is always `model`, `MODEL_SHARED`: a
-    file's stem may be a word C keeps (`float.ink`), and the struct's name
-    is nobody's. Parameters applied,
-    then one update; `set(**params)` one update; `m[key] = value` a
-    parameter, a member before `index_`, a number or nested sequences in C
-    order, a sequence refused. `m[key]` is the current term and
-    `m.history(key)` the window `[key_n, key_(n-1), ...]`, refused for a
-    parameter; a term is a float, or an int for an integer member, a 1x1 a
-    single value, a row or a column a list, a matrix a list of rows, a
-    tensor a list of slices. **Breaking**:
-    `m["u"][0]` is now `m["u"]`, and docs/compile.md's example moves.
+    `.dll` or `.dylib` loaded as today, its name required, by its absolute
+    path, so that `Model("libpid.so", "pid")` loads the file named and not
+    one the loader's search finds; a `.ink` compiled by `--compile path
+    [name] [--float] -o model.h` in a temporary directory, `name` defaulting
+    to the file's own step where `--names` lists a sequence or an instance,
+    else the model named as the file; `float32` beside a library is refused.
+    `path` and `name` are positional only, here and in `check`, and so is
+    `set`'s receiver, so a parameter clashes only with `float32`, or `steps`
+    in a check; such a parameter is given by `m.set(**{"steps": 2})`, and
+    checked by `m.check()`. The header's module is always `model`,
+    `MODEL_SHARED`: a file's stem may be a word C keeps (`float.ink`), and
+    the struct's name is nobody's. Parameters applied, then one update;
+    `set(**params)` one update; `m[key] = value` a parameter, a member
+    before `index_`, a number or nested sequences in C order, a sequence
+    refused. `m[key]` is the current term and `m.history(key)` the window
+    `[key_n, key_(n-1), ...]`, refused for a parameter; a term is a float,
+    or an int for an integer member, a 1x1 a single value, a row or a column
+    a list, a matrix a list of rows, a tensor a list of slices.
+    **Breaking**: `m["u"][0]` is now `m["u"]`, and docs/compile.md's example
+    moves.
   - **The cache**: `$XDG_CACHE_HOME/inkamath`, else `~/.cache/inkamath`,
     made private, never the shared temporary directory, where another user
-    could place a library to be loaded. Keyed by SHA-256 of the header and
-    the compiler's command line, `--float` being in the header; the library
-    built under a temporary name beside and moved by `os.replace`, so two
-    processes build the same at worst; on Windows, where a loaded DLL
-    cannot be replaced, one already there is taken. `--compile` runs at
-    every instantiation, the header being the key; `cc` only on a miss.
-    No `compile`, by the owner's ruling: `Model("x.ink")` compiles and
-    caches, and `inkamath --compile` gives a header, so the library's
-    path and its `model_` prefix stay the module's own.
+    could place a library to be loaded: made with mode 0700, and on POSIX
+    used only where `os.stat` finds it a directory the user owns that
+    neither group nor others may write, else `RuntimeError`, so that a
+    directory or a link placed before it is not trusted. Keyed by SHA-256 of
+    the header and the compiler's command line, its output path aside,
+    `--float` being in the header; one file a key, the library, `<key>.so`,
+    `.dylib` or `.dll`, nothing else kept. The header is written in a
+    directory of `tempfile.mkdtemp`'s, the library built under a name of
+    `tempfile.mkstemp`'s in the cache and moved by `os.replace`, so two
+    processes build the same at worst; on Windows, where a loaded DLL cannot
+    be replaced, one already there is taken. `--compile` runs at every
+    instantiation, the header being the key; `cc` only on a miss. No
+    `compile`, by the owner's ruling: `Model("x.ink")` compiles and caches,
+    and `inkamath --compile` gives a header, so the library's path and its
+    `model_` prefix stay the module's own.
   - **Flags**: `cc -O2 -ffp-contract=off -shared -fPIC -x c -DMODEL_SHARED
     model.h -o lib -lm`, as docs/compile.md builds a library, and the check
     program `cc -O2 -ffp-contract=off check.c -o check -lm`, so the check
@@ -13960,9 +13973,10 @@ The owner's request, a Python interface over the binary:
   - **The C compiler on Windows**: a cc-compatible driver only, GCC, Clang
     or MinGW. MSVC's `cl` takes other flags, and CI's MSVC job runs ctest
     outside a developer prompt, where `cl` finds no headers. The test is
-    given `CC=${CMAKE_C_COMPILER}` where the compiler's id is GNU, Clang or
-    AppleClang, and without it skips what compiles a `.ink`, saying so;
-    the prebuilt libraries, values, the prelude and imports run everywhere.
+    given `CC="${CMAKE_C_COMPILER}"`, quoted, as a path may hold a space,
+    where the compiler's id is GNU, Clang or AppleClang, and without it
+    skips what compiles a `.ink`, saying so; the prebuilt libraries, values,
+    the prelude and imports run everywhere.
   - **Tests**, accepted by the owner with the deletions and the cli part:
     `python_test.py` replaces `shared_test.py`, deleted, with
     `tools/inkamath_model.py`, the same values read the new way;
