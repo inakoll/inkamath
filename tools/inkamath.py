@@ -121,7 +121,8 @@ def _format(x):
 
     def join(part, k):
         return joins[k].join(join(p, k + 1) for p in part) if k < len(joins) else part
-    return f"[{join(cells, 0)}]" if shape else cells
+    one = ";;" * (len(shape) == 3 and shape[0] == 1)  # a tensor of one slice keeps it
+    return f"[{join(cells, 0)}{one}]" if shape else cells
 
 
 _COMPLEX = _re.compile(r"(.*?)([+-]?)i(?:\*(.+))?")
@@ -144,11 +145,11 @@ def _value(text):
         if not text.startswith("["):
             return _cell(text)
         slices = [[[_cell(c) for c in row.split(",")] for row in part.split(";")]
-                  for part in text[1:-1].split(";;")]
+                  for part in text[1:-1].removesuffix(";;").split(";;")]
     except (ValueError, AttributeError):  # AttributeError: no complex matched
         raise ValueError(f"{text} is not a value") from None
     rows = slices[0]
-    if len(slices) > 1:
+    if ";;" in text:
         return slices
     if len(rows) > 1 and all(len(row) == 1 for row in rows):
         return [row[0] for row in rows]

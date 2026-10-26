@@ -197,6 +197,10 @@ same("[1 2 3], a row", ev("[1 2 3]"), [[1, 2, 3]])
 same("[1, 2; 3, 4]", ev("[1, 2; 3, 4]"), [[1, 2], [3, 4]])
 same("a tensor", ev("[1, 2; 3, 4;; 5, 6; 7, 8]"), [[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
 same("[1;;2], a tensor of 1x1 slices", ev("[1;;2]"), [[[1]], [[2]]])
+# A tensor of one slice keeps its ;;, as it prints (docs/language.md,
+# section 2; C428).
+same("[1 2;;]", ev("[1 2;;]"), [[[1, 2]]])
+same("[2;;]", ev("[2;;]"), [[[2]]])
 same("[1/3], a single value", ev("[1/3]"), F(1, 3))
 same("2+3*i", ev("2+3*i"), 2 + 3j)
 same("-i", ev("-i"), -1j)
@@ -333,6 +337,7 @@ same("rows of tuples", back(((1, 2), (3, 4))), [[1, 2], [3, 4]])
 same("a tensor", back([[[1, 2], [3, 4]], [[5, 6], [7, 8]]]),
      [[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
 same("a .tolist()", back(Rows([[1, 2], [3, 4]])), [[1, 2], [3, 4]])
+same("a tensor of one slice", back([[[1, 2], [3, 4]]]), [[[1, 2], [3, 4]]])
 same("-1/3", back(F(-1, 3)), F(-1, 3))
 same("0.1, read as written", back(0.1), F(1, 10))
 same("1e-05, read as written", back(1e-05), F(1, 100000))
