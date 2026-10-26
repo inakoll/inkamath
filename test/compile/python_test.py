@@ -542,6 +542,15 @@ gen.step()
 same("noise's r_1", gen["r"], float(r1))
 same("noise's q_1", gen["q"], float(16807 * 777 % (2**31 - 1)))
 
+# optional.ink's zd_n is given where a guard holds, at 0, mod(0, 3) == 0 and
+# 0 < 9, and not at 1: a flag of the step's, read as it is, with no history
+# (C425).
+own = Model(work / "optional.ink")
+for n in range(2):
+    own.step()
+    same(f"optional.ink's zd_given_ at {n}", own["zd_given_"], 1 - n)
+refused('its history("zd_given_")', ValueError, lambda: own.history("zd_given_"))
+
 # chain.ink, its use of filters.ink compiled: y_0 = 0 + (1 - 0) + 1/10 and
 # y_1 = 1/10*1/2 + (1 - 1/4) + 1/10.
 import chain

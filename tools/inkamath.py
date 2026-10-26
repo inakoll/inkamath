@@ -356,13 +356,13 @@ class Model:
 
     def __getitem__(self, key):
         view, dims, parameter = self._member(key)
-        return _term(view[:], dims) if parameter or key == "index_" else self.history(key)[0]
+        return _term(view[:], dims) if parameter or not dims else self.history(key)[0]
 
     def history(self, key):
         """The window [key_n, key_(n-1), ...]."""
         view, dims, parameter = self._member(key)
-        if parameter or key == "index_":
-            raise ValueError(f"{key} is a parameter, which has no history")
+        if parameter or not dims:  # a parameter, index_ or a flag
+            raise ValueError(f"{key} has no history")
         n = len(view) // dims[0]
         return [_term(view[k:k + n], dims[1:]) for k in range(0, len(view), n)]
 
