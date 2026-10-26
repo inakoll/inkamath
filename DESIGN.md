@@ -14004,8 +14004,9 @@ The owner's request, a Python interface over the binary:
     inkamath_model.py, `--names` beside the shared tables; README's
     command-line paragraph names `--names`.
 
-  Cost: `tools/inkamath.py` about 380 lines for the 74 deleted;
+  Cost: `tools/inkamath.py` about 390 lines for the 74 deleted, the
+  rulings' 10 fewer and the locating and the cache's trust 20 more;
   `pyproject.toml` 12; `main.cpp` 34, `include/` and `src/` 21,160 to about
-  21,194 at 27028f8; `python_test.py` 530 for `shared_test.py`'s 64;
+  21,194 at 27028f8; `python_test.py` 548 for `shared_test.py`'s 64;
   cli.cmake 90; `test/CMakeLists.txt` about 8; docs/compile.md about 40
   for 30.
