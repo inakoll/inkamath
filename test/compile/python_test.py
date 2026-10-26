@@ -496,6 +496,9 @@ same("decade.ink's own check for c = 1", inkamath.check(work / "decade.ink"),
      "decade.ink: 100 steps from 0, against exact values\nd: within 0\n")
 refused("decade.ink's own check for c = 1/10", RuntimeError,
         lambda: inkamath.check(work / "decade.ink", c=F(1, 10)), parted)
+# A name the file does not define is no parameter of its step (C426).
+refused("decade.ink's own check for cc", ValueError,
+        lambda: inkamath.check(work / "decade.ink", cc=F(1, 10)), "decade.ink defines no value cc")
 import decade
 refused("decade.decade.check(c=1/10)", RuntimeError, lambda: decade.decade.check(c=F(1, 10)),
         parted)

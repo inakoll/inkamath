@@ -420,7 +420,8 @@ def _check(path, name, steps, float32, params):
     path = _ink(path)
     with tempfile.TemporaryDirectory() as folder:
         target = path
-        kind = dict((n, k) for k, n in _names(path)).get(name, "") if params and name else None
+        kinds = dict((n, k) for k, n in _names(path)) if params else {}
+        kind = kinds.get(name, "") if name else None
         if kind == "instance":
             raise ValueError(f"{name} is an instance, checked as the file gives it")
         if params and kind in (None, "model"):  # else --check refuses the name itself
@@ -434,6 +435,9 @@ def _check(path, name, steps, float32, params):
                 target = os.path.join(folder, "inkamathcheck.ink")
                 text = f"use inkamathsource\n{name} = inkamathsource.{name}({', '.join(given)})\n"
             else:
+                for key in params:
+                    if kinds.get(key) != "value":
+                        raise ValueError(f"{os.path.basename(path)} defines no value {key}")
                 target = os.path.join(folder, os.path.basename(path))
                 text = pathlib.Path(path).read_text()
                 first = next((t for t in text.splitlines() if t.strip()
