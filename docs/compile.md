@@ -234,7 +234,7 @@ no default is refused, as only an instance can give it.
 what `--compile fib.ink` compiles, under the file's name and theirs:
 `fib.ink: 79 steps from 0` and `fib: within 0` with `--steps 79`
 ([`fib.ink`](../test/compile/fib.ink)). A file whose sequences read an input
-nothing defines is refused, and so is a file of models alone.
+or a name nothing defines is refused, and so is a file of models alone.
 
 ### The report
 

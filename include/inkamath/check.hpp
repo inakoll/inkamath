@@ -46,9 +46,11 @@ public:
         if (!definition && compiled.sequences.empty())
             throw std::runtime_error(source +
                                      " defines no sequence of its own; check a model by name");
-        if (!definition && !compiled.inputs.empty())
-            throw std::runtime_error(source + " reads " + compiled.inputs.front() +
-                                     ", which nothing defines; define it");
+        if (!definition && (!compiled.inputs.empty() || !compiled.undefined.empty()))
+            throw std::runtime_error(
+                source + " reads " +
+                (compiled.inputs.empty() ? *compiled.undefined.begin() : compiled.inputs.front()) +
+                ", which nothing defines; define it");
         const Scope<Value>* const checked = definition ? stack.InstanceScope(definition) : &unfed;
         const std::string         dotted  = definition ? instance + "." : "";
         // Every guard asked on the way, from the first term on, by run, term

@@ -76,6 +76,7 @@ public:
             bool               plain = false, grad = false;
         };
         std::map<const Expression<Value>*, Fallen> fallen;
+        std::set<std::string>                      undefined;  // read, NaN until the host sets them
     };
 
     // '--float' (DESIGN.md, a float target): a float wherever a double is.
@@ -3100,6 +3101,7 @@ private:
                     return p.name == key && !p.index.empty() && !p.fallback;
                 }))
                 throw Reason(key + " is a sequence; index it");
+            undefined_.insert(key);
             return Answer(Field(key, Value(Number(NAN))));
         }
         for (const std::string& by : graded_) {  // where a local did not hide it (C313)
@@ -7399,7 +7401,7 @@ private:
                     else
                         out.insert(at + from.size() - (from.back() == '(' ? 1 : 0), "f");
                 }
-        Compiled compiled{out, earliest, inputs, {}, {}, {}, unnamed_, fallen_};
+        Compiled compiled{out, earliest, inputs, {}, {}, {}, unnamed_, fallen_, undefined_};
         for (const std::string& name : inputs) compiled.cells.push_back(Cells(name));
         for (const std::string& name : order) {
             if (totals_.count(name)) continue;  // which the interpreter does not name
@@ -7435,6 +7437,7 @@ private:
     std::map<std::string, Compiled::Unnamed>                           unnamed_;
     std::map<std::string, Sequence>  sequences_;
     std::map<std::string, Parameter> parameters_;
+    std::set<std::string>                                              undefined_;
     std::vector<Derived>             derived_;  // each after those it reads
     std::set<std::string>            fixed_;    // parameters compiled as constants; see Fix
     std::set<std::string>            first_;    // see First

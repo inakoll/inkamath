@@ -654,6 +654,13 @@ set(args --check fed.ink -o fed.c)
 set(stderr "inkamath: fed.ink reads x, which nothing defines; define it\n")
 set(exit 1)
 check(check_undefined_input)
+# C419: and so is a name read as a constant, which the header leaves to its
+# host, NaN, and the check left NaN, comparing nothing.
+file(WRITE "${OUT}/free.ink" "y_n = k + n\n")
+set(args --check free.ink -o free.c)
+set(stderr "inkamath: free.ink reads k, which nothing defines; define it\n")
+set(exit 1)
+check(check_undefined_constant)
 
 # C418: the report names the file as it is spelt, not as a printf format.
 file(WRITE "${OUT}/50%.ink" "fib_0 = 0\nfib_1 = 1\nfib_(n+2) = fib_(n+1) + fib_n\n")
