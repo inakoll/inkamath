@@ -655,6 +655,18 @@ set(stderr "inkamath: fed.ink reads x, which nothing defines; define it\n")
 set(exit 1)
 check(check_undefined_input)
 
+# C418: the report names the file as it is spelt, not as a printf format.
+file(WRITE "${OUT}/50%.ink" "fib_0 = 0\nfib_1 = 1\nfib_(n+2) = fib_(n+1) + fib_n\n")
+set(args --check 50%.ink --steps 3 -o percent.c)
+check(check_file_percent)
+if(CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
+    execute_process(COMMAND "${CC}" -std=c11 percent.c -o percent -lm WORKING_DIRECTORY "${OUT}")
+    execute_process(COMMAND "${OUT}/percent" OUTPUT_VARIABLE report TIMEOUT ${CASE_TIMEOUT})
+    if(NOT report STREQUAL "50%.ink: 3 steps from 0, against exact values\nfib: within 0\n")
+        message(SEND_ERROR "check_file_percent: reports\n${report}")
+    endif()
+endif()
+
 set(args --check models.ink gain)
 set(stderr "inkamath: --check takes a transcript, or a file, optionally an instance or a model it defines, and -o check.c\nTry 'inkamath --help'.\n")
 set(exit 2)

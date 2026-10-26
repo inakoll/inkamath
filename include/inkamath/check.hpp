@@ -590,7 +590,12 @@ public:
         out += "    " + module + " m_;\n    int held_ = 1;\n    " + module + "_init(&m_);\n";
         out += "    for (int n_ = 0; n_ < " + std::to_string(steps) + "; ++n_) {\n";
         out += "        " + module + "_step(&m_" + arguments + ");\n" + stepped + "    }\n";
-        out += "    printf(\"" + instance + ": " + std::to_string(steps) +
+        // In the format, as a file's name may hold a '%' or a '"' (C418).
+        std::string said = Quoted(instance);
+        said.pop_back();
+        for (std::size_t at = 0; (at = said.find('%', at)) != std::string::npos; at += 2)
+            said.insert(at, 1, '%');
+        out += "    printf(" + said + ": " + std::to_string(steps) +
                (steps == 1 ? " step from " : " steps from ") + std::to_string(first) +
                (floats ? " in float" : "") + ", against " + against + "\\n\");\n";
         if (!straddles.empty())
