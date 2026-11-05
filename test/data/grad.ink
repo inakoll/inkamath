@@ -254,6 +254,53 @@ error: grad cannot differentiate a power whose exponent changes with x, unless i
 [ 6, -3;
  -4,  2]
 
+# [1 x; x 1 + x^2] has determinant 1 and inverse [1 + x^2, -x; -x, 1], and
+# [1 x x^2; 0 1 x; 0 0 1] the inverse [1 -x 0; 0 1 -x; 0 0 1]: at 1/2, their
+# derivatives by hand, and of the powers by polynomials in fractions; the
+# cosine's by hand, -B*M'*B, in doubles (DESIGN.md, a matrix inverse and
+# power under grad compiled). A power of 1 is the matrix. Written by hand,
+# never recorded.
+>> grad_(x = 1/2) [1 x; x 1 + x^2]^-1
+[ 1, -1;
+ -1,  0]
+
+>> grad_(x = 1/2) [1 x; x 1 + x^2]^-1*[1; 2]
+[-1;
+ -1]
+
+>> grad_(x = 1/2) [1 x; x 1 + x^2]^1
+[0, 1;
+ 1, 1]
+
+>> grad_(x = 1/2) [1 x; x 1 + x^2]^3
+[   3.5, 6.3125;
+ 6.3125, 8.6875]
+
+>> grad_(x = 1/2) [1 x; x 1 + x^2]^-2
+[  3.5, -2.75;
+ -2.75,     1]
+
+>> frac grad_(x = 1/3) [1 x; x 1 + x^2]^-3
+[ 386/81, -356/81;
+ -356/81,   58/27]
+
+>> grad_(x = 1/2) [1 x x^2; 0 1 x; 0 0 1]^-1
+[0, -1,  0;
+ 0,  0, -1;
+ 0,  0,  0]
+
+>> grad_(x = 1/2) [1 x x^2; 0 1 x; 0 0 1]^-2
+[0, -2,  1;
+ 0,  0, -2;
+ 0,  0,  0]
+
+>> grad_(x = 1/2) [2 + cos(x), x; x, 3]^-1
+[ ~0.104095376, ~-0.136641857;
+ ~-0.136641857, ~0.0426557475]
+
+>> grad_(x = 1) [1 x; x 1]^-1
+error: a singular matrix has no inverse
+
 # A limit's derivative is the limit of its terms' derivatives, taken until
 # both the terms and their derivatives have converged; exp and the sigmoid
 # written as series are differentiated as written.

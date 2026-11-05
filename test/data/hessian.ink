@@ -43,6 +43,32 @@ d2(t) = grad_(u = t)^2 u^3
 >> grad_(x = 1)^2 [x^3, x^2]
 [6, 2]
 
+# A matrix inverse and power: [1 x; x 1 + x^2]'s inverse [1 + x^2, -x; -x,
+# 1], whose second derivative is [2 0; 0 0], and its cube's by polynomials
+# in fractions; [1 x x^2; 0 1 x; 0 0 1]^-2 is [1 -2x x^2; 0 1 -2x; 0 0 1];
+# and [1, s*t; t, 1 + s*t^2]^-1 is [1 + s*t^2, -s*t; -t, 1], whose mixed
+# partial is [2t, -1; 0, 0]. By hand, never recorded.
+>> grad_(x = 1/2)^2 [1 x; x 1 + x^2]^-1
+[2, 0;
+ 0, 0]
+
+>> grad_(x = 1/2)^2 [1 x; x 1 + x^2]^3
+[   9,   14.5;
+ 14.5, 28.875]
+
+>> grad_(x = 1/2)^2 [1 x x^2; 0 1 x; 0 0 1]^-2
+[0, 0, 2;
+ 0, 0, 0;
+ 0, 0, 0]
+
+>> frac grad_(s = 1/2) grad_(t = 1/3) [1, s*t; t, 1 + s*t^2]^-1
+[2/3, -1;
+   0,  0]
+
+>> grad_(v = [1/2; 1/3])^2 [1 1]*[1 v[1]; v[2] 1 + v[1]*v[2]]^-1*[1; 2]
+[0, 1;
+ 1, 0]
+
 >> pc(x) | x < 0 = -x^2
 pc(x) | x < 0 = -x^2
 

@@ -25,6 +25,17 @@
 [-480,   756;
  1400, -2205]
 
+# By a vector through an inverse and its square: [1 v1; v2 1 + v1*v2]^-1 is
+# [1 + v1*v2, -v1; -v2, 1], so the first is the gradient of 3 + v1*v2 -
+# 2*v1 - v2; the second's by polynomials in fractions.
+>> frac grad_(v = [1/2; 1/3]) [1 1]*[1 v[1]; v[2] 1 + v[1]*v[2]]^-1*[1; 2]
+[-5/3;
+ -1/2]
+
+>> frac grad_(v = [1/2; 1/3]) [1 1]*[1 v[1]; v[2] 1 + v[1]*v[2]]^-2*[1; 2]
+[  -3;
+ -1/6]
+
 >> grad_(T = [1 2; 3 4;; 5 6; 7 8]) [1 1]*T[1]*T[2]*[1; 1]
 [11, 15;
  11, 15;;

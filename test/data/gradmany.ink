@@ -21,6 +21,28 @@ g = grad_(x = 2, y = 3) x^2*y
 >> g.x == grad_(x = 2) x^2*3
 1
 
+# Through an inverse: [1 x; y 1 + x*y]^-1 is [1 + x*y, -x; -y, 1], so the
+# single value below is 3 + x*y - 2x - y. By hand, never recorded.
+>> gi = grad_(x = 1/2, y = 1/3) [1 x; y 1 + x*y]^-1
+gi = grad_(x = 1/2, y = 1/3) [1 x; y 1 + x*y]^-1
+
+>> frac gi.x
+[1/3, -1;
+   0,  0]
+
+>> gi.y
+[0.5, 0;
+  -1, 0]
+
+>> hi = grad_(x = 1/2, y = 1/3) [1 1]*[1 x; y 1 + x*y]^-1*[1; 2]
+hi = grad_(x = 1/2, y = 1/3) [1 1]*[1 x; y 1 + x*y]^-1*[1; 2]
+
+>> frac hi.x
+-5/3
+
+>> hi.y
+-0.5
+
 >> tex ?g
 g = \left.\nabla_{x,y} x^2\,y\right|_{x=2,y=3}
 
