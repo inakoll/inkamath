@@ -3,6 +3,15 @@
 What changed for someone using inkamath, release by release. The reasons, and
 every defect by its number, are in [`DESIGN.md`](DESIGN.md).
 
+## 2.1.0 — 2026-11-05
+
+### Added
+
+- **A matrix inverse and power under `grad`, compiled**: `--compile`
+  differentiates `A^-1` and a whole `A^k`, nested two deep, by several names
+  and in reverse mode, each within 0 of the interpreter where its values are
+  doubles.
+
 ## 2.0.0 — 2026-10-26
 
 ### Added
