@@ -14087,11 +14087,13 @@ step is `M(q)^-1*(tau - C - G)`:
     starts from the identity, its first factor I*B by `Tape::Sparse`, B's
     numbers wherever B is finite; forward mode starts from B, as the
     value does (the comment on `Power`). In reverse mode the identity is a
-    node, Left(B', I), recorded first and so swept last, and where the
+    node, Left(X', I), X the first factor the squaring takes in, B for an
+    odd exponent and B^2 for 2 or -2, recorded before the squaring's other
+    products that read X' and so swept after them, and where the
     exponent has two bits set the seed's adjoints sum in its order: started
     from B, `grad_(W = A_(n-1)) ([1 1]*W^3*[1; 2])` was within 1.4e-14 on a
     prototype. So under reverse mode the first factor's part is `Times(I,
-    B')`, a Left node by the identity, as the interpreter's.
+    X')`, a Left node by the identity, as the interpreter's.
   - **Constants fold exactly**, as everywhere: at a constant point the base
     is a constant that moves, its inverse the interpreter's exactly, a
     product of two constants `Exactly`'s, as `MultExpression` folds one, and
