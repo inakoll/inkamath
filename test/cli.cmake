@@ -120,7 +120,7 @@ cannot compile q: a matrix power must be a whole number
                              "inv:${inexact}:a b c d e f g h x"
                              "nest:${inexact}:a b c d e f x"
                              "many:${inexact}:g.x g.y h.x h.y k.x k.y a b"
-                             "back:${inexact}:a b c d e f g h q A"
+                             "back:${inexact}:a b c d e f g h k q A"
                              "sing:${inexact}:a b c d e x")
         string(REPLACE ":" ";" checked "${checked}")
         list(POP_FRONT checked instance against terms)
