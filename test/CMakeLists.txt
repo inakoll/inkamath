@@ -99,15 +99,6 @@ foreach(part 1 2 3 4)
                      -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
     set_tests_properties(cli_${part} PROPERTIES TIMEOUT ${cli_timeout})
 endforeach()
-# A matrix inverse and power under grad compiled (DESIGN.md), specified
-# before it is built: cli.cmake's spec part, skipped while refused as today.
-add_test(NAME cli_spec
-         COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=spec
-                 -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli_spec -DCASE_TIMEOUT=${cli_case_timeout}
-                 -DCC=${CMAKE_C_COMPILER} -DCC_ID=${CMAKE_C_COMPILER_ID}
-                 -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
-set_tests_properties(cli_spec PROPERTIES TIMEOUT ${cli_timeout} SKIP_REGULAR_EXPRESSION
-    "compile_matpow: a derivative of a matrix power refused, as today")
 # bench's workloads, each a transcript bench/run.cmake measures, replayed so
 # that one gone stale fails here rather than at its next measure. The
 # slowest, under the sanitizers, take 7 s; train.ink is data, no transcript.
@@ -337,7 +328,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          implicit:layered implicit:renamed tensorgrad:attend tensorgrad:small
                          tensorgrad:saliency:3 adjoint:fit4 adjoint:token
                          adjoint:sinabs adjoint:gate3 adjoint:under adjoint:aside gradmany:pair
-                         gradmany:same gradmany:stair transformer:unseen:4 transformer:tuned:4
+                         gradmany:same gradmany:stair matpow:ex matpow:inv matpow:nest
+                         matpow:many matpow:back matpow:sing transformer:unseen:4 transformer:tuned:4
                          split:carried:4 split:apart:4 split:twins:4 pendulum:one spin:twirl:20
                          iekf:walk:21
                          tip:reach tip:rested series:taylor series:wave series:later
@@ -874,6 +866,20 @@ set_tests_properties(check_same_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^same: 100 steps from 0${inexact0}\nsame\\.g\\.A: within 0, from 1${about}\nsame\\.A: within 0${about}\nsame\\.g\\.B: within 0, from 1${about}\nsame\\.B: within 0${about}\n$")
 set_tests_properties(check_stair_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^stair: 100 steps from 0, against exact values\nstair\\.g\\.a: within 0\nstair\\.g\\.b: within 0\n$")
+# A matrix inverse and power under grad compiled (DESIGN.md), as
+# compile/matpow.ink gives them: every term within 0.
+set_tests_properties(check_ex_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^ex: 100 steps from 0, against exact values\nex\\.a: within 0, from 1\nex\\.b: within 0, from 1\nex\\.c: within 0, from 1\nex\\.d: within 0, from 1\nex\\.e: within 0, from 1\nex\\.f: within 0, from 1\nex\\.g: within 0, from 1\nex\\.h: within 0, from 1\nex\\.k: within 0, from 1\nex\\.m: within 0, from 1\nex\\.p: within 0\nex\\.x: within 0\n$")
+set_tests_properties(check_matpow_inv_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^inv: 100 steps from 0${inexact0}\ninv\\.a: within 0, from 1${about}\ninv\\.b: within 0, from 1${about}\ninv\\.c: within 0, from 1${about}\ninv\\.d: within 0, from 1${about}\ninv\\.e: within 0, from 1${about}\ninv\\.f: within 0, from 1${about}\ninv\\.g: within 0, from 1${about}\ninv\\.h: within 0, from 1${about}\ninv\\.x: within 0${about}\n$")
+set_tests_properties(check_matpow_nest_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^nest: 100 steps from 0${inexact0}\nnest\\.a: within 0, from 1${about}\nnest\\.b: within 0, from 1${about}\nnest\\.c: within 0, from 1${about}\nnest\\.d: within 0, from 1${about}\nnest\\.e: within 0, from 1${about}\nnest\\.f: within 0, from 1${about}\nnest\\.x: within 0${about}\n$")
+set_tests_properties(check_many_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^many: 100 steps from 0${inexact0}\nmany\\.a: within 0${about}\nmany\\.b: within 0${about}\nmany\\.g\\.x: within 0, from 1${about}\nmany\\.g\\.y: within 0, from 1${about}\nmany\\.h\\.x: within 0, from 1${about}\nmany\\.h\\.y: within 0, from 1${about}\nmany\\.k\\.x: within 0, from 1${about}\nmany\\.k\\.y: within 0, from 1${about}\n$")
+set_tests_properties(check_back_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^back: 100 steps from 0${inexact0}\nback\\.A: within 0${about}\nback\\.a: within 0, from 1${about}\nback\\.b: within 0, from 1${about}\nback\\.c: within 0, from 1${about}\nback\\.d: within 0, from 1${about}\nback\\.e: within 0, from 1${about}\nback\\.f: within 0, from 1${about}\nback\\.g: within 0, from 1${about}\nback\\.h: within 0, from 1${about}\nback\\.k: within 0, from 1${about}\nback\\.q: within 0${about}\n$")
+set_tests_properties(check_sing_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^sing: 100 steps from 0${inexact0}\nsing\\.a: within 0, from 1${about}\nsing\\.b: within 0, from 1${about}\nsing\\.c: within 0, from 1${about}\nsing\\.d: within 0, from 1${about}\nsing\\.e: within 0${about}\nsing\\.x: within 0\n$")
 # A trained transformer, as compile/transformer.ink gives it.
 set_tests_properties(check_unseen_4_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^unseen: 4 steps from 0${inexact0}\nunseen\\.Z: within [1-9](\\.[0-9])?e-1[5-9]${about}\n$")

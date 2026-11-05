@@ -2497,11 +2497,10 @@ private:
             base.Scalar()
                 ? Emit(expression->m_e2())
                 : Known(expression->m_e2(), "a matrix power whose exponent is not a constant");
-        // x^0 takes no part, its derivative 0, as Derivative::Power's.
-        if (!Still(base) && !base.Scalar() && Doubles(*exponent.constant)[0] != 0)
-            throw Reason("a derivative of a matrix power, for now");
+        // A matrix's x^0 takes no part, its derivative 0, as Derivative::Power's.
+        const bool parted = !Still(base) && !base.Scalar() && Doubles(*exponent.constant)[0] != 0;
         Code value;
-        if (base.constant && exponent.constant) {
+        if (base.constant && exponent.constant && !parted) {
             value = Exactly(numeric_interface<Value>::pow, base, exponent);
         } else {
             if (!exponent.Scalar()) throw Reason("a matrix cannot be an exponent");
@@ -2653,7 +2652,9 @@ private:
     // By squaring, as the interpreter does it, of the inverse for a negative
     // exponent. The interpreter starts from the identity and multiplies it in;
     // starting from the first factor instead changes only a cell that is
-    // infinite, where the identity's zeros would make it NaN.
+    // infinite, where the identity's zeros would make it NaN. In reverse mode
+    // the first factor's part is the identity's node, as the interpreter's
+    // tape records it and sums the seed's adjoints in its order.
     Code Power(Code base, const Code& exponent) {
         if (base.size.slices)
             throw Reason("only a matrix has a power, not a " + base.size.Described());
@@ -2676,14 +2677,47 @@ private:
                     cell = Cell("(" + test + cell.text + ")", primary);
             return identity;
         }
-        if (whole < 0) base = Inverse(base);
+        if (whole < 0) base = Inverted(base);
+        const auto times = [&](const Code& a, const Code& b) {
+            return ProductOf(
+                a.constant && b.constant ? Exactly(std::multiplies<>(), a, b) : Product(a, b), a,
+                b);
+        };
+        const auto first = [&](const Code& b) {
+            return tape_ && !b.part.empty()
+                       ? Parted(b, Times(Literal(Value::Identity(b.size)), PartOf(b)), {&b})
+                       : b;
+        };
         std::optional<Code> result;
         for (unsigned long long n = static_cast<unsigned long long>(whole < 0 ? -whole : whole);
              n != 0; n >>= 1) {
-            if (n & 1) result = result ? Product(*result, base) : base;
-            if (n > 1) base = Product(base, base);
+            if (n & 1) result = result ? times(*result, base) : first(base);
+            if (n > 1) base = times(base, base);
         }
         return *result;
+    }
+
+    // B = A^-1 and its parts as Derivative::Inverse takes them, products and
+    // a negation that reverse mode records as the interpreter's tape does:
+    // -B*(A'*B), by the outer grad -B*(A^*B), and their cross part
+    // -B*(A'^*B + A'*B^ + A^*B') in the interpreter's order. Of a constant,
+    // the interpreter's inverse exactly.
+    Code Inverted(const Code& a) {
+        const auto inverse = [](const Value& v) {
+            return numeric_interface<Value>::pow(v, Value(Number(-1)));
+        };
+        Code       b     = a.constant ? Exactly(inverse, a) : Inverse(a);
+        const auto minus = [&](const Part& x) -> Part {
+            const Part y = Times(b, x);
+            return y ? Part(Negative(*y)) : y;
+        };
+        const Part p = PartOf(a), d = p ? Part(Inner(*p)) : p, o = minus(Times(OuterOf(a), b));
+        Part       part = minus(Times(d, b));
+        if (const Part cross = minus(
+                Plus(Plus(Times(p ? OuterOf(*p) : p, b), Times(d, o)), Times(OuterOf(a), part))))
+            part->outer = {*cross};
+        if (o) (b.outer = {*o}, b.outer[0].moves = Moves({&a}, true));
+        return Parted(b, part, {&a});
     }
 
     // In place, by the helper the header defines for its size, which pivots as

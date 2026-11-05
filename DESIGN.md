@@ -13729,6 +13729,169 @@ Departures:
   Hosting 30 lines for 13 of Python, with `-ffp-contract=off` in its build;
   README's command-line paragraph names `--names`.
 
+### A matrix inverse and power under grad compiled `[done]`
+
+From the owner, for a downstream tutorial's three-link planar biped, whose
+step is `M(q)^-1*(tau - C - G)`. The interpreter differentiates `A^-1` and
+`A^k` under `grad`, nested too (`Derivative::Inverse`, `Derivative::Power`);
+`--compile` refused either where the base moves, "a derivative of a matrix
+power, for now", so a model's mass matrix inverted has no gradient in the
+step.
+
+Decided:
+- **The refusal goes**, for a whole exponent: a matrix base that moves
+  compiles, a constant point included. `^0` stays as it is, the identity
+  with no part, NaN where a cell of the base is; `^1` is the base, its
+  part the base's. What stays refused keeps its words, those of the same
+  power outside `grad`: an exponent not a constant, not whole or past an
+  int, a tensor, a matrix not square; a nest three deep keeps grad's.
+- **The inverse's parts, as `Derivative::Inverse` takes them.** A part on
+  a `Code` is `part`, the inner grad's, a value in forward mode or a node
+  of the tape in reverse mode; `outer`, the outer grad's in a nest; and
+  `part[0].outer`, the cross part; `moves` says where each is there. B =
+  A^-1 stays the helper's temporary and gains B' = -(B*(A'*B)), B^ =
+  -(B*(A^*B)) by the outer grad, and in a nest -(B*(A'^*B + A'*B^ +
+  A^*B')), in that order, the interpreter's sum over parts 3, 2 and 1.
+  Each product is `Times` and the negation `Negative`, the calls a
+  matrix product's part makes, there where A's is. In an inverse the
+  interpreter's products are plain ones, C324 having left it as it was,
+  and so are the step's.
+- **Reverse mode needs no rule of its own.** `Times` and `Negative`
+  record Right(A', B), Left(., B) and a negation, the nodes the
+  interpreter's `Part` operators record, and the sweep takes them back as
+  now: Abar = -B^T*Bbar*B^T, by the tape. So a gradient by a
+  vector or a matrix through an inverse or a power, and a grad by several
+  names of a single value, are one sweep each, and a grad by several
+  names of a matrix a pass a name, as today.
+- **The power by the interpreter's squaring, as asked**, each product
+  `ProductOf(Product(a, b), a, b)`: the value's outer part by `Product`,
+  its part and cross part by `ProductOf`, which sum a1*b0 + a0*b1, and
+  a3*b0 + a2*b1 + a1*b2 + a0*b3, in `Derivative::Product`'s order. A
+  negative exponent inverts first, with the parts above. The interpreter
+  starts from the identity, its first factor's part I*B' by `Tape::Sparse`,
+  B' itself wherever it is finite; forward mode starts from B, as the
+  value does (the comment on `Power`). In reverse mode the identity is a
+  node, Left(X', I), X the first factor the squaring takes in, B for an odd
+  exponent and B^2 for 2 or -2, recorded before the squaring's other
+  products that read X' and so swept after them, and where the exponent has
+  two bits set the seed's adjoints sum in its order: started from B,
+  `grad_(W = A_(n-1)) ([1 1]*W^3*[1; 2])` was within 1.4e-14 on a
+  prototype. So under reverse mode the first factor's part is `Times(I,
+  X')`, a Left node by the identity, as the interpreter's.
+- **Constants fold exactly**, as everywhere: at a constant point the base
+  is a constant that moves, its inverse the interpreter's exactly, a
+  product of two constants `Exactly`'s, as `MultExpression` folds one, and
+  the parts by `Combined`. Computed in doubles instead, `grad_(t = 1/3)
+  M(t)^-3` was within 4.4e-16 on the prototype.
+- **A singular matrix**: the interpreter refuses, "a singular matrix has
+  no inverse", and the grad with it. The step's inverse is NaN in every
+  cell (C308), every cell of each part reads B, so the parts are NaN where
+  the value is, and the sweep multiplies by B: a NaN where the
+  interpreter refuses is agreement to `--check`, as for the value today,
+  and a total reading it is NaN from there. At a constant point it is
+  refused while compiling, in those words, as the same inverse is outside
+  `grad`; a nest at constant points folds whole and is NaN where the
+  interpreter refuses (C386), as now.
+- **`Shared`, nothing new**: B is a temporary read by atoms, and a
+  product shares its operands as now, `Product`'s and `Looped`'s, and a
+  node its value by `Record`.
+- **Where it is within 0**: wherever the interpreter's values are doubles,
+  at inexact points, and where every value is exact in a double, as at
+  the dyadic points of `ex`. Where the interpreter keeps exact a value the
+  step holds as a double, a unit bound, as forward mode's parts and
+  `thirds.g` already have; no instance is specified there.
+- **`--check`** needs nothing new; **`--float`** writes the parts in
+  floats, the helper already in them (C161).
+- **2.1.0**, at implementation, not with this entry, which changes no
+  behaviour: the version in `CMakeLists.txt`, `pyproject.toml` and
+  `test/cli.cmake`'s `--version` case, and in CHANGELOG.md a `## 2.1.0`
+  section, *Added*: `--compile` differentiates a matrix inverse and a
+  whole matrix power under `grad`, nested two deep, by several names and
+  in reverse mode, each within 0 of the interpreter where its values are
+  doubles.
+
+Rejected:
+- **The power's part written closed**, the sum of A^i*A'*A^(k-1-i): not
+  the interpreter's order, so not within 0, and k products a term where
+  squaring takes log k.
+- **The inverse's part by a solve**, -A^-1*(A'*B) as `A^-1*b` is solved:
+  the interpreter multiplies by B.
+- **A node kind for the inverse**, its adjoint written as one rule: the
+  interpreter's tape has products and a negation, whose sums one rule
+  would order otherwise, and the sweep has them already.
+- **The identity in forward mode too**: n^2 products by 0 and 1 a power
+  in the header, for a cell that is infinite, where the value departs
+  already.
+- **The interpreter's power from its first factor**, the smaller change,
+  a line of `derivative.hpp` and no node: it moves the oracle's last bit
+  in reverse mode for an entry of the compiler. A fix of its own if the
+  owner wants it, with the identity's node here removed.
+- **NaN at every step for a constant singular point**, as `edge`'s `j`:
+  those are refusals `grad` makes, where a singular inverse is refused
+  outside it, and compiled so today.
+
+What moves at implementation: `test/cli.cmake`'s `compile_grad_refused`
+loses `g`, which compiles, and `test/compile/grad.ink`'s comment with it;
+`docs/compile.md`'s refused list loses "or of a matrix power", and its
+grad row gains the inverse; `MANIFESTO.md`'s *Taken* paragraph, whose
+"Open" keeps a limit alone; `matpow.ink`'s first paragraph, and the spec
+part becomes a case of `test/cli.cmake`'s parts, `cli_spec` gone. No
+golden, expected header or other report moves: nothing compiled today
+reads a matrix power that moves.
+
+About 40 lines of `compile.hpp`: the refusal gone and a moving matrix
+base sent to `Power`, 4; the inverse's parts, inner, outer and cross, and
+a constant's inverse folded, 22; the squaring's products by `ProductOf`,
+folded where both are constants, and the identity's node, 8; comments,
+6. A prototype of the parts, not landed, was 25 lines and held every
+instance within 0 but `ex.p` and `back.f`, which the folding and the
+identity's node are for. 21,259 lines at 35b8844 by `wc -l
+include/inkamath/*.hpp src/*`; past 60, one and a half times, the
+implementation stops and reports.
+
+Specified in `test/compile/matpow.ink`, its numbers by hand, by
+polynomials in Python's fractions, and by the step's operations in
+doubles beside fractions, none recorded: `ex`, dyadic points where the
+step is exact, a 2x2 and a 3x3 of determinant 1, their inverses, powers
+1, 2, 3 and -2, the inverse times a vector, second derivatives and a
+constant point, each within 0 against exact values; `inv`, a 2x2 with a
+cosine and a 3x3 shaped as an arm's mass matrix at inexact points, the
+inverse alone and times a vector that moves, powers 2, 3 and -2; `nest`,
+second derivatives of each and a mixed partial whose base moves by both
+grads; `many`, a grad by several names of a matrix and of a single
+value; `back`, gradients by a vector, through a matrix needing a row
+exchange, by a matrix, `W^-1` and `W^3`, and a Hessian by a vector; and
+`sing`, singular at one step, a total reading it. Each term within 0.
+Replayed by `cli_spec`, `test/cli.cmake`'s spec part, with the headers
+strict, one in float, and seven refusals; skipped while the power is
+refused as today, and only then. The interpreter's own values, at 1/2
+and 1/3, by hand in `test/data/grad.ink`, `hessian.ink`, `gradmany.ink`
+and `reverse.ink`, where they pass now.
+
+Built as specified: the refusal goes for a nonzero whole exponent, `Power`
+takes each product's parts by `ProductOf`, folding a product of constants,
+and `Inverted` the inverse's, folded where the base is a constant; under a
+tape the first factor's part is `Times(I, X')`. Every term of matpow.ink's
+six instances is within 0. The other 399 programs and headers
+`test/CMakeLists.txt` generates, and `--compile` of every file, model and
+instance of `test/compile`, 901, are byte-identical to 35b8844's.
+
+Departures:
+- **`W^1` under reverse mode specified** before the implementation, as
+  `back.k`, `[1 1]*(W^1*(W*W))*[1; 2]` by `W`: its part a node by the
+  identity as any first factor's, no case for 1. Without the node it is
+  within 1.4e-14, as `back.f` is.
+- **The spec part became regular cases**: its compiles, strict, float and
+  refusals in cli.cmake's part 2, the headers `matpow_<model>.h`; its six
+  checks in `test/CMakeLists.txt`'s list, their reports held whole,
+  `check_matpow_inv` and `check_matpow_nest` by file as signatures' `inv`
+  and history's `nest` came first. `cli_spec` and the `spec` part go.
+- `compile_grad_refused` and grad.ink's comment lose `g` from the file as
+  well as from the refusals, the case listing what stays refused; the
+  grad row of docs/compile.md links matpow.ink.
+- `compile.hpp` 42 lines for 8, 34 net for about 40, 7 of them comment;
+  21,259 to 21,293 lines of sources.
+
 ---
 
 ## Next in line
@@ -14044,142 +14207,3 @@ LQR), whose defects are C376 to C379, 49 lines, 19,288 to 19,337 at
   evidence for MANIFESTO's clock question.
 - **`lim_n` is unusable**, `lim` being reserved, and a file name must be
   letters then digits, so `use e2e` is refused.
-
-From the owner, for a downstream tutorial's three-link planar biped, whose
-step is `M(q)^-1*(tau - C - G)`:
-
-- **A matrix inverse and power under grad compiled.** The interpreter
-  differentiates `A^-1` and `A^k` under `grad`, nested too
-  (`Derivative::Inverse`, `Derivative::Power`); `--compile` refuses either
-  where the base moves, "a derivative of a matrix power, for now", so a
-  model's mass matrix inverted has no gradient in the step.
-
-  Decided:
-  - **The refusal goes**, for a whole exponent: a matrix base that moves
-    compiles, a constant point included. `^0` stays as it is, the identity
-    with no part, NaN where a cell of the base is; `^1` is the base, its
-    part the base's. What stays refused keeps its words, those of the same
-    power outside `grad`: an exponent not a constant, not whole or past an
-    int, a tensor, a matrix not square, a nest three deep.
-  - **The inverse's parts, as `Derivative::Inverse` takes them.** A part on
-    a `Code` is `part`, the inner grad's, a value in forward mode or a node
-    of the tape in reverse mode; `outer`, the outer grad's in a nest; and
-    `part[0].outer`, the cross part; `moves` says where each is there. B =
-    A^-1 stays the helper's temporary and gains B' = -(B*(A'*B)), B^ =
-    -(B*(A^*B)) by the outer grad, and in a nest -(B*(A'^*B + A'*B^ +
-    A^*B')), in that order, the interpreter's sum over parts 3, 2 and 1.
-    Each product is `Times` and the negation `Negative`, the calls a
-    matrix product's part makes, there where A's is. In an inverse the
-    interpreter's products are plain ones, C324 having left it as it was,
-    and so are the step's.
-  - **Reverse mode needs no rule of its own.** `Times` and `Negative`
-    record Right(A', B), Left(., B) and a negation, the nodes the
-    interpreter's `Part` operators record, and the sweep takes them back as
-    now: Abar = -B^T*Bbar*B^T, by the tape. So a gradient by a
-    vector or a matrix through an inverse or a power, and a grad by several
-    names of a single value, are one sweep each, and a grad by several
-    names of a matrix a pass a name, as today.
-  - **The power by the interpreter's squaring, as asked**, each product
-    `ProductOf(Product(a, b), a, b)`: the value's outer part by `Product`,
-    its part and cross part by `ProductOf`, which sum a1*b0 + a0*b1, and
-    a3*b0 + a2*b1 + a1*b2 + a0*b3, in `Derivative::Product`'s order. A
-    negative exponent inverts first, with the parts above. The interpreter
-    starts from the identity, its first factor I*B by `Tape::Sparse`, B's
-    numbers wherever B is finite; forward mode starts from B, as the
-    value does (the comment on `Power`). In reverse mode the identity is a
-    node, Left(X', I), X the first factor the squaring takes in, B for an
-    odd exponent and B^2 for 2 or -2, recorded before the squaring's other
-    products that read X' and so swept after them, and where the
-    exponent has two bits set the seed's adjoints sum in its order: started
-    from B, `grad_(W = A_(n-1)) ([1 1]*W^3*[1; 2])` was within 1.4e-14 on a
-    prototype. So under reverse mode the first factor's part is `Times(I,
-    X')`, a Left node by the identity, as the interpreter's.
-  - **Constants fold exactly**, as everywhere: at a constant point the base
-    is a constant that moves, its inverse the interpreter's exactly, a
-    product of two constants `Exactly`'s, as `MultExpression` folds one, and
-    the parts by `Combined`. Computed in doubles instead, `grad_(t = 1/3)
-    M(t)^-3` was within 4.4e-16 on the prototype.
-  - **A singular matrix**: the interpreter refuses, "a singular matrix has
-    no inverse", and the grad with it. The step's inverse is NaN in every
-    cell (C308), every cell of each part reads B, so the parts are NaN where
-    the value is, and the sweep multiplies by B: a NaN where the
-    interpreter refuses is agreement to `--check`, as for the value today,
-    and a total reading it is NaN from there. At a constant point it is
-    refused while compiling, in those words, as the same inverse is outside
-    `grad`; a nest at constant points folds whole and is NaN where the
-    interpreter refuses (C386), as now.
-  - **`Shared`, nothing new**: B is a temporary read by atoms, and a
-    product shares its operands as now, `Product`'s and `Looped`'s, and a
-    node its value by `Record`.
-  - **Where it is within 0**: wherever the interpreter's values are doubles,
-    at inexact points, and where every value is exact in a double, as at
-    the dyadic points of `ex`. Where the interpreter keeps exact a value the
-    step holds as a double, a unit bound, as forward mode's parts and
-    `thirds.g` already have; no instance is specified there.
-  - **`--check`** needs nothing new; **`--float`** writes the parts in
-    floats, the helper already in them (C161).
-  - **2.1.0**, at implementation, not with this entry, which changes no
-    behaviour: the version in `CMakeLists.txt`, `pyproject.toml` and
-    `test/cli.cmake`'s `--version` case, and in CHANGELOG.md a `## 2.1.0`
-    section, *Added*: `--compile` differentiates a matrix inverse and a
-    whole matrix power under `grad`, nested two deep, by several names and
-    in reverse mode, each within 0 of the interpreter where its values are
-    doubles.
-
-  Rejected:
-  - **The power's part written closed**, the sum of A^i*A'*A^(k-1-i): not
-    the interpreter's order, so not within 0, and k products a term where
-    squaring takes log k.
-  - **The inverse's part by a solve**, -A^-1*(A'*B) as `A^-1*b` is solved:
-    the interpreter multiplies by B.
-  - **A node kind for the inverse**, its adjoint written as one rule: the
-    interpreter's tape has products and a negation, whose sums one rule
-    would order otherwise, and the sweep has them already.
-  - **The identity in forward mode too**: n^2 products by 0 and 1 a power
-    in the header, for a cell that is infinite, where the value departs
-    already.
-  - **The interpreter's power from its first factor**, the smaller change,
-    a line of `derivative.hpp` and no node: it moves the oracle's last bit
-    in reverse mode for an entry of the compiler. A fix of its own if the
-    owner wants it, with the identity's node here removed.
-  - **NaN at every step for a constant singular point**, as `edge`'s `j`:
-    those are refusals `grad` makes, where a singular inverse is refused
-    outside it, and compiled so today.
-
-  What moves at implementation: `test/cli.cmake`'s `compile_grad_refused`
-  loses `g`, which compiles, and `test/compile/grad.ink`'s comment with it;
-  `docs/compile.md`'s refused list loses "or of a matrix power", and its
-  grad row gains the inverse; `MANIFESTO.md`'s *Taken* paragraph, whose
-  "Open" keeps a limit alone; `matpow.ink`'s first paragraph, and the spec
-  part becomes a case of `test/cli.cmake`'s parts, `cli_spec` gone. No
-  golden, expected header or other report moves: nothing compiled today
-  reads a matrix power that moves.
-
-  About 40 lines of `compile.hpp`: the refusal gone and a moving matrix
-  base sent to `Power`, 4; the inverse's parts, inner, outer and cross, and
-  a constant's inverse folded, 22; the squaring's products by `ProductOf`,
-  folded where both are constants, and the identity's node, 8; comments,
-  6. A prototype of the parts, not landed, was 25 lines and held every
-  instance within 0 but `ex.p` and `back.f`, which the folding and the
-  identity's node are for. 21,259 lines at 35b8844 by `wc -l
-  include/inkamath/*.hpp src/*`; past 60, one and a half times, the
-  implementation stops and reports.
-
-  Specified in `test/compile/matpow.ink`, its numbers by hand, by
-  polynomials in Python's fractions, and by the step's operations in
-  doubles beside fractions, none recorded: `ex`, dyadic points where the
-  step is exact, a 2x2 and a 3x3 of determinant 1, their inverses, powers
-  1, 2, 3 and -2, the inverse times a vector, second derivatives and a
-  constant point, each within 0 against exact values; `inv`, a 2x2 with a
-  cosine and a 3x3 shaped as an arm's mass matrix at inexact points, the
-  inverse alone and times a vector that moves, powers 2, 3 and -2; `nest`,
-  second derivatives of each and a mixed partial whose base moves by both
-  grads; `many`, a grad by several names of a matrix and of a single
-  value; `back`, gradients by a vector, through a matrix needing a row
-  exchange, by a matrix, `W^-1` and `W^3`, and a Hessian by a vector; and
-  `sing`, singular at one step, a total reading it. Each term within 0.
-  Replayed by `cli_spec`, `test/cli.cmake`'s spec part, with the headers
-  strict, one in float, and seven refusals; skipped while the power is
-  refused as today, and only then. The interpreter's own values, at 1/2
-  and 1/3, by hand in `test/data/grad.ink`, `hessian.ink`, `gradmany.ink`
-  and `reverse.ink`, where they pass now.

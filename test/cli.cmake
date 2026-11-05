@@ -68,111 +68,6 @@ endfunction()
 # Read by cases in every part.
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
-# Specified, not yet built (DESIGN.md, a matrix inverse and power under grad
-# compiled): each model of compile/matpow.ink compiled, strict, an instance
-# of each held within 0 of the interpreter in every term, and what stays
-# refused in its words. Skipped while a derivative of a matrix power is
-# refused as today, and only then.
-if(PART STREQUAL "spec")
-    file(MAKE_DIRECTORY "${OUT}")
-    set(story "${CMAKE_CURRENT_LIST_DIR}/compile/matpow.ink")
-    execute_process(COMMAND "${EXE}" --compile "${story}" exact -o exact.h
-                    WORKING_DIRECTORY "${OUT}" OUTPUT_VARIABLE out ERROR_VARIABLE err
-                    RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
-    if("${out}${err}${code}" STREQUAL
-       "inkamath: cannot compile a: a derivative of a matrix power, for now\n1")
-        message("compile_matpow: a derivative of a matrix power refused, as today")
-        return()
-    endif()
-    foreach(model IN ITEMS exact arm twice names sweep pole)
-        set(args --compile ${story} ${model} -o ${model}.h)
-        check(compile_matpow_${model})
-        strict(compile_matpow_${model} ${model}.h)
-    endforeach()
-    set(args --compile ${story} arm --float -o farm.h)
-    check(compile_matpow_float)
-    strict(compile_matpow_float farm.h)
-
-    file(WRITE "${OUT}/matpow_refused.ink"
-         "a_n = grad_(t = x_n) [t 1; 0 t]^x_n\nb_n = grad_(t = x_n) [t 1; 0 t]^(1/2)\n"
-         "c_n = grad_(t = 1) [1 t; t 1]^-1 + x_n\nd_n = grad_(t = x_n)^3 [t 1; 0 1]^-1\n"
-         "f_n = grad_(t = x_n) [t 1; 0 1;; 1 0; 0 t]^2\nh_n = grad_(t = x_n) [t 1 0; 0 t 1]^2\n"
-         "q_n = grad_(t = x_n) [t 1; 0 t]^2147483648\n")
-    set(args --compile matpow_refused.ink)
-    set(stdout "cannot compile a: a matrix power whose exponent is not a constant
-cannot compile b: a matrix power must be a whole number
-cannot compile c: a singular matrix has no inverse
-cannot compile d: a derivative of a derivative of a derivative, for now
-cannot compile f: only a matrix has a power, not a 2x2x2 tensor
-cannot compile h: only a square matrix has a power
-cannot compile q: a matrix power must be a whole number
-")
-    set(exit 1)
-    check(compile_matpow_refused)
-
-    if(NOT CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
-        return()
-    endif()
-    # Each term within 0, from 1 where it first reads a term; ex's against
-    # exact values throughout, so with no estimate of the interpreter's error.
-    set(inexact "against exact values until 0 and inexact ones from there")
-    foreach(checked IN ITEMS "ex:against exact values:a b c d e f g h k m p x"
-                             "inv:${inexact}:a b c d e f g h x"
-                             "nest:${inexact}:a b c d e f x"
-                             "many:${inexact}:g.x g.y h.x h.y k.x k.y a b"
-                             "back:${inexact}:a b c d e f g h k q A"
-                             "sing:${inexact}:a b c d e x")
-        string(REPLACE ":" ";" checked "${checked}")
-        list(POP_FRONT checked instance against terms)
-        set(args --check ${story} ${instance} -o ${instance}.c)
-        check(check_matpow_${instance})
-        # Uncontracted, as test/CMakeLists.txt builds a check (C97).
-        execute_process(COMMAND "${CC}" -std=c11 -O2 -ffp-contract=off ${instance}.c
-                                -o ${instance} -lm
-                        WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
-                        ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
-        if(failed)
-            message(SEND_ERROR "check_matpow_${instance}: ${instance}.c does not build\n${errors}")
-            continue()
-        endif()
-        execute_process(COMMAND "${OUT}/${instance}" WORKING_DIRECTORY "${OUT}"
-                        OUTPUT_VARIABLE report RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
-        # A list splits at ';', which a line's estimate holds.
-        string(REPLACE ";" "," lines "${report}")
-        string(REPLACE "\n" ";" lines "${lines}")
-        list(REMOVE_ITEM lines "")
-        list(POP_FRONT lines first)
-        separate_arguments(terms)
-        list(LENGTH terms want)
-        list(LENGTH lines got)
-        set(estimate "(, the interpreter's terms about [0-9.e+-]+ from the exact ones)?")
-        if(instance STREQUAL "ex")
-            set(estimate "")
-        endif()
-        set(bad "")
-        if(NOT code EQUAL 0 OR NOT "${first}" STREQUAL "${instance}: 100 steps from 0, ${against}"
-           OR NOT got EQUAL want)
-            set(bad 1)
-        endif()
-        foreach(s IN LISTS terms)
-            string(REPLACE "." "\\." s "${s}")
-            set(found "")
-            foreach(line IN LISTS lines)
-                if(line MATCHES "^${instance}\\.${s}: within 0(, from 1)?${estimate}$")
-                    set(found 1)
-                endif()
-            endforeach()
-            if(NOT found)
-                set(bad 1)
-            endif()
-        endforeach()
-        if(bad)
-            message(SEND_ERROR "check_matpow_${instance}: exit ${code}\n${report}--- where each of ${terms} is to be within 0")
-        endif()
-    endforeach()
-    return()
-endif()
-
 # The cases run as four tests of about equal time under the sanitizers: PART
 # 1 up to charpoly's refusal, 2 from it, 3 from eig's, 4 from the frequency
 # response's, and all where PART is not given.
@@ -1986,11 +1881,40 @@ holds(compile_grad_fall fall.h [[static inline double fall_exp_dx(double arg_x, 
     return 2.0 * part_s * fall_logp(arg_s * arg_s) + 2.0 * arg_s * fall_logp_dz(arg_s * arg_s, part_s * arg_s + arg_s * part_s);
 }
 ]])
-file(WRITE "${OUT}/grad_refused.ink" "b_n = grad_(t = x_n) lim p(t)\nc_n = grad_(v = [x_n; 1]) 2*v\nd_n = grad_(t = x_n) 2^t\nf_n = grad_(t = x_n) t^x_n\ng_n = grad_(t = x_n) [1 1]*[t 1; 0 t]^2*[1; 1]\nh_n = grad_(t = x_n) 5\nk_n = grad_(t = x_n) sq\nm_n = grad_(t = x_n) amp(k = t).y\namp(k = 1) = {\n    y = 2*k\n}\np(r)_0 = 1\np(r)_k = r*p(r)_(k-1)/4 + 1\nsq = t^2\nt = 3\n")
+file(WRITE "${OUT}/grad_refused.ink" "b_n = grad_(t = x_n) lim p(t)\nc_n = grad_(v = [x_n; 1]) 2*v\nd_n = grad_(t = x_n) 2^t\nf_n = grad_(t = x_n) t^x_n\nh_n = grad_(t = x_n) 5\nk_n = grad_(t = x_n) sq\nm_n = grad_(t = x_n) amp(k = t).y\namp(k = 1) = {\n    y = 2*k\n}\np(r)_0 = 1\np(r)_k = r*p(r)_(k-1)/4 + 1\nsq = t^2\nt = 3\n")
 set(args --compile grad_refused.ink)
-set(stdout "cannot compile b: a derivative of a limit, for now\ncannot compile c: grad of a matrix with respect to a matrix is a Jacobian, which it does not give\ncannot compile d: grad cannot differentiate a power whose exponent changes with t, unless its base is e\ncannot compile f: a derivative of a power whose exponent is not a constant, for now\ncannot compile g: a derivative of a matrix power, for now\ncannot compile h: grad's expression does not read t\ncannot compile k: sq reads the global t, which grad's t does not reach\ncannot compile m: grad cannot differentiate through an instance yet\n")
+set(stdout "cannot compile b: a derivative of a limit, for now\ncannot compile c: grad of a matrix with respect to a matrix is a Jacobian, which it does not give\ncannot compile d: grad cannot differentiate a power whose exponent changes with t, unless its base is e\ncannot compile f: a derivative of a power whose exponent is not a constant, for now\ncannot compile h: grad's expression does not read t\ncannot compile k: sq reads the global t, which grad's t does not reach\ncannot compile m: grad cannot differentiate through an instance yet\n")
 set(exit 1)
 check(compile_grad_refused)
+
+# A matrix inverse and power under grad compiled (DESIGN.md,
+# compile/matpow.ink): each model strict, one in floats, and what stays
+# refused in the words of the same power outside grad.
+set(matpow "${CMAKE_CURRENT_LIST_DIR}/compile/matpow.ink")
+foreach(model IN ITEMS exact arm twice names sweep pole)
+    set(args --compile ${matpow} ${model} -o matpow_${model}.h)
+    check(compile_matpow_${model})
+    strict(compile_matpow_${model} matpow_${model}.h)
+endforeach()
+set(args --compile ${matpow} arm --float -o matpow_farm.h)
+check(compile_matpow_float)
+strict(compile_matpow_float matpow_farm.h)
+file(WRITE "${OUT}/matpow_refused.ink"
+     "a_n = grad_(t = x_n) [t 1; 0 t]^x_n\nb_n = grad_(t = x_n) [t 1; 0 t]^(1/2)\n"
+     "c_n = grad_(t = 1) [1 t; t 1]^-1 + x_n\nd_n = grad_(t = x_n)^3 [t 1; 0 1]^-1\n"
+     "f_n = grad_(t = x_n) [t 1; 0 1;; 1 0; 0 t]^2\nh_n = grad_(t = x_n) [t 1 0; 0 t 1]^2\n"
+     "q_n = grad_(t = x_n) [t 1; 0 t]^2147483648\n")
+set(args --compile matpow_refused.ink)
+set(stdout "cannot compile a: a matrix power whose exponent is not a constant
+cannot compile b: a matrix power must be a whole number
+cannot compile c: a singular matrix has no inverse
+cannot compile d: a derivative of a derivative of a derivative, for now
+cannot compile f: only a matrix has a power, not a 2x2x2 tensor
+cannot compile h: only a square matrix has a power
+cannot compile q: a matrix power must be a whole number
+")
+set(exit 1)
+check(compile_matpow_refused)
 
 # Guards on cells at run time (DESIGN.md, compile/cellguards.ink): a ReLU by
 # cells computed as net.h's term by cells is, grad through cells, and what

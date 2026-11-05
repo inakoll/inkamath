@@ -2,9 +2,8 @@
 # B = A^-1's part -B*(A'*B), its parts in a nest -B*(A12*B + A2*B1 +
 # A1*B2), and A^k's by the interpreter's squaring, each product's parts as
 # a product's, so a robot's M(q)^-1*(tau - C - G) differentiates as it is
-# written. Specified before it is built: today each model is refused, 'a
-# derivative of a matrix power, for now'. Every number below is worked out
-# apart from the interpreter and the compiler, none recorded.
+# written. Every number below is worked out apart from the interpreter and
+# the compiler, none recorded.
 #
 # 'ex', dyadic points where every value the step computes is a double
 # exactly, so that the step is held to the exact values themselves. M(t) =

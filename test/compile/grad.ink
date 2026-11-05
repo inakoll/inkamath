@@ -291,7 +291,6 @@ cusp = quotient(z_n = ~0)
 #     c_n = grad_(v = [x_n; 1]) 2*v
 #     d_n = grad_(t = x_n) 2^t
 #     f_n = grad_(t = x_n) t^x_n
-#     g_n = grad_(t = x_n) [1 1]*[t 1; 0 t]^2*[1; 1]
 #     h_n = grad_(t = x_n) 5
 #     k_n = grad_(t = x_n) sq
 #     m_n = grad_(t = x_n) amp(k = t).y
@@ -303,14 +302,13 @@ cusp = quotient(z_n = ~0)
 #     sq = t^2
 #     t = 3
 #
-# where the interpreter, given x_n = 2, answers b, f and g and refuses
+# where the interpreter, given x_n = 2, answers b and f and refuses
 # the rest in the words the compiler takes:
 #
 #     cannot compile b: a derivative of a limit, for now
 #     cannot compile c: grad of a matrix with respect to a matrix is a Jacobian, which it does not give
 #     cannot compile d: grad cannot differentiate a power whose exponent changes with t, unless its base is e
 #     cannot compile f: a derivative of a power whose exponent is not a constant, for now
-#     cannot compile g: a derivative of a matrix power, for now
 #     cannot compile h: grad's expression does not read t
 #     cannot compile k: sq reads the global t, which grad's t does not reach
 #     cannot compile m: grad cannot differentiate through an instance yet

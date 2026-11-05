@@ -94,7 +94,7 @@ What compiles
 | A sum without an upper bound, `sum_(q=0) x^q/!q` | walked as such a limit is | [`sums.ink`](../test/compile/sums.ink) |
 | A limit of matrices | fills an array, cell by cell | [`steady.ink`](../test/compile/steady.ink) finds a chain's steady state and, by power iteration, a matrix's dominant direction at every step |
 | A limit's iterate | has temporaries as a step has, a matrix inverse or a call nested in an argument computed once per iterate | [`implicit.ink`](../test/compile/implicit.ink) takes each step of backward Euler on a stiff chemical system by Newton's method under `lim`, its inverse written as the paper writes it |
-| `grad` by a single value, and by a matrix | by a value forward, each value carrying its part beside it by the interpreter's rules; by a matrix in reverse mode as the interpreter takes it, the body written once and swept back; so the step's gradient is the interpreter's to the bit where the interpreter's values are doubles | [`grad.ink`](../test/compile/grad.ink) trains a line and a logistic regression |
+| `grad` by a single value, and by a matrix | by a value forward, each value carrying its part beside it by the interpreter's rules; by a matrix in reverse mode as the interpreter takes it, the body written once and swept back; through a matrix inverse and a whole matrix power by their products, as the interpreter's; so the step's gradient is the interpreter's to the bit where the interpreter's values are doubles | [`grad.ink`](../test/compile/grad.ink) trains a line and a logistic regression; [`matpow.ink`](../test/compile/matpow.ink) differentiates an arm's mass matrix inverted |
 | `grad` through an activation written by its cells | each cell's guards tested in the step | [`cellguards.ink`](../test/compile/cellguards.ink), a ReLU network |
 | A grad inside a grad | forward over forward, each value carrying a part by each, so a Hessian and a Jacobian by cells of a gradient compile | [`hessian.ink`](../test/compile/hessian.ink) steps a double pendulum from its Lagrangian |
 | A `grad` by several names | a struct of its parts, as an instance is, `m.g.W[0]` being `g.W_n`, the body written once and swept back once | [`gradmany.ink`](../test/compile/gradmany.ink) trains a two-layer network by one grad of its four weights |
@@ -126,7 +126,7 @@ is compiled by name. Refused:
   after it, one bound in a term's index, and one a sum without an upper bound
   carries past a term.
 - For now, a nest of grads three deep or holding a grad by several names, and
-  a derivative of a limit or of a matrix power.
+  a derivative of a limit.
 - For now, a tensor in a limit.
 - A block that does not fill its band
   ([`blocks.ink`](../test/compile/blocks.ink)).
