@@ -14149,7 +14149,8 @@ step is `M(q)^-1*(tau - C - G)`:
   What moves at implementation: `test/cli.cmake`'s `compile_grad_refused`
   loses `g`, which compiles, and `test/compile/grad.ink`'s comment with it;
   `docs/compile.md`'s refused list loses "or of a matrix power", and its
-  grad row gains the inverse; `matpow.ink`'s first paragraph, and the spec
+  grad row gains the inverse; `MANIFESTO.md`'s *Taken* paragraph, whose
+  "Open" keeps a limit alone; `matpow.ink`'s first paragraph, and the spec
   part becomes a case of `test/cli.cmake`'s parts, `cli_spec` gone. No
   golden, expected header or other report moves: nothing compiled today
   reads a matrix power that moves.
