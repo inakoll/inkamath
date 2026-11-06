@@ -304,7 +304,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          estimate:steep estimate:giant estimate:spaced elementary:els trig:tri atan:bea
                          grad:line grad:fall grad:hinge grad:edge grad:clip grad:steer grad:saw
                          grad:ring grad:notch grad:apart grad:smooth grad:cusp grad:over grad:flag
-                         grad:maxed grad:gated grad:blown
+                         grad:maxed grad:gated grad:blown grad:shrunk
                          tensor:heads tensor:whirl tensor:batch tensor:spread
                          tensor:speck cellguards:rfit cellguards:tfit cellguards:layer
                          cellguards:kink cellguards:crest cellguards:mask cellguards:order
@@ -912,6 +912,9 @@ set_tests_properties(check_cube_report PROPERTIES PASS_REGULAR_EXPRESSION
 # C431: a part's exact 0 leaves its term out of a product.
 set_tests_properties(check_blown_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^blown: 100 steps from 0${inexact0}\nblown\\.g: within 0, from 1${about}\nblown\\.x: within 0${about}\n$")
+# C433: and out of a quotient.
+set_tests_properties(check_shrunk_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^shrunk: 100 steps from 0${inexact0}\nshrunk\\.h: within 0, from 1${about}\nshrunk\\.k: within 0, from 1${about}\nshrunk\\.x: within 0${about}\n$")
 # C432: reverse mode at a constant point folded exactly.
 set_tests_properties(check_pinned_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^pinned: 100 steps from 0, against exact values\npinned\\.c: within 0\npinned\\.d: within 0\n$")

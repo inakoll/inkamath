@@ -2199,12 +2199,21 @@ private:
     }
     // A product's term whose factor is a part and an exact 0 left out, as
     // Derivative::Times leaves it, not 0 times an infinity (C324).
-    Part Times(const Part& a, bool ap, const Part& b, bool bp) {
+    // A quotient's or a cell by cell product's too, op '/' or '.', not a node's.
+    Part Times(const Part& a, bool ap, const Part& b, bool bp, char op = '*') {
         if (!a || !b || a->node || b->node) return Times(a, b);
         if (a->constant && b->constant)
             return Exact(
-                [&] { return Derivative<Value>::Times(*a->constant, ap, *b->constant, bp, '*'); });
-        return Product(*a, *b, ap, bp);
+                [&] { return Derivative<Value>::Times(*a->constant, ap, *b->constant, bp, op); });
+        if (op == '*') return Product(*a, *b, ap, bp);
+        return Zeroed(Broadcast(*a, *b, op == '/' ? Divided : Multiplied), *a, ap, *b, bp);
+    }
+    // 0 in a cell whose factor on a part's side is an exact 0.
+    static Code Zeroed(Code code, const Code& a, bool ap, const Code& b, bool bp) {
+        for (std::size_t c = 0; c < code.cells.size(); ++c)
+            if ((ap && a.At(c).nothing) || (bp && b.At(c).nothing))
+                code.cells[c] = Literal(Value(Number(0))).cells[0];
+        return code;
     }
     Code ProductOf(Code value, const Code& a, const Code& b) {
         // a'*b recorded first, as the interpreter's tape is, whichever
@@ -2263,38 +2272,34 @@ private:
         const Code left = Emit(expression->m_e1()), right = Emit(expression->m_e2());
         const Code value = left.constant && right.constant ? Exactly(std::divides<>(), left, right)
                                                            : Broadcast(left, right, Divided);
-        const auto cellwise = [&](const Code& q, const Code& b) {
+        // An exact 0 of a part leaves its term out, as of a product (C433).
+        const auto cellwise = [&](const Code& q, bool qp, const Code& b) {
             if (b.node) return Record(Kind::Cells, Extent::Wider(q.size, b.size), b.node, q);
-            return q.Scalar() || b.Scalar() ? *Times(q, b) : Broadcast(q, b, Multiplied);
+            return *Times(q, qp, b, true, '.');
         };
-        const auto over = [&](const Part& a) -> Part {
+        const auto over = [&](const Part& a, const Code& by) -> Part {
             if (a && a->node)
-                return Record(Kind::Quotient, Extent::Wider(a->size, right.size), a->node, right);
-            return Combined(
-                a, right, [&](const Code& x, const Code& y) { return Broadcast(x, y, Divided); },
-                std::divides<>());
+                return Record(Kind::Quotient, Extent::Wider(a->size, by.size), a->node, by);
+            return Times(a, true, by, false, '/');
         };
         Part top = PartOf(left);
-        if (const Part b = PartOf(right)) top = Plus(top, Negative(cellwise(value, *b)));
-        Part part = over(top);
+        if (const Part b = PartOf(right)) top = Plus(top, Negative(cellwise(value, false, *b)));
+        Part part = over(top, right);
         // In a nest, its cross part in the interpreter's order (Derivative::Quotient).
         if (part && !part->node && !part->outer.empty()) {
             const Part a = PartOf(left), b = PartOf(right), d = Inner(*part);
             Part       cross = a ? OuterOf(*a) : a;
-            for (const auto& [x, y] :
-                 {std::pair(Part(Inner(value)), b ? OuterOf(*b) : b),
-                  std::pair(OuterOf(value), b ? Part(Inner(*b)) : b), std::pair(d, OuterOf(right))})
-                if (x && y) cross = Plus(cross, Negative(cellwise(*x, *y)));
+            for (const auto& [x, y, xp] :
+                 {std::tuple(Part(Inner(value)), b ? OuterOf(*b) : b, false),
+                  std::tuple(OuterOf(value), b ? Part(Inner(*b)) : b, true),
+                  std::tuple(d, OuterOf(right), true)})
+                if (x && y) cross = Plus(cross, Negative(cellwise(*x, xp, *y)));
             part->outer.clear();
-            if (cross)
-                part->outer = {*Combined(
-                    cross, Inner(right),
-                    [&](const Code& x, const Code& y) { return Broadcast(x, y, Divided); },
-                    std::divides<>())};
+            if (cross) part->outer = {*over(cross, Inner(right))};
         }
         // a'/b where b's clause has none, not an infinite quotient times 0 (C110).
         if (part && !part->node && right.moves) {
-            const Part alone = over(PartOf(left));
+            const Part alone = over(PartOf(left), right);
             for (std::size_t k = 0; k < part->cells.size(); ++k)
                 part->cells[k] = Cell("(" + Whether(right.moves) + " ? " + part->cells[k].text +
                                           " : " + (alone ? alone->At(k).text : "0") + ")",
@@ -2412,13 +2417,8 @@ private:
         const auto none = [&](const Cell& l, const Cell& r) {
             return (lp && l.nothing) || (rp && r.nothing);
         };
-        if (left.Scalar() || right.Scalar()) {
-            Code code = Broadcast(left, right, Multiplied);
-            for (std::size_t c = 0; c < code.cells.size(); ++c)
-                if (none(left.At(c), right.At(c)))
-                    code.cells[c] = Literal(Value(Number(0))).cells[0];
-            return code;
-        }
+        if (left.Scalar() || right.Scalar())
+            return Zeroed(Broadcast(left, right, Multiplied), left, lp, right, rp);
         if (!left.outer.empty() || !right.outer.empty()) {
             Code       code     = Product(Inner(left), Inner(right), lp, rp);
             const Part first    = Times(OuterOf(left), true, Inner(right), rp);  // in order (C429)

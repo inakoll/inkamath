@@ -435,3 +435,21 @@ blew() = {
     g_n = grad_(t = x_(n-1)) ([1, t]*[exp(800*x_(n-1)); t])
 }
 blown = blew()
+
+# 'shrunk', C433: blown's quotient. [1, t]'s part [0, 1] over exp(-800*x),
+# which underflows to 0 from x = 0.94: its first cell's term the
+# interpreter leaves out (C324), which the step divided, -nan at 45 for
+# 2*x, ~1.88; and over x - x, an exact 0, -nan from 1 for ~1:
+#
+#     shrunk: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     shrunk.h: within 0, from 1; the interpreter's terms about <e> from the exact ones
+#     shrunk.k: within 0, from 1; the interpreter's terms about <e> from the exact ones
+#
+# and x within 0.
+shrank() = {
+    x_0 = ~1/2
+    x_n = x_(n-1) + ~1/100
+    h_n = grad_(t = x_(n-1)) (([1, t]/exp(-800*x_(n-1)))[1,1] + t^2)
+    k_n = grad_(t = x_(n-1)) (([1, t]/(x_(n-1) - x_(n-1)))[1,1] + t^2)
+}
+shrunk = shrank()
