@@ -328,7 +328,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          implicit:layered implicit:renamed tensorgrad:attend tensorgrad:small
                          tensorgrad:saliency:3 adjoint:fit4 adjoint:token
                          adjoint:sinabs adjoint:gate3 adjoint:under adjoint:aside adjoint:cube
-                         gradmany:pair
+                         adjoint:pinned gradmany:pair
                          gradmany:same gradmany:stair matpow:ex matpow:inv matpow:nest
                          matpow:many matpow:back matpow:sing transformer:unseen:4 transformer:tuned:4
                          split:carried:4 split:apart:4 split:twins:4 pendulum:one spin:twirl:20
@@ -912,6 +912,9 @@ set_tests_properties(check_cube_report PROPERTIES PASS_REGULAR_EXPRESSION
 # C431: a part's exact 0 leaves its term out of a product.
 set_tests_properties(check_blown_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^blown: 100 steps from 0${inexact0}\nblown\\.g: within 0, from 1${about}\nblown\\.x: within 0${about}\n$")
+# C432: reverse mode at a constant point folded exactly.
+set_tests_properties(check_pinned_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^pinned: 100 steps from 0, against exact values\npinned\\.c: within 0\npinned\\.d: within 0\n$")
 set_tests_properties(check_unread_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^unread: 100 steps from 0, against exact values\nunread\\.y: within 0\n$")
 set_tests_properties(check_lone_report PROPERTIES PASS_REGULAR_EXPRESSION

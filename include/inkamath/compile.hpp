@@ -4787,6 +4787,8 @@ private:
                 for (std::size_t k = 0; k < c.size.count(); ++k)
                     c.cells.push_back(
                         from.At(static_cast<std::size_t>(taken.data()[k].Inexact().real())));
+                // Of a constant point, exactly, that its sweep folds (C432).
+                if (from.constant) c.constant = read(*from.constant);
                 return c;
             };
             return Outer(cells(m), {m}, [&](const std::vector<Code>& o) { return cells(o[0]); });

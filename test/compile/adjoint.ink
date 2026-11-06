@@ -237,3 +237,19 @@ cubed() = {
     k_n = grad_(W = A_(n-1)) ([1 1]*(W*(W*W))*[1; 2])
 }
 cube = cubed()
+
+# 'pinned', C432: reverse mode by a vector at a constant point, folded
+# exactly as a constant point is in forward mode. A cell of the point read
+# was no constant, so the step computed it in doubles, c within 1.1e-16 and
+# d, through an inverse, within 4.4e-16. By hand, c is [1; -v1^2]/(1 +
+# v1*v2)^2 = [441/484; -49/484], and d, by -R^-1*R'*R^-2 - R^-2*R'*R^-1 in
+# fractions, [-6867/2000; 147/2000]:
+#
+#     pinned: 100 steps from 0, against exact values
+#     pinned.c: within 0
+#     pinned.d: within 0
+pin() = {
+    c_n = grad_(v = [1/3; 1/7]) (v[1]/(1 + v[2]*v[1]))
+    d_n = grad_(v = [1/3; 1/7]) ([1 1]*[1, v[1]; v[2], 1]^-2*[1; 2])
+}
+pinned = pin()
