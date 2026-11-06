@@ -3,7 +3,7 @@
 What changed for someone using inkamath, release by release. The reasons, and
 every defect by its number, are in [`DESIGN.md`](DESIGN.md).
 
-## 2.1.0 — 2026-11-05
+## 2.1.0 — 2026-11-06
 
 ### Added
 
@@ -11,6 +11,13 @@ every defect by its number, are in [`DESIGN.md`](DESIGN.md).
   differentiates `A^-1` and a whole `A^k`, nested two deep, by several names
   and in reverse mode, each within 0 of the interpreter where its values are
   doubles.
+
+### Fixed
+
+6 defects, from C429 to C434: a matrix power starts from its first factor, not
+the identity, and a compiled grad no longer depends on the C++ compiler that
+built inkamath, multiplies in an exact 0 the interpreter leaves out, or loses
+exactness at a constant point. C435 and C436 are open.
 
 ## 2.0.0 — 2026-10-26
 
