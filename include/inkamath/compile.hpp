@@ -2651,10 +2651,10 @@ private:
 
     // By squaring, as the interpreter does it, of the inverse for a negative
     // exponent. The interpreter starts from the identity and multiplies it in;
-    // starting from the first factor instead changes only a cell that is
-    // infinite, where the identity's zeros would make it NaN. In reverse mode
-    // the first factor's part is the identity's node, as the interpreter's
-    // tape records it and sums the seed's adjoints in its order.
+    // starting from the first factor instead changes only the column of a
+    // cell that is not finite, where the identity's zeros make it NaN. In
+    // reverse mode the first factor's part is the identity's node, as the
+    // interpreter's tape records it and sums the seed's adjoints in its order.
     Code Power(Code base, const Code& exponent) {
         if (base.size.slices)
             throw Reason("only a matrix has a power, not a " + base.size.Described());

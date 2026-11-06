@@ -13769,7 +13769,8 @@ Decided:
   a3*b0 + a2*b1 + a1*b2 + a0*b3, in `Derivative::Product`'s order. A
   negative exponent inverts first, with the parts above. The interpreter
   starts from the identity, its first factor's part I*B' by `Tape::Sparse`,
-  B' itself wherever it is finite; forward mode starts from B, as the
+  B' itself save in the column of a cell that is not finite, where the
+  identity's zeros make it NaN; forward mode starts from B, as the
   value does (the comment on `Power`). In reverse mode the identity is a
   node, Left(X', I), X the first factor the squaring takes in, B for an odd
   exponent and B^2 for 2 or -2, recorded before the squaring's other
