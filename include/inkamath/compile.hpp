@@ -1670,9 +1670,10 @@ private:
             if (!x || !y || x->Scalar() || y->Scalar()) return Times(x, y);
             return Broadcast(*x, *y, Multiplied);
         };
-        Part d = combine == Added        ? Plus(l, r)
-                 : combine == Multiplied ? Plus(times(l, b), times(a, r))
-                                         : Plus(l, r ? Part(Negative(*times(code, r))) : r);
+        const Part first = combine == Multiplied ? times(l, b) : Part();  // in order (C429)
+        Part       d     = combine == Added        ? Plus(l, r)
+                           : combine == Multiplied ? Plus(first, times(a, r))
+                                                   : Plus(l, r ? Part(Negative(*times(code, r))) : r);
         if (combine == Divided)
             d = Combined(
                 d, b, [&](const Code& x, const Code& y) { return Broadcast(x, y, Divided); },
@@ -2195,7 +2196,10 @@ private:
         return Parted(std::move(value), part, {&a, &b});
     }
     Code ProductOf(Code value, const Code& a, const Code& b) {
-        Part part = Plus(Times(PartOf(a), b), Times(a, PartOf(b)));
+        // a'*b recorded first, as the interpreter's tape is, whichever
+        // argument the host compiler evaluates first (C429).
+        const Part left = Times(PartOf(a), b);
+        Part       part = Plus(left, Times(a, PartOf(b)));
         // In a nest, its cross part in the interpreter's order, which the
         // part's own by the outer grad is not (Derivative::Product).
         if (part && !part->node && !part->outer.empty()) {
@@ -2394,9 +2398,9 @@ private:
     Code Product(Code left, Code right) {
         if (left.Scalar() || right.Scalar()) return Broadcast(left, right, Multiplied);
         if (!left.outer.empty() || !right.outer.empty()) {
-            Code code  = Product(Inner(left), Inner(right));
-            code.outer = {
-                *Plus(Times(OuterOf(left), Inner(right)), Times(Inner(left), OuterOf(right)))};
+            Code       code     = Product(Inner(left), Inner(right));
+            const Part first    = Times(OuterOf(left), Inner(right));  // in order (C429)
+            code.outer          = {*Plus(first, Times(Inner(left), OuterOf(right)))};
             code.outer[0].moves = Moves({&left, &right}, true);
             return code;
         }
@@ -2518,9 +2522,9 @@ private:
             if (part && !part->node && !part->outer.empty()) {
                 const Code& w = exponent.part[0];
                 part->outer.clear();
+                const Part first = Times(Inner(value), OuterOf(w));  // in order (C429)
                 if (const Part cross =
-                        Plus(Times(Inner(value), OuterOf(w)),
-                             Times(Inner(value), Times(OuterOf(exponent), Inner(w)))))
+                        Plus(first, Times(Inner(value), Times(OuterOf(exponent), Inner(w)))))
                     part->outer = {*cross};
             }
             return Answer(Parted(value, part, {&exponent}));
@@ -2554,14 +2558,14 @@ private:
         // In a nest, its cross part f'*u12 + f''*(u^*u'), as Derivative::Composed.
         if (part && !part->node && !part->outer.empty()) {
             Part cross = Times(Inner(*slope), OuterOf(base.part[0]));
-            if (Doubles(second)[0] != 0 && !base.outer.empty())
-                cross =
-                    Plus(cross, Unless(*Times(Doubles(below)[0] == 0
-                                                  ? Literal(second)
-                                                  : *Times(Literal(second),
-                                                           Powered(Inner(base), Literal(below))),
-                                              Times(OuterOf(base), Inner(base.part[0]))),
-                                       Doubles(below)[0] < 0 ? base.outer[0].moves : nullptr));
+            if (Doubles(second)[0] != 0 && !base.outer.empty()) {
+                const Code first =  // in order (C429)
+                    Doubles(below)[0] == 0
+                        ? Literal(second)
+                        : *Times(Literal(second), Powered(Inner(base), Literal(below)));
+                cross = Plus(cross, Unless(*Times(first, Times(OuterOf(base), Inner(base.part[0]))),
+                                           Doubles(below)[0] < 0 ? base.outer[0].moves : nullptr));
+            }
             part->outer.clear();
             if (cross) part->outer = {Doubles(c)[0] < 2 ? Unless(*cross, base.moves) : *cross};
         }
@@ -2713,9 +2717,9 @@ private:
         };
         const Part p = PartOf(a), d = p ? Part(Inner(*p)) : p, o = minus(Times(OuterOf(a), b));
         Part       part = minus(Times(d, b));
-        if (const Part cross = minus(
-                Plus(Plus(Times(p ? OuterOf(*p) : p, b), Times(d, o)), Times(OuterOf(a), part))))
-            part->outer = {*cross};
+        const Part first = Times(p ? OuterOf(*p) : p, b);  // each in order (C429)
+        const Part two   = Plus(first, Times(d, o));
+        if (const Part cross = minus(Plus(two, Times(OuterOf(a), part)))) part->outer = {*cross};
         if (o) (b.outer = {*o}, b.outer[0].moves = Moves({&a}, true));
         return Parted(b, part, {&a});
     }
@@ -5106,7 +5110,8 @@ private:
     // An adjoint there only where its 'moves' holds, a clause's condition.
     Where Both(const Where& x, const Where& y) {
         if (!x || !y) return x ? x : y;
-        return std::make_shared<const Moving>(Moving{"(" + Text(x) + ") && (" + Text(y) + ")", {}});
+        const std::string first = Text(x);  // declared in order (C429)
+        return std::make_shared<const Moving>(Moving{"(" + first + ") && (" + Text(y) + ")", {}});
     }
     template <typename F>
     Adjoint Folded(F f, const Code& x, const Code& y, Cell (*written)(const Cell&, const Cell&)) {

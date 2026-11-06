@@ -220,3 +220,20 @@ slopes(eta = 1/16, x_n[i<=2]) = {
     W_n = W_(n-1) - eta*grad_(V = W_(n-1)) L(V, x_n)
 }
 sinabs = slopes(x_n = ~[mod(n, 3) - 1; 1/3])
+
+# 'cube', C429: a product's part is a'*b + a*b', the interpreter's tape
+# recording a'*b's node first. The step recorded them in the order the host
+# compiler evaluated two arguments, a*b''s first under GCC, so its sweep
+# summed W's three adjoints from W*(W*W) in another order, within 1.4e-14
+# where Clang's step was within 0:
+#
+#     cube: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     cube.k: within 0, from 1; the interpreter's terms about <e> from the exact ones
+#
+# and A within 0.
+cubed() = {
+    A_0 = ~[2 1/2; 1/3 3]
+    A_n = A_(n-1) + ~[1/100 0; 0 -1/100]
+    k_n = grad_(W = A_(n-1)) ([1 1]*(W*(W*W))*[1; 2])
+}
+cube = cubed()

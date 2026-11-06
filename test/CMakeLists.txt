@@ -327,7 +327,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          implicit:kinetic implicit:jacobian implicit:doubling implicit:inset
                          implicit:layered implicit:renamed tensorgrad:attend tensorgrad:small
                          tensorgrad:saliency:3 adjoint:fit4 adjoint:token
-                         adjoint:sinabs adjoint:gate3 adjoint:under adjoint:aside gradmany:pair
+                         adjoint:sinabs adjoint:gate3 adjoint:under adjoint:aside adjoint:cube
+                         gradmany:pair
                          gradmany:same gradmany:stair matpow:ex matpow:inv matpow:nest
                          matpow:many matpow:back matpow:sing transformer:unseen:4 transformer:tuned:4
                          split:carried:4 split:apart:4 split:twins:4 pendulum:one spin:twirl:20
@@ -905,6 +906,9 @@ set_tests_properties(check_apart_values PROPERTIES PASS_REGULAR_EXPRESSION "chec
 # C329: --check's exact run forgets what its walk of the prelude recorded.
 set_tests_properties(check_sinabs_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^sinabs: 100 steps from 0${inexact0}\nsinabs\\.W: within 0${about}\n$")
+# C429: a product's two nodes recorded in the interpreter's order.
+set_tests_properties(check_cube_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^cube: 100 steps from 0${inexact0}\ncube\\.A: within 0${about}\ncube\\.k: within 0, from 1${about}\n$")
 set_tests_properties(check_unread_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^unread: 100 steps from 0, against exact values\nunread\\.y: within 0\n$")
 set_tests_properties(check_lone_report PROPERTIES PASS_REGULAR_EXPRESSION
