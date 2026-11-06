@@ -419,3 +419,19 @@ gating(x_n) = {
     s_n = 0
 }
 gated = gating(x_n = n - 10)
+
+# 'blown', C431: [1, t]'s part [0, 1], whose first cell is an exact 0,
+# times [exp(800*x); t], whose first overflows from x = 0.89: a term the
+# interpreter leaves out of the product (C324), which the step multiplied
+# in, -nan at 40 for 2*x, ~1.78. By hand, the derivative of e^(800x) + t^2:
+#
+#     blown: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     blown.g: within 0, from 1; the interpreter's terms about <e> from the exact ones
+#
+# and x within 0.
+blew() = {
+    x_0 = ~1/2
+    x_n = x_(n-1) + ~1/100
+    g_n = grad_(t = x_(n-1)) ([1, t]*[exp(800*x_(n-1)); t])
+}
+blown = blew()

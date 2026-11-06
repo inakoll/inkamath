@@ -281,6 +281,7 @@ private:
         int         magnitude_level = primary;
         bool        atom            = false;  // a name or a number, as cheap to repeat as to store
         bool        number          = false;  // never NaN: a number, or the index
+        bool        nothing         = false;  // an exact 0, which a part's product leaves out
         std::string nan;                      // NaN where this is, if not only where itself is
     };
 
@@ -1958,6 +1959,7 @@ private:
         for (std::size_t c = 0; c < doubles.size(); ++c) {
             const double x    = doubles[c];
             Cell         cell = Atom(Double(std::abs(x)), !std::isnan(x));
+            cell.nothing      = Number::exact(value.data()[c]) && value.data()[c] == Number(0);
             // Folded in double from inexact numbers, where a float step may compute
             // another (C396): marked, for Within to find written.
             if (floats && !Number::exact(value.data()[c]) && x != 0 && Finite(x))
@@ -2195,11 +2197,20 @@ private:
             part = Plus(part, Literal(Value(value.size)));
         return Parted(std::move(value), part, {&a, &b});
     }
+    // A product's term whose factor is a part and an exact 0 left out, as
+    // Derivative::Times leaves it, not 0 times an infinity (C324).
+    Part Times(const Part& a, bool ap, const Part& b, bool bp) {
+        if (!a || !b || a->node || b->node) return Times(a, b);
+        if (a->constant && b->constant)
+            return Exact(
+                [&] { return Derivative<Value>::Times(*a->constant, ap, *b->constant, bp, '*'); });
+        return Product(*a, *b, ap, bp);
+    }
     Code ProductOf(Code value, const Code& a, const Code& b) {
         // a'*b recorded first, as the interpreter's tape is, whichever
         // argument the host compiler evaluates first (C429).
-        const Part left = Times(PartOf(a), b);
-        Part       part = Plus(left, Times(a, PartOf(b)));
+        const Part left = Times(PartOf(a), true, b, false);
+        Part       part = Plus(left, Times(a, false, PartOf(b), true));
         // In a nest, its cross part in the interpreter's order, which the
         // part's own by the outer grad is not (Derivative::Product).
         if (part && !part->node && !part->outer.empty()) {
@@ -2208,8 +2219,9 @@ private:
             part->outer.clear();
             Part cross;
             for (const Part& term :
-                 {Times(p ? OuterOf(*p) : p, Inner(b)), Times(in[0], OuterOf(b)),
-                  Times(OuterOf(a), in[1]), Times(Inner(a), q ? OuterOf(*q) : q)})
+                 {Times(p ? OuterOf(*p) : p, true, Inner(b), false),
+                  Times(in[0], true, OuterOf(b), true), Times(OuterOf(a), true, in[1], true),
+                  Times(Inner(a), false, q ? OuterOf(*q) : q, true)})
                 cross = Plus(cross, term);
             if (cross) part->outer = {*cross};
         }
@@ -2395,16 +2407,30 @@ private:
 
     // Each left cell is read once for each right column, each right cell once
     // for each left row; from 27 multiplications, as a loop.
-    Code Product(Code left, Code right) {
-        if (left.Scalar() || right.Scalar()) return Broadcast(left, right, Multiplied);
+    // Of a part on the side lp or rp says, its exact 0s' terms left out (C324).
+    Code Product(Code left, Code right, bool lp = false, bool rp = false) {
+        const auto none = [&](const Cell& l, const Cell& r) {
+            return (lp && l.nothing) || (rp && r.nothing);
+        };
+        if (left.Scalar() || right.Scalar()) {
+            Code code = Broadcast(left, right, Multiplied);
+            for (std::size_t c = 0; c < code.cells.size(); ++c)
+                if (none(left.At(c), right.At(c)))
+                    code.cells[c] = Literal(Value(Number(0))).cells[0];
+            return code;
+        }
         if (!left.outer.empty() || !right.outer.empty()) {
-            Code       code     = Product(Inner(left), Inner(right));
-            const Part first    = Times(OuterOf(left), Inner(right));  // in order (C429)
-            code.outer          = {*Plus(first, Times(Inner(left), OuterOf(right)))};
+            Code       code     = Product(Inner(left), Inner(right), lp, rp);
+            const Part first    = Times(OuterOf(left), true, Inner(right), rp);  // in order (C429)
+            code.outer          = {*Plus(first, Times(Inner(left), lp, OuterOf(right), true))};
             code.outer[0].moves = Moves({&left, &right}, true);
             return code;
         }
-        if (temporaries_ && left.size.cols == right.size.rows) {
+        const auto sparse = [&](const Code& c, bool p) {
+            return p && std::ranges::any_of(c.cells, &Cell::nothing);
+        };
+        if (temporaries_ && left.size.cols == right.size.rows && !sparse(left, lp) &&
+            !sparse(right, rp)) {
             const Extent size{left.size.rows, right.size.cols, Slices(left, right)};
             if (size.count() * left.size.cols >= 27) return Looped(left, right, size);
         }
@@ -2420,10 +2446,11 @@ private:
         for (std::size_t c = 0; c < code.size.count(); ++c) {
             const std::size_t b = c / (code.size.rows * code.size.cols),
                               i = c / code.size.cols % code.size.rows, j = c % code.size.cols;
-            Cell cell = Multiplied(left.At(i, 0, b), right.At(0, j, b));
-            for (std::size_t k = 1; k < left.size.cols; ++k)
-                cell = Added(cell, Multiplied(left.At(i, k, b), right.At(k, j, b)));
-            code.cells.push_back(cell);
+            std::optional<Cell> cell;
+            for (std::size_t k = 0; k < left.size.cols; ++k)
+                if (const Cell &l = left.At(i, k, b), &r = right.At(k, j, b); !none(l, r))
+                    cell = cell ? Added(*cell, Multiplied(l, r)) : Multiplied(l, r);
+            code.cells.push_back(cell ? *cell : Literal(Value(Number(0))).cells[0]);
         }
         return code;
     }
