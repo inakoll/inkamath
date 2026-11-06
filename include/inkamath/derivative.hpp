@@ -1134,13 +1134,15 @@ private:
             Jet       base  = whole < 0 ? Inverse(u) : u;
             unsigned  n =
                 whole < 0 ? 0u - static_cast<unsigned>(whole) : static_cast<unsigned>(whole);
-            Jet result = Constant(T::Identity(u[0]->Size()));
+            // From the first factor, as the value is.
+            std::optional<Jet> result;
             for (; n != 0; n >>= 1) {
-                if (n & 1) result = Product(result, base);
+                if (n & 1) result = result ? Product(*result, base) : base;
                 if (n > 1) base = Product(base, base);
             }
-            result[0] = value;
-            return result;
+            if (!result) return Constant(value);
+            (*result)[0] = value;
+            return *result;
         }
         // u^c, whose j-th derivative is c(c-1)...(c-j+1) u^(c-j): zero once
         // a whole c is passed, infinite where u is zero and c-j negative.

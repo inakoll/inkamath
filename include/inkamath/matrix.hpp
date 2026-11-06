@@ -9,6 +9,7 @@
 #include <functional>
 #include <iomanip>
 #include <memory>
+#include <optional>
 #include <ostream>
 #include <sstream>
 #include <stdexcept>
@@ -291,16 +292,19 @@ public:
         }
 
         // By squaring the base -- C23 squared the accumulator -- so that a
-        // power costs products by the bit, not by the unit.
+        // power costs products by the bit, not by the unit. From the first
+        // factor, not the identity, whose zeros make NaN the column of a cell
+        // that is not finite.
         Matrix<T> base = whole < 0 ? Inverse(a) : a;
         unsigned  n = whole < 0 ? 0u - static_cast<unsigned>(whole) : static_cast<unsigned>(whole);
-        Matrix<T> r = Identity(a.extent_);
+        std::optional<Matrix<T>> r;
         for (; n != 0; n >>= 1) {
-            if (n & 1) r = r * base;
+            if (n & 1) r = r ? *r * base : base;
             if (n > 1) base = base * base;
         }
+        if (!r) r = Identity(a.extent_);
         // Whole as it is, an inexact exponent is still one.
-        return numeric_interface<T>::exact(exponent) ? r : inexact(r);
+        return numeric_interface<T>::exact(exponent) ? *r : inexact(*r);
     }
 
     static Matrix<T> Identity(Extent extent) {

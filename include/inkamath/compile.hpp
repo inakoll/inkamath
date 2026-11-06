@@ -2653,12 +2653,8 @@ private:
         return test.empty() ? test : test + " ? NAN : ";
     }
 
-    // By squaring, as the interpreter does it, of the inverse for a negative
-    // exponent. The interpreter starts from the identity and multiplies it in;
-    // starting from the first factor instead changes only the column of a
-    // cell that is not finite, where the identity's zeros make it NaN. In
-    // reverse mode the first factor's part is the identity's node, as the
-    // interpreter's tape records it and sums the seed's adjoints in its order.
+    // By squaring from the first factor, as the interpreter does it, of the
+    // inverse for a negative exponent.
     Code Power(Code base, const Code& exponent) {
         if (base.size.slices)
             throw Reason("only a matrix has a power, not a " + base.size.Described());
@@ -2687,15 +2683,10 @@ private:
                 a.constant && b.constant ? Exactly(std::multiplies<>(), a, b) : Product(a, b), a,
                 b);
         };
-        const auto first = [&](const Code& b) {
-            return tape_ && !b.part.empty()
-                       ? Parted(b, Times(Literal(Value::Identity(b.size)), PartOf(b)), {&b})
-                       : b;
-        };
         std::optional<Code> result;
         for (unsigned long long n = static_cast<unsigned long long>(whole < 0 ? -whole : whole);
              n != 0; n >>= 1) {
-            if (n & 1) result = result ? times(*result, base) : first(base);
+            if (n & 1) result = result ? times(*result, base) : base;
             if (n > 1) base = times(base, base);
         }
         return *result;

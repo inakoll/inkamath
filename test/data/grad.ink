@@ -301,6 +301,12 @@ error: grad cannot differentiate a power whose exponent changes with x, unless i
 >> grad_(x = 1) [1 x; x 1]^-1
 error: a singular matrix has no inverse
 
+# From its first factor too: M'*M + M*M', whose second row is [1e200, 0],
+# was NaN in its first cell, the identity's 0 times an infinite one.
+>> grad_(t = ~1/2) [~1e200*t, 0; 1, ~2]^2
+[   ~inf, ~0;
+ ~1e+200,  0]
+
 # A limit's derivative is the limit of its terms' derivatives, taken until
 # both the terms and their derivatives have converged; exp and the sigmoid
 # written as series are differentiated as written.

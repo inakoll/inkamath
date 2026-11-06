@@ -460,6 +460,17 @@ error: a matrix product needs as many columns on the left as rows on the right
 [1, -3;
  0,  1]
 
+# A power starts from its first factor, not the identity, whose zeros made
+# NaN the column of a cell that is not finite, and inexact a cell exact in
+# the base: 0 by the maths, and 1.
+>> [~1e200, 1; 0, ~2]^2
+[~inf, ~1e+200;
+   ~0,      ~4]
+
+>> [~1e200, 1; 0, ~2]^1
+[~1e+200,  1;
+       0, ~2]
+
 # An inexact exponent makes the power inexact, as it does a number's.
 >> frac s^~2
 error: ~1 was approximated, so it has no exact fraction

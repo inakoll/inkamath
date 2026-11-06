@@ -138,12 +138,9 @@ many = names()
 #     back: 100 steps from 0, against exact values until 0 and inexact ones from there
 #     back.<s>: within 0, from 1; the interpreter's terms about <e> from the exact ones
 #
-# for a, b, c, d, e, f, g, h and k, and q and A within 0. The interpreter's
-# power starts from the identity, its first factor's part I*B', which
-# reverse mode records as a node: the step records it too, as the sum of
-# the seed's adjoints is in that node's order; starting from B', f was
-# within 1.4e-14 on a prototype. W^1 is no exception, its part I*W' a node
-# as any first factor's, before the product that reads it, k. With R = [1, v1; v2, 1 + v1*v2] instead,
+# for a, b, c, d, e, f, g, h and k, and q and A within 0. A power starts
+# from its first factor in both, its part the factor's, so W^1's in k is
+# W's own (C430). With R = [1, v1; v2, 1 + v1*v2] instead,
 # at v = [1/2; 1/3], the gradient of [1 1]*R^-1*[1; 2] is [-5/3; -1/2], of [1
 # 1]*R^-2*[1; 2] [-3; -1/6], and the Hessian of the first [0, 1; 1, 0], as
 # test/data/reverse.ink and hessian.ink hold them.

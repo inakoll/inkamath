@@ -630,6 +630,7 @@ on the Linux toolchain without saying so.
 | C427 `[fixed]` | **A file placed where the cache would be was not refused as the entry says.** The cache is used only where it is a directory of the user's own, else `RuntimeError`, but a file at `$XDG_CACHE_HOME/inkamath` made `os.makedirs` raise `FileExistsError` first, and on Windows, where ownership is not asked, nothing would have refused it before a library was built into it. A file there is refused as a directory not the user's own is now, on every platform. No golden, expected header or check program moves. In 3 lines of `inkamath.py` and 3 changed, 1 of comment; `compile_shared_python` holds it. Found by the implementation review of hosting from Python. |
 | C428 `[fixed]` | **A tensor of one slice lost its `;;` between Python and the interpreter.** It prints with a `;;` after its slice, `[1 2;;]`, since it is not its slice (docs/language.md, section 2), and `inkamath.eval` split its text into a second, empty slice, "[1,2;;] is not a value"; written as an argument, `[[[1, 2], [3, 4]]]` was `[1, 2; 3, 4]`, a matrix, so that `f(x) = x[1]` gave its first row where it gives the slice. Both keep the `;;` now: read, a text holding one is a tensor, and written, one slice ends with one. No golden, expected header or check program moves. In 1 line of `inkamath.py` and 3 changed, 1 of comment; `compile_shared_python` holds it, both ways. Found by the implementation review of hosting from Python, comparing each compiled term of `test/compile` with `eval`'s. |
 | C429 `[fixed]` | **A compiled sweep summed in the order of the C++ compiler that built inkamath.** A product's part, `a'*b + a*b'`, was `Plus(Times(a', b), Times(a, b'))`, two arguments C++ evaluates in an order it leaves open: GCC took `a*b'` first, so its node came first on the tape, where the interpreter's is second, and the sweep summed an adjoint's terms in another order. `grad_(W = A_(n-1)) ([1 1]*(W*(W*W))*[1; 2])` was within 1.4e-14 of the interpreter in a step a GCC build wrote and within 0 in a Clang build's. Six calls declared temporaries in that order too, numbering them otherwise. Each is evaluated left to right now, as Clang did, so the two builds write the same headers and check programs: a GCC build's 16 check programs and 22 of the 487 headers `--compile` writes for `test/compile`'s files, models and instances move to a Clang build's, the rest byte-identical. No golden or expected header moves. In 26 lines of `compile.hpp` for 21, 2 of comment; adjoint.ink's `cube` holds it, under GCC. Found fixing a matrix power's start from its first factor. |
+| C430 `[fixed]` | **A matrix power started from the identity, whose zeros made a column NaN where a cell is not finite.** `[~1e200, 1; 0, ~2]^2` was `[~inf, ~1e+200; -nan, ~4]`, its second row 0 and 4 by the maths, the identity's 0 times the infinite cell; under grad, `grad_(t = ~1/2) [~1e200*t, 0; 1, ~2]^2` was `[~inf, ~0; -nan, ~0]` where the compiled step, from its first factor, gave `[inf, 0; 1e200, 0]`. By the owner's ruling, `Matrix::pow`, `Derivative::Power` and `Compiler::Power` start from the first factor, so that the interpreter and the step stay within 0 of each other, and the step's node by the identity under reverse mode, `Times(I, X')`, goes. A cell the product leaves exact stays so, where the identity's 0 times an inexact cell made it inexact: `[~1e200, 1; 0, ~2]^1` is the base, where it was `[~1e+200, ~1; ~0, ~2]`. `^0` is the identity still. No golden moves. Of the check programs, back.c moves, the interpreter's reverse mode and the step's summing in the new order, every term within 0 still, and back.c, jacobian.c and kinetic.c in the estimates of the interpreter's error, whose digits alone move in back's and jacobian's reports; of `--compile`'s outputs for `test/compile`, matpow.h and matpow_sweep.h, the node gone. In 17 lines of sources for 20, 6 of comment; matrices.ink and grad.ink hold it. Found by the review of compiled grad of matrix powers. |
 
 ---
 
@@ -1793,9 +1794,9 @@ matrix is singular, which the interpreter reports, every cell is NaN.
 `kalman2.ink` measures position and the sum of position and velocity, so its
 gain inverts a 2x2, and its estimates and first gain are within 1e-14 of the
 exact ones; its header was recorded and read, the helper's form being new but
-the rest the Kalman filter's. The interpreter starts a power from the identity
-and multiplies it in, which the compiled code skips: that differs only where a
-cell is infinite. An exponent must be a whole constant; `A^0` is the identity,
+the rest the Kalman filter's. The interpreter started a power from the
+identity and multiplied it in, which the compiled code skipped, differing only
+where a cell is infinite, until both started from the first factor (C430). An exponent must be a whole constant; `A^0` is the identity,
 kept apart from the folding of constants, since it reads `A`.
 
 **Random models** test the claim the hand-written ones cannot: that a compiled
@@ -13768,18 +13769,14 @@ Decided:
   `ProductOf(Product(a, b), a, b)`: the value's outer part by `Product`,
   its part and cross part by `ProductOf`, which sum a1*b0 + a0*b1, and
   a3*b0 + a2*b1 + a1*b2 + a0*b3, in `Derivative::Product`'s order. A
-  negative exponent inverts first, with the parts above. The interpreter
-  starts from the identity, its first factor's part I*B' by `Tape::Sparse`,
-  B' itself save in the column of a cell that is not finite, where the
-  identity's zeros make it NaN; forward mode starts from B, as the
-  value does (the comment on `Power`). In reverse mode the identity is a
-  node, Left(X', I), X the first factor the squaring takes in, B for an odd
-  exponent and B^2 for 2 or -2, recorded before the squaring's other
-  products that read X' and so swept after them, and where the exponent has
-  two bits set the seed's adjoints sum in its order: started from B,
-  `grad_(W = A_(n-1)) ([1 1]*W^3*[1; 2])` was within 1.4e-14 on a
-  prototype. So under reverse mode the first factor's part is `Times(I,
-  X')`, a Left node by the identity, as the interpreter's.
+  negative exponent inverts first, with the parts above. Both start from
+  the first factor, X, B for an odd exponent and B^2 for 2 or -2, its part
+  X' (C430). The interpreter started from the identity, whose zeros made
+  NaN the column of a cell that is not finite, and its tape recorded I*X'
+  as a node, Left(X', I), which the step recorded too, `Times(I, X')`:
+  without it, `grad_(W = A_(n-1)) ([1 1]*W^3*[1; 2])` was within 1.4e-14
+  on a prototype, from the order a GCC build recorded a product's part in
+  (C429), not from the node.
 - **Constants fold exactly**, as everywhere: at a constant point the base
   is a constant that moves, its inverse the interpreter's exactly, a
   product of two constants `Exactly`'s, as `MultExpression` folds one, and
@@ -13827,7 +13824,8 @@ Rejected:
 - **The interpreter's power from its first factor**, the smaller change,
   a line of `derivative.hpp` and no node: it moves the oracle's last bit
   in reverse mode for an entry of the compiler. A fix of its own if the
-  owner wants it, with the identity's node here removed.
+  owner wants it, with the identity's node here removed. Done since, by
+  the owner's ruling (C430).
 - **NaN at every step for a constant singular point**, as `edge`'s `j`:
   those are refusals `grad` makes, where a singular inverse is refused
   outside it, and compiled so today.
@@ -13873,7 +13871,7 @@ and `reverse.ink`, where they pass now.
 Built as specified: the refusal goes for a nonzero whole exponent, `Power`
 takes each product's parts by `ProductOf`, folding a product of constants,
 and `Inverted` the inverse's, folded where the base is a constant; under a
-tape the first factor's part is `Times(I, X')`. Every term of matpow.ink's
+tape the first factor's part is `Times(I, X')`, until C430. Every term of matpow.ink's
 six instances is within 0. The other 399 programs and headers
 `test/CMakeLists.txt` generates, and `--compile` of every file, model and
 instance of `test/compile`, 901, are byte-identical to 35b8844's.
@@ -13882,7 +13880,8 @@ Departures:
 - **`W^1` under reverse mode specified** before the implementation, as
   `back.k`, `[1 1]*(W^1*(W*W))*[1; 2]` by `W`: its part a node by the
   identity as any first factor's, no case for 1. Without the node it is
-  within 1.4e-14, as `back.f` is.
+  within 1.4e-14, as `back.f` is, in a GCC build (C429); since C430 it is
+  W's part itself.
 - **The spec part became regular cases**: its compiles, strict, float and
   refusals in cli.cmake's part 2, the headers `matpow_<model>.h`; its six
   checks in `test/CMakeLists.txt`'s list, their reports held whole,
