@@ -116,12 +116,16 @@ std::string Expression(Random& random, const Scope& scope, int depth) {
     }
 }
 
+// Each draw a statement of its own: the order of two operands' is the C++
+// compiler's, which drew GCC's models otherwise than Clang's (C434).
 std::string Comparison(Random& random, const Scope& scope) {
     static const char* const ops[] = {" < ", " > ", " <= ", " >= "};
-    const std::string        compared =
-        Expression(random, scope, 1) + ops[random.below(4)] + Quarter(random);
+    std::string              compared = Expression(random, scope, 1);
+    compared += ops[random.below(4)];
+    compared += Quarter(random);
     if (!random.chance(30)) return compared;
-    return compared + (random.chance(50) ? " and " : " or ") + Comparison(random, scope);
+    compared += random.chance(50) ? " and " : " or ";
+    return compared + Comparison(random, scope);
 }
 
 std::vector<std::string> RandomModel(Random& random) {
@@ -141,17 +145,22 @@ std::vector<std::string> RandomModel(Random& random) {
             lines.push_back(scope.self + "_0 = " + Quarter(random));
             lines.push_back(scope.self + "_1 = " + Quarter(random));
         }
-        if (random.chance(30))
-            lines.push_back(scope.self + "_n | " + Comparison(random, scope) + " = " +
-                            Expression(random, scope, 2));
+        if (random.chance(30)) {
+            const std::string guard = Comparison(random, scope);
+            lines.push_back(scope.self + "_n | " + guard + " = " + Expression(random, scope, 2));
+        }
         lines.push_back(scope.self + "_n = " + Expression(random, scope, 3));
     }
     // A 2x2 block: a product, a transpose, an inverse and cells read out.
     if (random.chance(50)) {
         const auto q = [&] { return Quarter(random); };
-        lines.push_back("F = [" + q() + " " + q() + "; " + q() + " " + q() + "]");
+        std::string f = "F = [" + q();
+        f += " " + q();
+        f += "; " + q();
+        lines.push_back(f + " " + q() + "]");
         lines.push_back("G[j<=2, k<=2] = (j + k)/4");
-        lines.push_back("v_0 = [" + q() + "; " + q() + "]");
+        const std::string v = "v_0 = [" + q();
+        lines.push_back(v + "; " + q() + "]");
         lines.push_back("v_n = F*v_(n-1)/2 + [u_n; a_(n-1)]");
         lines.push_back("M_n = (F'*F + G*(1 + a_n^2))^-1");
         lines.push_back("m_n = (M_n*v_n)[1,1] + v_n[2,1]*" + q());

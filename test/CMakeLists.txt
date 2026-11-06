@@ -1421,6 +1421,10 @@ add_executable(compile_fuzz ${fuzz_source})
 target_link_libraries(compile_fuzz PRIVATE inkamath_warnings $<$<NOT:$<C_COMPILER_ID:MSVC>>:m>)
 set_target_properties(compile_fuzz PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
 add_test(NAME compile_fuzz COMMAND compile_fuzz)
+# C434: the same models whichever compiler built the generator.
+add_test(NAME compile_fuzz_drawn COMMAND ${CMAKE_COMMAND} -E cat ${fuzz_source})
+set_tests_properties(compile_fuzz_drawn PROPERTIES PASS_REGULAR_EXPRESSION
+                     "^/\\* 272 of 300 random models")
 
 # Each timeout is for a job alone on its machine. The sanitizer job shares its
 # machine with the other jobs of two runs, and there took three times as long:
