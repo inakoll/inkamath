@@ -14299,30 +14299,50 @@ For 2.2.0, the owner's requests, each specified before it is built:
     today, not passed over for a later directory, so a permission never
     picks another file.
   - **Not found**: today's words, then the -I directories as given, in
-    order, `cannot read nowhere.ink, nor find it in one or two`; without
-    -I, today's words alone, so models.ink stays.
-  - **Refused before anything runs**, as a file that cannot be opened is:
-    `-I` last, `-I takes a directory`, a usage error as `-o`'s; a path
-    that is not a directory, `-I x is not a directory`, exit 2, rather
-    than ignored, as a compiler's is, to surface later as a file not found;
-    the same directory again by weakly_canonical, `-I x is given twice`, as
-    any option. `-Idir` stays an unknown option, `-o`'s one form. A
-    relative directory is the working directory's, as a compiler's.
+    order, `cannot read nowhere.ink, nor find it in one or two`, three or
+    more `in a, b or c`; without -I, today's words alone, so models.ink
+    stays.
+  - **Refused before anything runs**, as a file that cannot be opened is,
+    each -I checked in the parse loop where it stands, as `--steps` is, so
+    the first wrong in the command line's order is the one said: `-I`
+    last, `-I takes a directory`, a usage error as `-o`'s; the next
+    argument, whatever it is, `-I -I` naming a directory `-I`; a path that
+    is not a directory, `-I x is not a directory`, exit 2, rather than
+    ignored, as a compiler's is, to surface later as a file not found; then
+    the same directory again, compared by weakly_canonical as Load compares
+    files, so a symlink's spelling of it too, `-I x is given twice`, as any
+    option. `-Idir` stays an unknown option, `-o`'s one form. A relative
+    directory is the working directory's, as a compiler's, and named as
+    given.
   - **Python**: `path=`, a list of directories, on `load`, `Model`,
     `check`, and `eval`, `describe` and `tex`, which run a file too, each
     made absolute and given as -I in order. A str or a path alone is
     refused, `path is a list of directories`, as iterating a str would give
-    characters. A module from `load` keeps its path for its values,
-    functions and models. `Model`'s and `check`'s positional-only first
-    parameter, `path` today, is renamed `file`; a model parameter named
-    path is then reached as one named float32 or steps is, by `set` or
-    `m["path"]`, not as a keyword of `Model` or `check`.
-  - **check's copy**: today every `.ink` beside the file is copied into the
+    characters; one directory twice is the command line's `is given twice`,
+    by weakly_canonical. A module from `load` keeps its path for its
+    values, functions, models, their checks, `describe()` and `tex()`, and
+    a `Model` for its `check()`. The first parameter of `load`, `Model`
+    and `check` is `file`, positional-only: `load(file, /, *, path=None)`,
+    and `Model`'s and `check`'s, `path` today, renamed. So
+    `load(path="x.ink")`, which loads x.ink today, is a TypeError, Python's
+    own for the missing file; `load("x.ink", path="y")` is the one of a
+    path not a list. A model parameter named path is then reached as one
+    named float32 or steps is, by `set` or `m["path"]`, not as a keyword
+    of `Model` or `check`.
+  - **A path nothing reads is refused** (CLAUDE.md, section 2): `Model`
+    of a library given path=, as given float32, `a library is loaded by
+    its model's name, and built already`; `eval`, `describe` and `tex`
+    given path= and no file, a TypeError, `path needs a file`.
+  - **check's copy stays**: every `.ink` beside the file is copied into the
     temporary directory, so that the wrapper's `use inkamathsource` reads
-    what the file's own uses find. Replaced by `-I <the file's directory>`,
-    then path less that directory, which would be given twice: only the
-    file is copied, under the stem the wrapper needs, and beside the copy
-    there is nothing but the wrapper's files.
+    what the file's own uses find, and path is given as -I unchanged.
+    `-I <the file's directory>` in place of the copy was specified first,
+    and the spec review showed it is not the same: it puts the file's
+    directory on the search of every file, so a file found in two that
+    uses a stem in both the file's directory and one reads the first, where
+    `Model` and `eval`, searching beside it then one, read one's. `check`
+    would check another model than `Model` steps. `app/deep.ink`'s probe
+    pins it: one's gains, k = 10, gives y its clause, app's 1 none.
   - **The cache key** stays as it is, SHA-256 of the header, the compiler
     line and `cc --version`: -I changes the header only by the definitions
     it finds, and the key with it, and two paths giving one header give
@@ -14332,9 +14352,10 @@ For 2.2.0, the owner's requests, each specified before it is built:
     list of the module's own would be global, a second way to say path=;
     sys.path as -I, rejected, would let a file's use find what no command
     line shows. `load(file, path=...)` is the way.
-  - About 60 lines: `main.cpp` 25, the flag, its checks, `--names`' arity,
+  - About 70 lines: `main.cpp` 25, the flag, its checks, `--names`' arity,
     the help, each mode handed the list; `interpreter.hpp` 15, the list
     beside `directory_`, Load trying it, the message; `tools/inkamath.py`
-    20; docs/language.md section 5 and docs/compile.md's Python a few
-    lines each. The spec's cases join `cli.cmake`'s parts and
+    about 30, path through every call, its two refusals and the
+    signatures; docs/language.md section 5 and docs/compile.md's Python a
+    few lines each. The spec's cases join `cli.cmake`'s parts and
     `python_test.py`'s run, its two spec tests going.
