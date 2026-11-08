@@ -26,6 +26,11 @@ every defect by its number, are in [`DESIGN.md`](DESIGN.md).
 - `--names` takes a file and `-I` directories, and given anything else says
   `--names takes a file and -I directories, nothing else`.
 
+### Fixed
+
+1 defect, C437: a directory named as the file `use` reads is refused,
+`cannot read`, on every system, no longer read as an empty file.
+
 ## 2.1.0 — 2026-11-06
 
 ### Added

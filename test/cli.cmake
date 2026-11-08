@@ -429,6 +429,20 @@ set(args ${search} "${dir}/app/loop.ink")
 set(stdout "error: ring.ink, line 2: hub.ink, line 2: ring.ink uses itself\n")
 set(exit 1)
 check(search_cycle)
+# A directory named as the file is found, beside or in an -I, and cannot
+# be read, as on Windows (C437): neither an empty file nor passed over.
+file(MAKE_DIRECTORY "${OUT}/hollow/hole.ink")
+file(WRITE "${OUT}/hollow/main.ink" "use hole\n")
+file(WRITE "${OUT}/filled/hole.ink" "h = 1\n")
+set(args -I filled hollow/main.ink)
+set(stdout "error: cannot read hole.ink\n")
+set(exit 1)
+check(search_hollow_beside)
+set(args -I hollow -I filled)
+set(input "use hole\n")
+set(stdout "error: cannot read hole.ink\n")
+set(exit 1)
+check(search_hollow_first)
 
 # A directory, after its own -I, once: each checked where the command
 # line gives it, as --steps is, so the first wrong in its order is said,

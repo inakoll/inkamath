@@ -2061,7 +2061,8 @@ std::shared_ptr<Scope<U>> Interpreter<T, U>::Load(const std::string& name) {
         return loaded->second;
     }
     std::ifstream in(path);
-    if (!in) {
+    // A directory opens on POSIX, and reads as empty: refused as Windows does.
+    if (!in || std::filesystem::is_directory(path, absent)) {
         std::string where;
         for (std::size_t k = 0; k < search_.size() && !found(); ++k)
             where += (k == 0                   ? ", nor find it in "
