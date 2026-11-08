@@ -1,4 +1,4 @@
-# clamp from the prelude (DESIGN.md, next in line), compiled and held to
+# clamp from the prelude (DESIGN.md), compiled and held to
 # the interpreter across both kinks. Worked out by hand, none recorded.
 #
 # 'ramp': x_n = n/4 - 1/2, so 2*x_n = n/2 - 1, a double exactly: below 0 to

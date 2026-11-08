@@ -7,7 +7,7 @@ from docs/language.md's and docs/compile.md's examples, from the comments of
 the fixtures, which say how each was found, or from the paper one cites.
 
     python_test.py [pid track pidf bank ctl]
-    python_test.py --spec clamp|path
+    python_test.py --spec path
 
 The libraries are compile_shared's, in its order; INKAMATH names the
 interpreter, else the module finds its own; CC is a cc-compatible C
@@ -104,24 +104,11 @@ def model_lines(file, head):
     return "\n".join(lines[first:last + 1])
 
 
-# Specified, not yet built (DESIGN.md, next in line), each skipped while it
-# is missing, as today: clamp in the prelude, and path=, the -I directories
-# of load, Model, check, eval, describe and tex, the fixtures
-# compile/search's, app/model.ink's and app/deep.ink's comments giving
-# their values.
+# Specified, not yet built (DESIGN.md, next in line), skipped while it is
+# missing, as today: path=, the -I directories of load, Model, check, eval,
+# describe and tex, the fixtures compile/search's, app/model.ink's and
+# app/deep.ink's comments giving their values.
 if sys.argv[1:2] == ["--spec"]:
-    if sys.argv[2:] == ["clamp"]:
-        if "clamp" not in vars(inkamath):
-            print("clamp: not in the prelude's list, as today")
-            sys.exit(0)
-        same("clamp(1/3, 0, 1)", inkamath.clamp(F(1, 3), 0, 1), F(1, 3))
-        same("clamp(3/2, 0, 1)", inkamath.clamp(F(3, 2), 0, 1), 1)
-        same("clamp(-0.5, 0, 1), the bound", inkamath.clamp(-0.5, 0, 1), 0)
-        star = {}
-        exec("from inkamath import *", star)
-        if "clamp" not in star:
-            fail("from inkamath import * leaves out clamp")
-        sys.exit(failed)
     search = here / "search"
     app, one, two = search / "app", search / "one", search / "two"
     model, deep = app / "model.ink", app / "deep.ink"
@@ -355,7 +342,7 @@ refused('describe("undefined")', ValueError, lambda: inkamath.describe("undefine
 # the units docs/language.md gives them, past libm's own.
 from inkamath import (pi, e, i, floor, ceil, mod, im, exp, log, tanh, ilogb, sin, cos, atan,
                       atan2, asin, acos, acosh, charpoly, hurwitz, schurcohn, rho, abscissa,
-                      eig, smax, hinf, dhinf, chol, conv, polyval, roots)
+                      eig, smax, hinf, dhinf, chol, conv, polyval, roots, clamp)
 from inkamath import re as Re, abs as Abs, max as Max, min as Min
 
 same("pi", pi, math.pi)
@@ -415,6 +402,9 @@ same("conv((s + 1), (s + 2))", conv([1, 1], [1, 2]), [1, 3, 2])
 same("polyval(s^2 + 3s + 2, 2)", polyval([1, 3, 2], 2), 12)
 same("roots((s + 1)^2), exact", roots([1, 2, 1]), [-1, -1])
 near("roots(s^2 + 2s + 2)", roots([1, 2, 2]), [-1 - 1j, -1 + 1j], 1e-15)
+same("clamp(1/3, 0, 1)", clamp(F(1, 3), 0, 1), F(1, 3))
+same("clamp(3/2, 0, 1)", clamp(F(3, 2), 0, 1), 1)
+same("clamp(-0.5, 0, 1), the bound", clamp(-0.5, 0, 1), 0)
 
 # Python's builtins are not taken by a star import; each is there by name.
 star = {}
@@ -424,7 +414,7 @@ for name in ("eval", "abs", "max", "min", "re"):
         fail(f"from inkamath import * takes {name}")
     if not hasattr(inkamath, name):
         fail(f"inkamath has no {name}")
-for name in ("Model", "check", "load", "describe", "tex", "rho", "pi", "i"):
+for name in ("Model", "check", "load", "describe", "tex", "rho", "clamp", "pi", "i"):
     if name not in star:
         fail(f"from inkamath import * leaves out {name}")
 

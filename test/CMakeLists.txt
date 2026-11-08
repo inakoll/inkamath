@@ -52,7 +52,7 @@ endforeach()
 # take 22 s, and reverse_memo.ink's one entry, its 600,000 under reverse
 # mode, 38.
 set_tests_properties(reverse_memo.ink PROPERTIES TIMEOUT 120)
-foreach(suite IN ITEMS bignum line_editor matrix prelude spec)
+foreach(suite IN ITEMS bignum line_editor matrix prelude)
     add_test(NAME ${suite} COMMAND inkamath_tests --test-suite=${suite} --no-intro)
     set_tests_properties(${suite} PROPERTIES TIMEOUT 60)
 endforeach()
@@ -99,10 +99,9 @@ foreach(part 1 2 3 4)
                      -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
     set_tests_properties(cli_${part} PROPERTIES TIMEOUT ${cli_timeout})
 endforeach()
-# clamp and -I (DESIGN.md, next in line), specified before they are built:
-# cli.cmake's parts spec_clamp and spec_search, each skipped while what it
-# specifies is missing, as today.
-foreach(spec IN ITEMS clamp search)
+# -I (DESIGN.md, next in line), specified before it is built: cli.cmake's
+# part spec_search, skipped while -I is missing, as today.
+foreach(spec IN ITEMS search)
     add_test(NAME cli_spec_${spec}
              COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=spec_${spec}
                      -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli_spec_${spec}
@@ -267,9 +266,9 @@ if(Python3_Interpreter_FOUND AND NOT INKAMATH_SANITIZE)
         list(APPEND python_env "CC=\"${CMAKE_C_COMPILER}\"")
     endif()
     set_tests_properties(compile_shared_python PROPERTIES ENVIRONMENT "${python_env}")
-    # clamp and path= (DESIGN.md, next in line), specified before they are
-    # built: each skipped while it is missing, as today.
-    foreach(spec IN ITEMS clamp path)
+    # path= (DESIGN.md, next in line), specified before it is built: skipped
+    # while it is missing, as today.
+    foreach(spec IN ITEMS path)
         add_test(NAME compile_shared_python_spec_${spec}
                  COMMAND ${Python3_EXECUTABLE} -B ${CMAKE_CURRENT_SOURCE_DIR}/compile/python_test.py
                          --spec ${spec})
@@ -357,7 +356,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          tip:reach tip:rested series:taylor series:wave series:later
                          sums:summed sums:halving sums:cancelled reduce:pooled reduce:shied
                          orthogonal:rational orthogonal:inexact orthogonal:probe
-                         chol:factored chol:naive chol:sole placed:placed polyconv:tune
+                         chol:factored chol:naive chol:sole placed:placed polyconv:tune clamp:ramp
                          fallback:planned fallback:held fallback:ranout
                          fallback:tipped fallback:columned fallback:answered
                          fallback:rootless fallback:coupled fallback:chained fallback:gapped
@@ -1257,6 +1256,10 @@ set_tests_properties(check_placed_report PROPERTIES PASS_REGULAR_EXPRESSION
 # compile/polyconv.ink: every term exact, as its comment gives it.
 set_tests_properties(check_tune_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^tune: 100 steps from 0, against exact values\ntune\\.G: within 0\ntune\\.c: within 0\ntune\\.d: within 0\ntune\\.Z: within 0\ntune\\.g: within 0\ntune\\.w: within 0\ntune\\.y: within 0\n$")
+# compile/clamp.ink: both kinks crossed exactly in doubles, as its comment
+# gives it.
+set_tests_properties(check_ramp_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^ramp: 100 steps from 0, against exact values\nramp\\.g: within 0\nramp\\.r: within 0\nramp\\.y: within 0\n$")
 add_test(NAME check_moments COMMAND check_moments)
 add_test(NAME check_calm COMMAND check_calm)
 add_test(NAME check_wild COMMAND check_wild)

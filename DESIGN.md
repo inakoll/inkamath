@@ -13908,6 +13908,72 @@ section 5 a model's, `th_n[j<=3] = q_n[j]` and `om_n[j<=3] = q_n[j+3]`
 from an input `q_n[j<=6]`, each a session the docs' test replays. Taken as
 a fix, outside the pipeline: there is nothing to specify before it.
 
+### `clamp(x, lo, hi)` in the prelude `[done]`
+
+The owner's request, `max(lo, min(hi, x))`, one line after `min`'s in
+`prelude[]` in `interpreter.hpp`. Not in `inkamath_prelude.ink`, which
+holds what the header writes as C functions of its own: clamp compiles as
+max and min do, where it is called. Specified by `test/data/spec/clamp.ink`,
+`test/compile/clamp.ink` in `cli_spec_clamp`, and
+`compile_shared_python_spec_clamp`; a prototype of the one line, not
+committed, left every test as it was: goldens, the docs' sessions,
+expected headers and check reports.
+
+Decided:
+- **As written**, two guards borrowed: x inside, the bound outside and at
+  it. Exact of exact arguments, inexact where any is, as a guard reading
+  a double is (C241).
+- **grad** through the clause taken, at a tie max's and min's first
+  argument's slope: 1 inside, 0 outside and at both kinks, where the
+  bound is taken, whose own slope is 1 there. Forward and reverse alike,
+  compiled as interpreted: `ramp` crosses both kinks exactly in doubles,
+  within 0.
+- **lo above hi gives lo**, whatever x, as the line does: min(hi, x) is
+  at most hi, so below lo. Not refused: a guard of its own would put a
+  test in every compiled clamp, and a refusal, NaN compiled, where a
+  controller's limits cross; the line is the definition, and says what
+  happens there. numpy's clip gives hi, and C++'s std::clamp is undefined.
+- **Single values**, as max and min take: a matrix is refused in clamp's
+  name, the prelude's call the session wrote being the one named, as
+  `sin([1 2])` is, `clamp needs single values, not a 2x1 matrix; write it
+  by its cells`; by cells, `c[j<=3] = clamp(v[j], 0, 1)`.
+- **A session's own clamp**: a clause on a prelude name starts a
+  definition of the session's (docs/language.md section 3), so
+  `clamp(x) | x > 1 = 1` typed first does not try to join the
+  three-parameter clamp, and nothing is refused: no design issue. On
+  master, `max(x) | x > 1 = 1` typed first does the same, and `clear
+  max` gives the prelude's back. So the 16 definitions named clamp in
+  the tests keep their goldens; clauses.ink's `use cases (clamp)` after
+  `clear clamp` brings the file's in over the prelude's, as `use mx
+  (max)` does.
+- **Named** x, lo and hi, as asked; numpy's are (a, a_min, a_max), C++'s
+  (v, lo, hi). Listed where the prelude's names are: docs/language.md
+  sections 1 and 5, MANIFESTO's *Functions a paper takes for granted*,
+  and `_PRELUDE` in `tools/inkamath.py`. No session in docs/language.md
+  calls it: section 3 defines a `clamp(x)` of its own, and the docs'
+  sessions run as one.
+- Rejected: a built-in in C++, a derivative and a compiled path of its
+  own for what one line says; defaults `lo = 0, hi = 1`, a saturation's
+  limits being the model's; refusing lo above hi, above.
+- About 6 lines: 1 of the prelude, 1 of `tools/inkamath.py`, 4 of
+  docs/language.md and MANIFESTO. The spec becomes the golden
+  `clamp.ink`, and `clamp:ramp` joins the programs `test/CMakeLists.txt`
+  checks, `cli_spec_clamp` going.
+
+Built as specified: the prelude's one line is the prototype's, and every
+entry of the spec passes as written. The spec is the golden `clamp.ink`,
+the `spec` suite and `check_spec` going, clamp their only case;
+`clamp:ramp` joins the programs `test/CMakeLists.txt` checks, its report
+held whole as its comment gives it, and `cli_spec_clamp` goes; the Python
+spec's three values and its star import join `python_test.py`'s prelude,
+`compile_shared_python_spec_clamp` going. No golden, expected header or
+check program moves.
+
+Departures: none of behaviour. docs/language.md and MANIFESTO 3 lines for
+4, the three lists of the prelude's names; `interpreter.hpp` 1 line and
+`tools/inkamath.py` 1 changed, for 2; 21,324 to 21,325 lines of sources by `wc -l
+include/inkamath/*.hpp src/*`.
+
 ---
 
 ## Next in line
@@ -14225,54 +14291,6 @@ LQR), whose defects are C376 to C379, 49 lines, 19,288 to 19,337 at
   letters then digits, so `use e2e` is refused.
 
 For 2.2.0, the owner's requests, each specified before it is built:
-
-- **`clamp(x, lo, hi)` in the prelude**, `max(lo, min(hi, x))`, one line
-  after `min`'s in `prelude[]` in `interpreter.hpp`. Not in
-  `inkamath_prelude.ink`, which holds what the header writes as C
-  functions of its own: clamp compiles as max and min do, where it is
-  called. Specified by `test/data/spec/clamp.ink`, `test/compile/clamp.ink`
-  in `cli_spec_clamp`, and `compile_shared_python_spec_clamp`; a prototype
-  of the one line, not committed, left every test as it was: goldens,
-  the docs' sessions, expected headers and check reports.
-  - **As written**, two guards borrowed: x inside, the bound outside and at
-    it. Exact of exact arguments, inexact where any is, as a guard reading
-    a double is (C241).
-  - **grad** through the clause taken, at a tie max's and min's first
-    argument's slope: 1 inside, 0 outside and at both kinks, where the
-    bound is taken, whose own slope is 1 there. Forward and reverse alike,
-    compiled as interpreted: `ramp` crosses both kinks exactly in doubles,
-    within 0.
-  - **lo above hi gives lo**, whatever x, as the line does: min(hi, x) is
-    at most hi, so below lo. Not refused: a guard of its own would put a
-    test in every compiled clamp, and a refusal, NaN compiled, where a
-    controller's limits cross; the line is the definition, and says what
-    happens there. numpy's clip gives hi, and C++'s std::clamp is undefined.
-  - **Single values**, as max and min take: a matrix is refused in clamp's
-    name, the prelude's call the session wrote being the one named, as
-    `sin([1 2])` is, `clamp needs single values, not a 2x1 matrix; write it
-    by its cells`; by cells, `c[j<=3] = clamp(v[j], 0, 1)`.
-  - **A session's own clamp**: a clause on a prelude name starts a
-    definition of the session's (docs/language.md section 3), so
-    `clamp(x) | x > 1 = 1` typed first does not try to join the
-    three-parameter clamp, and nothing is refused: no design issue. On
-    master, `max(x) | x > 1 = 1` typed first does the same, and `clear
-    max` gives the prelude's back. So the 16 definitions named clamp in
-    the tests keep their goldens; clauses.ink's `use cases (clamp)` after
-    `clear clamp` brings the file's in over the prelude's, as `use mx
-    (max)` does.
-  - **Named** x, lo and hi, as asked; numpy's are (a, a_min, a_max), C++'s
-    (v, lo, hi). Listed where the prelude's names are: docs/language.md
-    sections 1 and 5, MANIFESTO's *Functions a paper takes for granted*,
-    and `_PRELUDE` in `tools/inkamath.py`. No session in docs/language.md
-    calls it: section 3 defines a `clamp(x)` of its own, and the docs'
-    sessions run as one.
-  - Rejected: a built-in in C++, a derivative and a compiled path of its
-    own for what one line says; defaults `lo = 0, hi = 1`, a saturation's
-    limits being the model's; refusing lo above hi, above.
-  - About 6 lines: 1 of the prelude, 1 of `tools/inkamath.py`, 4 of
-    docs/language.md and MANIFESTO. The spec becomes the golden
-    `clamp.ink`, and `clamp:ramp` joins the programs `test/CMakeLists.txt`
-    checks, `cli_spec_clamp` going.
 
 - **`-I dir`, where `use` looks after the using file's own directory**,
   repeatable, with no environment variable: a path from the environment

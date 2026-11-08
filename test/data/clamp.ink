@@ -1,4 +1,4 @@
-# clamp from the prelude (DESIGN.md, next in line): clamp(x, lo, hi) =
+# clamp from the prelude (DESIGN.md): clamp(x, lo, hi) =
 # max(lo, min(hi, x)), as written. Every answer worked out by hand from that
 # line and max's and min's clauses, each at a tie its first argument; never
 # recorded.

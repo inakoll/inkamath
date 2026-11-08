@@ -43,7 +43,7 @@ its argument, exact of an exact number, and a complex number's real and
 imaginary parts, the paper's Re and Im. `ceil(x) = -floor(-x)` and
 `mod(a, b) = a - b*floor(a/b)` come with them, from a prelude (section 5),
 and so do `exp`, `log`, `tanh`, `sin`, `cos`, `atan`, `atan2`, `asin`,
-`acos`, `acosh`, `abs`, `max` and `min`, and, of matrices, `charpoly`,
+`acos`, `acosh`, `abs`, `max`, `min` and `clamp`, and, of matrices, `charpoly`,
 `conv`, `polyval`, `roots`, `hurwitz`, `schurcohn`, `rho`, `abscissa`, `eig`, `chol`,
 `smax`, `hinf` and `dhinf` (section 2). `abs` takes a complex number too, |z|, so a
 frequency response's magnitude |T(e^{iw})| is written as on paper.
@@ -1346,7 +1346,7 @@ of its own: the session reaches its names qualified, `filters.lowpass`, and
 once, holds definitions only, and one that cannot be read or parsed loads
 nothing and says where. The prelude that defines `ceil`, `mod`, `exp`, `log`,
 `tanh`, `sin`, `cos`, `atan`, `atan2`, `asin`, `acos`, `acosh`, `abs`,
-`max`, `min`, `charpoly`, `conv`, `polyval`, `roots`, `hurwitz`,
+`max`, `min`, `clamp`, `charpoly`, `conv`, `polyval`, `roots`, `hurwitz`,
 `schurcohn`, `rho`, `rhob`, `abscissa`, `abscissab`, `eig`, `eigb`, `chol`,
 `smax`, `hinf` and `dhinf`, and what they call, is included bare beneath the
 session, as the built-ins are: every scope sees it, and a session

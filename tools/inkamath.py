@@ -17,7 +17,7 @@ import sys
 import tempfile
 from fractions import Fraction
 
-_PRELUDE = ("floor", "ceil", "mod", "re", "im", "abs", "max", "min", "exp", "log", "tanh",
+_PRELUDE = ("floor", "ceil", "mod", "re", "im", "abs", "max", "min", "clamp", "exp", "log", "tanh",
             "ilogb", "sin", "cos", "atan", "atan2", "asin", "acos", "acosh", "charpoly",
             "conv", "polyval", "roots", "hurwitz", "schurcohn", "rho", "abscissa", "eig",
             "chol", "smax", "hinf", "dhinf")

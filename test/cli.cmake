@@ -87,30 +87,6 @@ function(reports name program report)
     endif()
 endfunction()
 
-# Specified, not yet built (DESIGN.md, next in line): clamp in the prelude,
-# compile/clamp.ink's story checked across both kinks. Skipped while clamp
-# is not defined, as today, and only then.
-if(PART STREQUAL "spec_clamp")
-    file(MAKE_DIRECTORY "${OUT}")
-    set(story "${CMAKE_CURRENT_LIST_DIR}/compile/clamp.ink")
-    execute_process(COMMAND "${EXE}" --check "${story}" ramp -o ramp.c
-                    WORKING_DIRECTORY "${OUT}" OUTPUT_VARIABLE out ERROR_VARIABLE err
-                    RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
-    if("${out}${code}" STREQUAL "1" AND
-       "${err}" STREQUAL "inkamath: cannot compile g: clamp is not defined\n")
-        message("check_clamp: clamp not defined, as today")
-        return()
-    endif()
-    set(args --check ${story} ramp -o ramp.c)
-    check(check_clamp_ramp)
-    reports(check_clamp_ramp ramp "ramp: 100 steps from 0, against exact values
-ramp.g: within 0
-ramp.r: within 0
-ramp.y: within 0
-")
-    return()
-endif()
-
 # Specified, not yet built (DESIGN.md, next in line): -I dir, where use
 # looks after the using file's own directory, in every mode, the fixtures
 # in compile/search, app/model.ink's comment giving its values. Skipped

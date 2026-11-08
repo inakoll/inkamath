@@ -447,6 +447,7 @@ inline constexpr const char* prelude[] = {
     "max(a, b) | a < b = b",
     "min(a, b) = a",
     "min(a, b) | b < a = b",
+    "clamp(x, lo, hi) = max(lo, min(hi, x))",
     "sin(x) = sinr(x, floor(x*0.6366197723675814 + 1/2), 0)",
     "sin(x) | abs(x) > 2^20 = 1/0",
     "cos(x) = sinr(x, floor(x*0.6366197723675814 + 1/2), 1)",

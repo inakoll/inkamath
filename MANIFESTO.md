@@ -367,7 +367,7 @@ language can express. Taken: a prelude written in inkamath, no built-in.
 `exp`, `log`, `tanh`, `sin`, `cos`, `atan`, `atan2`, `asin`, `acos` and
 `acosh` are written by the operations a compiled step performs, within 3.6
 units in the last place of a double, and compiled as the header's own C
-functions. With them come `ceil`, `mod`, `abs`, `max` and `min`, and of
+functions. With them come `ceil`, `mod`, `abs`, `max`, `min` and `clamp`, and of
 matrices `charpoly`, `conv`, `polyval`, `roots`, `hurwitz`, `schurcohn`, `rho`
 and `abscissa` with their brackets `rhob` and `abscissab`, `eig` with `eigb`,
 `chol`, `smax`, `hinf` and `dhinf` (`docs/language.md` sections 1, 2 and 5;
