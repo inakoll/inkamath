@@ -14274,3 +14274,67 @@ For 2.2.0, the owner's requests, each specified before it is built:
     `clamp.ink`, and `clamp:ramp` joins the programs `test/CMakeLists.txt`
     checks, `cli_spec_clamp` going.
 
+- **`-I dir`, where `use` looks after the using file's own directory**,
+  repeatable, with no environment variable: a path from the environment
+  makes a file's meaning depend on the shell, which a command line shows.
+  `use` still names a stem alone, so no string enters the language.
+  Specified by `cli_spec_search`, its fixtures in `test/compile/search`,
+  and `compile_shared_python_spec_path`.
+  - **Order**: beside the file that names it, at the prompt the working
+    directory, then each -I in the command line's order; the first that
+    holds stem.ink is read. A file found through -I is a file like any, its
+    own uses looking beside it first, then -I: so one stem may name two
+    files in a session, `tools.ink` in two reading two's `shared.ink` where
+    the session reads one's.
+  - **Once**: Load keys a file by its weakly_canonical path, as now, so a
+    file reached by two routes is one scope, and a cycle through -I is
+    refused as one beside is.
+  - **Every mode** reads it, before or after the file: a run, the prompt,
+    `--compile`, `--check` and its replay of a transcript, `--names`, which
+    takes a file and -I alone, `--names takes a file and -I directories,
+    nothing else`, so names_usage's five cases move. `--help` gains `-I
+    dir      look in dir for a file use names, after the directory of the
+    file naming it; given again, after the one before`.
+  - **Found** is a file there: one that cannot be read is refused as
+    today, not passed over for a later directory, so a permission never
+    picks another file.
+  - **Not found**: today's words, then the -I directories as given, in
+    order, `cannot read nowhere.ink, nor find it in one or two`; without
+    -I, today's words alone, so models.ink stays.
+  - **Refused before anything runs**, as a file that cannot be opened is:
+    `-I` last, `-I takes a directory`, a usage error as `-o`'s; a path
+    that is not a directory, `-I x is not a directory`, exit 2, rather
+    than ignored, as a compiler's is, to surface later as a file not found;
+    the same directory again by weakly_canonical, `-I x is given twice`, as
+    any option. `-Idir` stays an unknown option, `-o`'s one form. A
+    relative directory is the working directory's, as a compiler's.
+  - **Python**: `path=`, a list of directories, on `load`, `Model`,
+    `check`, and `eval`, `describe` and `tex`, which run a file too, each
+    made absolute and given as -I in order. A str or a path alone is
+    refused, `path is a list of directories`, as iterating it would give
+    characters. A module from `load` keeps its path for its values,
+    functions and models. `Model`'s and `check`'s positional-only first
+    parameter, `path` today, is renamed `file`; a model parameter named
+    path is then reached as one named float32 or steps is, by `set` or
+    `m["path"]`, not as a keyword of `Model` or `check`.
+  - **check's copy**: today every `.ink` beside the file is copied into the
+    temporary directory, so that the wrapper's `use inkamathsource` reads
+    what the file's own uses find. Replaced by `-I <the file's directory>`,
+    then path less that directory, which would be given twice: only the
+    file is copied, under the stem the wrapper needs, and beside the copy
+    there is nothing but the wrapper's files.
+  - **The cache key** stays as it is, SHA-256 of the header, the compiler
+    line and `cc --version`: -I changes the header only by the definitions
+    it finds, and the key with it, and two paths giving one header give
+    one library, rightly. The spec builds both orders of one and two,
+    whose headers differ by `shared.s`.
+  - **The import finder takes none**: an import has no arguments, and a
+    list of the module's own would be global, a second way to say path=;
+    sys.path as -I, rejected, would let a file's use find what no command
+    line shows. `load(file, path=...)` is the way.
+  - About 60 lines: `main.cpp` 25, the flag, its checks, `--names`' arity,
+    the help, each mode handed the list; `interpreter.hpp` 15, the list
+    beside `directory_`, Load trying it, the message; `tools/inkamath.py`
+    20; docs/language.md section 5 and docs/compile.md's Python a few
+    lines each. The spec's cases join `cli.cmake`'s parts and
+    `python_test.py`'s run, its two spec tests going.

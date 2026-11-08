@@ -111,6 +111,97 @@ ramp.y: within 0
     return()
 endif()
 
+# Specified, not yet built (DESIGN.md, next in line): -I dir, where use
+# looks after the using file's own directory, in every mode, the fixtures
+# in compile/search, app/model.ink's comment giving its values. Skipped
+# while -I is an unknown option, as today, and only then.
+if(PART STREQUAL "spec_search")
+    file(MAKE_DIRECTORY "${OUT}")
+    set(dir "${CMAKE_CURRENT_LIST_DIR}/compile/search")
+    set(model "${dir}/app/model.ink")
+    set(search -I "${dir}/one" -I "${dir}/two")
+    execute_process(COMMAND "${EXE}" ${search} "${model}"
+                    WORKING_DIRECTORY "${OUT}" OUTPUT_VARIABLE out ERROR_VARIABLE err
+                    RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
+    if("${out}${code}" STREQUAL "2" AND
+       "${err}" STREQUAL "inkamath: unknown option '-I'\nTry 'inkamath --help'.\n")
+        message("search_order: -I unknown, as today")
+        return()
+    endif()
+
+    # Beside the file first, then each -I in the command line's order; a
+    # file found through -I looks beside itself first, so tools reads two's
+    # shared where the session reads one's.
+    set(head "use gains\nuse shared\nuse tools\nv = [gains.k, shared.s, tools.t, tools.w]
+gain(c = 0) = { ... }\ng = gain()\n")
+    set(args ${search} "${model}" -i)
+    set(input "v\n")
+    set(stdout "${head}[1, 2, 3, 20]\n")
+    check(search_order)
+    set(args -I "${dir}/two" -I "${dir}/one" "${model}" -i)
+    set(input "v\n")
+    set(stdout "${head}[1, 20, 3, 20]\n")
+    check(search_reversed)
+
+    # At the prompt the session's own directory is the working one, searched
+    # first: unit here, shared from one.
+    file(WRITE "${OUT}/unit.ink" "u = 7\n")
+    set(args -I "${dir}/one")
+    set(input "use unit\nuse shared\n[unit.u, shared.s]\n")
+    set(stdout "use unit\nuse shared\n[7, 2]\n")
+    check(search_prompt)
+
+    # --compile, --check and --names take it too, before or after the file.
+    set(args --compile "${model}" gain ${search})
+    set(stdout "gain in model.ink compiles\n")
+    check(search_compile)
+    set(args ${search} --check "${model}" g -o g.c)
+    check(search_check)
+    reports(search_check g "g: 100 steps from 0, against exact values\ng.y: within 0\n")
+    set(args --names "${model}" ${search})
+    set(stdout "instance g\nmodel gain\nfile gains\nfile shared\nfile tools\nvalue v\n")
+    check(search_names)
+    set(args --names "${model}" -o x.h ${search})
+    set(stderr "inkamath: --names takes a file and -I directories, nothing else\nTry 'inkamath --help'.\n")
+    set(exit 2)
+    check(search_names_usage)
+
+    # A file found nowhere names the -I directories, in order; a cycle
+    # through -I is refused as one beside is, a file being one file by
+    # whatever route it is reached.
+    set(args ${search} "${dir}/app/lost.ink")
+    set(stdout "error: cannot read nowhere.ink, nor find it in ${dir}/one or ${dir}/two\n")
+    set(exit 1)
+    check(search_lost)
+    set(args ${search} "${dir}/app/loop.ink")
+    set(stdout "error: ring.ink, line 2: hub.ink, line 2: ring.ink uses itself\n")
+    set(exit 1)
+    check(search_cycle)
+
+    # A directory, after its own -I, once, checked before anything runs.
+    set(args -I)
+    set(stderr "inkamath: -I takes a directory\nTry 'inkamath --help'.\n")
+    set(exit 2)
+    check(search_bare)
+    set(args -I "${dir}/none" "${model}")
+    set(stderr "inkamath: -I ${dir}/none is not a directory\n")
+    set(exit 2)
+    check(search_missing)
+    set(args -I "${model}" "${model}")
+    set(stderr "inkamath: -I ${model} is not a directory\n")
+    set(exit 2)
+    check(search_file)
+    set(args -I "${dir}/one" -I "${dir}/two/../one" "${model}")
+    set(stderr "inkamath: -I ${dir}/two/../one is given twice\nTry 'inkamath --help'.\n")
+    set(exit 2)
+    check(search_twice)
+    set(args "-I${dir}/one" "${model}")
+    set(stderr "inkamath: unknown option '-I${dir}/one'\nTry 'inkamath --help'.\n")
+    set(exit 2)
+    check(search_joined)
+    return()
+endif()
+
 # The cases run as four tests of about equal time under the sanitizers: PART
 # 1 up to charpoly's refusal, 2 from it, 3 from eig's, 4 from the frequency
 # response's, and all where PART is not given.

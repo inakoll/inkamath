@@ -99,9 +99,10 @@ foreach(part 1 2 3 4)
                      -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
     set_tests_properties(cli_${part} PROPERTIES TIMEOUT ${cli_timeout})
 endforeach()
-# clamp (DESIGN.md, next in line), specified before it is built: cli.cmake's
-# part spec_clamp, skipped while clamp is missing, as today.
-foreach(spec IN ITEMS clamp)
+# clamp and -I (DESIGN.md, next in line), specified before they are built:
+# cli.cmake's parts spec_clamp and spec_search, each skipped while what it
+# specifies is missing, as today.
+foreach(spec IN ITEMS clamp search)
     add_test(NAME cli_spec_${spec}
              COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=spec_${spec}
                      -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli_spec_${spec}
@@ -266,9 +267,9 @@ if(Python3_Interpreter_FOUND AND NOT INKAMATH_SANITIZE)
         list(APPEND python_env "CC=\"${CMAKE_C_COMPILER}\"")
     endif()
     set_tests_properties(compile_shared_python PROPERTIES ENVIRONMENT "${python_env}")
-    # clamp (DESIGN.md, next in line), specified before it is built: skipped
-    # while it is missing, as today.
-    foreach(spec IN ITEMS clamp)
+    # clamp and path= (DESIGN.md, next in line), specified before they are
+    # built: each skipped while it is missing, as today.
+    foreach(spec IN ITEMS clamp path)
         add_test(NAME compile_shared_python_spec_${spec}
                  COMMAND ${Python3_EXECUTABLE} -B ${CMAKE_CURRENT_SOURCE_DIR}/compile/python_test.py
                          --spec ${spec})
