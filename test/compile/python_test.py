@@ -126,7 +126,9 @@ if sys.argv[1:2] == ["--spec"]:
     model = app / "model.ink"
     try:
         found = inkamath.load(model, path=[one, two])
-    except TypeError:
+    except TypeError as error:
+        if "multiple values for argument 'path'" not in str(error):
+            raise
         print("path: load takes no path=, as today")
         sys.exit(0)
     same("v by one, two", found.v, [[1, 2, 3, 20]])
