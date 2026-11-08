@@ -14105,6 +14105,11 @@ Amended by its implementation review, each a failing test first:
 - **path= that is no list**, `path=5`, is refused as a str is, `path is a
   list of directories`, not by Python's `'int' object is not iterable`.
   `tools/inkamath.py` 2 lines, 562 to 564.
+- **A file found in an -I that cannot be read is named there**, the
+  directory as given, `cannot read one/x.ink`, where it said `cannot read
+  x.ink` as of one beside, which keeps those words. `interpreter.hpp` 3
+  lines, 1 of comment, the loop over the directories no longer asking
+  whether the file exists; 21,369 to 21,372 lines of sources.
 
 ---
 

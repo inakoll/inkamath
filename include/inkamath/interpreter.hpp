@@ -2050,10 +2050,11 @@ std::string Interpreter<T, U>::Use(const std::string& s) {
 // names it, else in the first -I that holds it. One that fails loads nothing.
 template <Parsable T, Numeric U>
 std::shared_ptr<Scope<U>> Interpreter<T, U>::Load(const std::string& name) {
-    const std::string     file = name + ".ink";
-    std::filesystem::path path = directory_ / file;
-    std::error_code       absent;
-    const auto            found = [&] { return std::filesystem::exists(path, absent); };
+    const std::string           file   = name + ".ink";
+    const std::filesystem::path beside = directory_ / file;
+    std::filesystem::path       path   = beside;
+    std::error_code             absent;
+    const auto                  found = [&] { return std::filesystem::exists(path, absent); };
     for (auto dir = search_.begin(); dir != search_.end() && !found(); ++dir) path = *dir / file;
     const std::string key = std::filesystem::weakly_canonical(path).string();
     if (const auto loaded = files_.find(key); loaded != files_.end()) {
@@ -2063,8 +2064,10 @@ std::shared_ptr<Scope<U>> Interpreter<T, U>::Load(const std::string& name) {
     std::ifstream in(path);
     // A directory opens on POSIX, and reads as empty: refused as Windows does.
     if (!in || std::filesystem::is_directory(path, absent)) {
+        // Found but unreadable: named where it is when an -I gave it.
+        if (found()) Fail("cannot read ", path == beside ? file : path.string());
         std::string where;
-        for (std::size_t k = 0; k < search_.size() && !found(); ++k)
+        for (std::size_t k = 0; k < search_.size(); ++k)
             where += (k == 0                   ? ", nor find it in "
                       : k + 1 < search_.size() ? ", "
                                                : " or ") +

@@ -438,11 +438,18 @@ set(args -I filled hollow/main.ink)
 set(stdout "error: cannot read hole.ink\n")
 set(exit 1)
 check(search_hollow_beside)
+# Found in an -I, it is named where it was found, the directory as given.
+file(TO_NATIVE_PATH "hollow/hole.ink" hole)
 set(args -I hollow -I filled)
 set(input "use hole\n")
-set(stdout "error: cannot read hole.ink\n")
+set(stdout "error: cannot read ${hole}\n")
 set(exit 1)
 check(search_hollow_first)
+set(args -I "${dir}/one" -I hollow -I filled)
+set(input "use hole\n")
+set(stdout "error: cannot read ${hole}\n")
+set(exit 1)
+check(search_hollow_later)
 
 # A directory, after its own -I, once: each checked where the command
 # line gives it, as --steps is, so the first wrong in its order is said,
