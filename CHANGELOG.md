@@ -23,7 +23,8 @@ every defect by its number, are in [`DESIGN.md`](DESIGN.md).
 - In Python, the first parameter of `load`, `Model` and `check` is `file`,
   positional-only: `load(path="x.ink")` is a `TypeError`, `path=` being the
   directories. So `Model(..., path=...)` and `check(..., path=...)` no
-  longer set a model parameter named `path`; `m.set(path=...)` or
+  longer set a model parameter named `path`, and a loaded module's models
+  refuse `path=`, keeping the module's own; `m.set(path=...)` or
   `m["path"]` does.
 - `--names` takes a file and `-I` directories, and given anything else says
   `--names takes a file and -I directories, nothing else`.

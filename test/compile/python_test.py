@@ -423,6 +423,12 @@ for name in ("eval", "describe", "tex"):
 refused("a library given path", ValueError,
         lambda: Model(work / "pid.so", "pid", path=[one]),
         "a library is loaded by its model's name, and built already")
+# A module's models keep its path: path= is refused, as check's would be
+# the directories, and a parameter path is set by set() or m["path"].
+for what, made in (("gain(path=...)", lambda: found.gain(path=[two])),
+                   ("gain.check(path=...)", lambda: found.gain.check(path=[two]))):
+    refused(f"load's {what}", TypeError, made, "keeps the path its module was loaded with",
+            'set(path=...) or m["path"]')
 # A module's own function, model and texts keep its path; deep's comment.
 deeply = inkamath.load(deep, path=[one, two])
 same("deep's probe.p", inkamath.eval("probe.p", file=deep, path=[one, two]), 10)

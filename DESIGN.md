@@ -14096,6 +14096,13 @@ Departures:
   section 5 3 lines, docs/compile.md's Python 3, `load(path)` named
   `load(file)` there.
 
+Amended by its implementation review, each a failing test first:
+- **A module's models refuse path=**, `m.gain(path=...)` and
+  `m.gain.check(path=...)`, which were Python's own TypeError of a keyword
+  given twice and a parameter path set: `a module's model keeps the path its
+  module was loaded with; a parameter path is set by set(path=...) or
+  m["path"]`. `tools/inkamath.py` 7 lines, 555 to 562.
+
 ---
 
 ## Next in line

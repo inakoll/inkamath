@@ -477,15 +477,22 @@ def _check(path, name, steps, float32, params, dirs):
 
 # A .ink imported: its models, functions and values, and its own step.
 
+def _kept(params):
+    if "path" in params:
+        raise TypeError("a module's model keeps the path its module was loaded with; "
+                        'a parameter path is set by set(path=...) or m["path"]')
+    return params
+
+
 class _Maker:
     def __init__(self, path, name, dirs):
         self._path, self._name, self._dirs = path, name, dirs
 
     def __call__(self, /, *, float32=False, **params):
-        return Model(self._path, self._name, float32=float32, path=self._dirs, **params)
+        return Model(self._path, self._name, float32=float32, path=self._dirs, **_kept(params))
 
     def check(self, /, *, steps=100, float32=False, **params):
-        return _check(self._path, self._name, steps, float32, params, self._dirs)
+        return _check(self._path, self._name, steps, float32, _kept(params), self._dirs)
 
 
 class _Named(_Maker):
