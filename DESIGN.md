@@ -14311,7 +14311,7 @@ For 2.2.0, the owner's requests, each specified before it is built:
   - **Python**: `path=`, a list of directories, on `load`, `Model`,
     `check`, and `eval`, `describe` and `tex`, which run a file too, each
     made absolute and given as -I in order. A str or a path alone is
-    refused, `path is a list of directories`, as iterating it would give
+    refused, `path is a list of directories`, as iterating a str would give
     characters. A module from `load` keeps its path for its values,
     functions and models. `Model`'s and `check`'s positional-only first
     parameter, `path` today, is renamed `file`; a model parameter named
