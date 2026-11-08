@@ -3,6 +3,29 @@
 What changed for someone using inkamath, release by release. The reasons, and
 every defect by its number, are in [`DESIGN.md`](DESIGN.md).
 
+## 2.2.0 — 2026-11-08
+
+### Added
+
+- **`clamp(x, lo, hi)`** in the prelude, `max(lo, min(hi, x))`: exact of
+  exact arguments, under `grad` the slope of the clause taken, compiled where
+  it is called; lo where lo is above hi.
+- **`-I dir`**, where `use` looks for a file after the directory of the file
+  naming it, given again for another, in every mode; from Python, `path=`, a
+  list of directories, for `load`, `Model`, `check`, `eval`, `describe` and
+  `tex`.
+- **Slicing by cells, documented**: a part of a stacked vector read at an
+  offset, `rates(v[j<=6])[k<=3] = v[k+3]`, by a function's parameter or a
+  model's input (`docs/language.md`, sections 3 and 5).
+
+### Changed
+
+- In Python, the first parameter of `load`, `Model` and `check` is `file`,
+  positional-only: `load(path="x.ink")` is a `TypeError`, `path=` being the
+  directories.
+- `--names` takes a file and `-I` directories, and given anything else says
+  `--names takes a file and -I directories, nothing else`.
+
 ## 2.1.0 — 2026-11-06
 
 ### Added
