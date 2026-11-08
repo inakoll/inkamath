@@ -13899,6 +13899,15 @@ Departures:
 - `compile.hpp` 42 lines for 8, 34 net for about 40, 7 of them comment;
   21,259 to 21,293 lines of sources.
 
+### Slicing by cells, documented `[done]`
+
+The owner's request, docs alone: a part of a stacked vector is a
+definition by cells read at an offset, no language change. docs/language.md
+section 3 gives a sized parameter's, `rates(v[j<=6])[k<=3] = v[k+3]`, and
+section 5 a model's, `th_n[j<=3] = q_n[j]` and `om_n[j<=3] = q_n[j+3]`
+from an input `q_n[j<=6]`, each a session the docs' test replays. Taken as
+a fix, outside the pipeline: there is nothing to specify before it.
+
 ---
 
 ## Next in line

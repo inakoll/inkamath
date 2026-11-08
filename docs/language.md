@@ -738,6 +738,20 @@ A size is bound as a parameter is, so inside the definition it hides a name
 defined at the prompt: after `n = 10`, `tr` still reads its argument's size.
 A model's input reads the names in its bounds instead (section 5).
 
+A part of a stacked argument is read at an offset, as a paper writes
+v_{j+3}: here the rates of a state of three angles and three rates, by
+cells, a sum reading `v[j+3]` alike:
+
+```
+>> rates(v[j<=6])[k<=3] = v[k+3]
+rates(v[j<=6])[k<=3] = v[k+3]
+
+>> rates([1; 2; 3; 4; 5; 6])
+[4;
+ 5;
+ 6]
+```
+
 ## 4. Sequences
 
 A name indexed with `_` is a sequence. It is one definition with several
@@ -1205,6 +1219,22 @@ error: dot(...).x_3 is a single value, where dot takes a 2x1 matrix
 A bound may be a name, which the model reads where it is defined, as it reads
 any other: the model is compiled before any argument exists, so its input
 binds no size, where a function's parameter does (section 3).
+
+A stacked input is split the same way, each part a sequence of the model's
+own by cells, read at its offset into the input:
+
+```
+>> joints(q_n[j<=6]) = {
+..     th_n[j<=3] = q_n[j]
+..     om_n[j<=3] = q_n[j+3]
+.. }
+joints(q_n[j<=6]) = { ... }
+
+>> joints(q_n = [1; 2; 3; n; 2*n; 3*n]).om_2
+[2;
+ 4;
+ 6]
+```
 
 An input marked `?`, `z_n?` or `z_n[j<=2]?`, is optional: present on some
 steps only. It is absent where its argument reads a term that is not there,
