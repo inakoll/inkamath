@@ -32,7 +32,8 @@ every defect by its number, are in [`DESIGN.md`](DESIGN.md).
 ### Fixed
 
 1 defect, C437: a directory named as the file `use` reads is refused,
-`cannot read`, on every system, no longer read as an empty file.
+`cannot read`, on every system, no longer read as an empty file. C438 is
+open.
 
 ## 2.1.0 — 2026-11-06
 
