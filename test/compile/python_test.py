@@ -7,6 +7,7 @@ from docs/language.md's and docs/compile.md's examples, from the comments of
 the fixtures, which say how each was found, or from the paper one cites.
 
     python_test.py [pid track pidf bank ctl]
+    python_test.py --spec clamp
 
 The libraries are compile_shared's, in its order; INKAMATH names the
 interpreter, else the module finds its own; CC is a cc-compatible C
@@ -101,6 +102,23 @@ def model_lines(file, head):
     first = next(k for k, line in enumerate(lines) if line.startswith(head))
     last = next(k for k in range(first, len(lines)) if lines[k] == "}")
     return "\n".join(lines[first:last + 1])
+
+
+# Specified, not yet built (DESIGN.md, next in line), skipped while it is
+# missing, as today: clamp in the prelude.
+if sys.argv[1:2] == ["--spec"]:
+    if sys.argv[2:] == ["clamp"]:
+        if "clamp" not in vars(inkamath):
+            print("clamp: not in the prelude's list, as today")
+            sys.exit(0)
+        same("clamp(1/3, 0, 1)", inkamath.clamp(F(1, 3), 0, 1), F(1, 3))
+        same("clamp(3/2, 0, 1)", inkamath.clamp(F(3, 2), 0, 1), 1)
+        same("clamp(-0.5, 0, 1), the bound", inkamath.clamp(-0.5, 0, 1), 0)
+        star = {}
+        exec("from inkamath import *", star)
+        if "clamp" not in star:
+            fail("from inkamath import * leaves out clamp")
+        sys.exit(failed)
 
 
 # compile_shared's libraries: shared_test.c's values, the current term read

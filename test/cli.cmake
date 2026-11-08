@@ -68,6 +68,49 @@ endfunction()
 # Read by cases in every part.
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
+# A check program built and run, its report held to the one given.
+function(reports name program report)
+    if(NOT CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
+        return()
+    endif()
+    execute_process(COMMAND "${CC}" -std=c11 -O2 ${program}.c -o ${program} -lm
+                    WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
+                    ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
+    if(failed)
+        message(SEND_ERROR "${name}: ${program}.c does not build\n${errors}")
+        return()
+    endif()
+    execute_process(COMMAND "${OUT}/${program}" WORKING_DIRECTORY "${OUT}"
+                    OUTPUT_VARIABLE got RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
+    if(NOT code EQUAL 0 OR NOT "${got}" STREQUAL "${report}")
+        message(SEND_ERROR "${name}: exit ${code}\n--- expected\n${report}--- got\n${got}---")
+    endif()
+endfunction()
+
+# Specified, not yet built (DESIGN.md, next in line): clamp in the prelude,
+# compile/clamp.ink's story checked across both kinks. Skipped while clamp
+# is not defined, as today, and only then.
+if(PART STREQUAL "spec_clamp")
+    file(MAKE_DIRECTORY "${OUT}")
+    set(story "${CMAKE_CURRENT_LIST_DIR}/compile/clamp.ink")
+    execute_process(COMMAND "${EXE}" --check "${story}" ramp -o ramp.c
+                    WORKING_DIRECTORY "${OUT}" OUTPUT_VARIABLE out ERROR_VARIABLE err
+                    RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
+    if("${out}${code}" STREQUAL "1" AND
+       "${err}" STREQUAL "inkamath: cannot compile g: clamp is not defined\n")
+        message("check_clamp: clamp not defined, as today")
+        return()
+    endif()
+    set(args --check ${story} ramp -o ramp.c)
+    check(check_clamp_ramp)
+    reports(check_clamp_ramp ramp "ramp: 100 steps from 0, against exact values
+ramp.g: within 0
+ramp.r: within 0
+ramp.y: within 0
+")
+    return()
+endif()
+
 # The cases run as four tests of about equal time under the sanitizers: PART
 # 1 up to charpoly's refusal, 2 from it, 3 from eig's, 4 from the frequency
 # response's, and all where PART is not given.

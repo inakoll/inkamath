@@ -52,7 +52,7 @@ endforeach()
 # take 22 s, and reverse_memo.ink's one entry, its 600,000 under reverse
 # mode, 38.
 set_tests_properties(reverse_memo.ink PROPERTIES TIMEOUT 120)
-foreach(suite IN ITEMS bignum line_editor matrix prelude)
+foreach(suite IN ITEMS bignum line_editor matrix prelude spec)
     add_test(NAME ${suite} COMMAND inkamath_tests --test-suite=${suite} --no-intro)
     set_tests_properties(${suite} PROPERTIES TIMEOUT 60)
 endforeach()
@@ -98,6 +98,17 @@ foreach(part 1 2 3 4)
                      -DTIMED=${timed}
                      -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
     set_tests_properties(cli_${part} PROPERTIES TIMEOUT ${cli_timeout})
+endforeach()
+# clamp (DESIGN.md, next in line), specified before it is built: cli.cmake's
+# part spec_clamp, skipped while clamp is missing, as today.
+foreach(spec IN ITEMS clamp)
+    add_test(NAME cli_spec_${spec}
+             COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=spec_${spec}
+                     -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli_spec_${spec}
+                     -DCASE_TIMEOUT=${cli_case_timeout} -DCC=${CMAKE_C_COMPILER}
+                     -DCC_ID=${CMAKE_C_COMPILER_ID} -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
+    set_tests_properties(cli_spec_${spec} PROPERTIES TIMEOUT ${cli_timeout}
+                         SKIP_REGULAR_EXPRESSION ", as today\n")
 endforeach()
 # bench's workloads, each a transcript bench/run.cmake measures, replayed so
 # that one gone stale fails here rather than at its next measure. The
@@ -255,6 +266,15 @@ if(Python3_Interpreter_FOUND AND NOT INKAMATH_SANITIZE)
         list(APPEND python_env "CC=\"${CMAKE_C_COMPILER}\"")
     endif()
     set_tests_properties(compile_shared_python PROPERTIES ENVIRONMENT "${python_env}")
+    # clamp (DESIGN.md, next in line), specified before it is built: skipped
+    # while it is missing, as today.
+    foreach(spec IN ITEMS clamp)
+        add_test(NAME compile_shared_python_spec_${spec}
+                 COMMAND ${Python3_EXECUTABLE} -B ${CMAKE_CURRENT_SOURCE_DIR}/compile/python_test.py
+                         --spec ${spec})
+        set_tests_properties(compile_shared_python_spec_${spec} PROPERTIES
+                             ENVIRONMENT "${python_env}" SKIP_REGULAR_EXPRESSION ", as today\n")
+    endforeach()
 endif()
 
 # The prelude's functions the interpreter calls on a double (DESIGN.md),
