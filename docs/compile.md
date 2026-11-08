@@ -383,9 +383,12 @@ model named or the file's own step, and built so into
 `$XDG_CACHE_HOME/inkamath`, else `~/.cache/inkamath`, once for each header
 and compiler, never cleared. A check takes parameters too, and raises
 `RuntimeError` with its report where a term parts. An import finds
-`name.ink` after any `name.py`, or `load(path)` reads one: its models, each
+`name.ink` after any `name.py`, or `load(file)` reads one: its models, each
 `M(**params)` with `M.check()`, `M.describe()` and `M.tex()`, its functions
 and values, and its own step under its stem where no name takes it.
+`path=[...]`, the directories `use` searches after beside the file, as
+`-I`, is taken by `load`, `Model`, `check`, `eval`, `describe` and `tex`,
+and a module keeps its own for all it holds.
 
 To batch steps in C, as a small model's cost advises (below), a host
 writes a small C file that includes the header and exports its loop:

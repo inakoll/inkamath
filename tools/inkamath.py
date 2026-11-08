@@ -86,8 +86,20 @@ def _ink(path):
     return path
 
 
-def _names(path):
-    return [line.split(" ") for line in _inkamath("--names", path).splitlines()]
+def _dirs(path):
+    """path=, the -I directories in order, each made absolute but not normalized,
+    so that the command line resolves a .. after a symlink as it would."""
+    if isinstance(path, (str, os.PathLike)):
+        raise TypeError("path is a list of directories")
+    return [os.path.join(os.getcwd(), folder) for folder in path or ()]
+
+
+def _search(dirs):
+    return [arg for folder in dirs for arg in ("-I", folder)]
+
+
+def _names(path, dirs):
+    return [line.split(" ") for line in _inkamath("--names", path, *_search(dirs)).splitlines()]
 
 
 # Values: a number formatted for the interpreter, and an answer read back.
@@ -156,12 +168,12 @@ def _value(text):
     return rows[0][0] if len(rows) == 1 and len(rows[0]) == 1 else rows
 
 
-def _ask(line, file):
+def _ask(line, file, dirs):
     """The last answer of a session, after the file's, any error among them raised."""
     if "\n" in line or "\r" in line:
         raise ValueError("an expression of more than one line")
     line = "(q)" if line == "q" else line  # 'q' alone ends a session
-    args =["--echo"] + ([os.path.abspath(file), "-i"] if file is not None else [])
+    args = ["--echo", *_search(dirs)] + ([os.path.abspath(file), "-i"] if file is not None else [])
     out = _inkamath(*args, given=f"digits = 17\n{line}\n", ok=(0, 1))  # 1: an error answered
     answers = []
     for text in out.splitlines():
@@ -180,33 +192,40 @@ def _ask(line, file):
     return answers[-1]
 
 
-def _said(line, file):
-    answer = _ask(line, file)
+def _said(line, file, dirs):
+    answer = _ask(line, file, dirs)
     if answer.startswith("error: "):
         raise ValueError(answer.removeprefix("error: "))
     return answer
 
 
-def eval(expr, *, file=None):
+def _read(file, path):
+    if path is not None and file is None:
+        raise TypeError("path needs a file")
+    return _dirs(path)
+
+
+def eval(expr, *, file=None, path=None):
     """The value of an expression, exact where it is, after a file's definitions."""
-    answer = _ask(f"frac {expr}", file)
+    dirs = _read(file, path)
+    answer = _ask(f"frac {expr}", file, dirs)
     # frac refuses an approximated or complex value: read as shown.
-    return _value(_said(expr, file) if answer.startswith("error: ") else answer)
+    return _value(_said(expr, file, dirs) if answer.startswith("error: ") else answer)
 
 
-def describe(name, *, file=None):
+def describe(name, *, file=None, path=None):
     """The definition as `?name` prints it."""
-    return _said(f"?{name}", file)
+    return _said(f"?{name}", file, _read(file, path))
 
 
-def tex(name, *, file=None):
+def tex(name, *, file=None, path=None):
     """The definition as `tex ?name` prints it."""
-    return _said(f"tex ?{name}", file)
+    return _said(f"tex ?{name}", file, _read(file, path))
 
 
-def _function(name, file=None):
+def _function(name, file=None, dirs=None):
     def call(*args):
-        return eval(f"{name}({', '.join(map(_format, args))})", file=file)
+        return eval(f"{name}({', '.join(map(_format, args))})", file=file, path=dirs)
     call.__name__ = call.__qualname__ = name
     return call
 
@@ -250,10 +269,10 @@ def _identity(cc):
     return _known[tuple(cc)]
 
 
-def _library(path, name, float32):
+def _library(path, name, float32, dirs):
     """The library of a .ink compiled, built only where the cache has none."""
     with tempfile.TemporaryDirectory() as folder:
-        _inkamath("--compile", path, *[name] * bool(name), *["--float"] * float32,
+        _inkamath("--compile", path, *[name] * bool(name), *["--float"] * float32, *_search(dirs),
                   "-o", os.path.join(folder, "model.h"))
         header = pathlib.Path(folder, "model.h").read_bytes()
         cc = _cc()
@@ -303,18 +322,19 @@ class Model:
     """A model stepped in C: m.step(*inputs), m[name] its current term or a
     parameter, m.history(name) a sequence's window, latest first."""
 
-    def __init__(self, path, name=None, /, *, float32=False, **params):
+    def __init__(self, file, name=None, /, *, float32=False, path=None, **params):
         self._path, self._name, self._float32, self._given = None, name, float32, {}
-        said = ""
-        if os.path.splitext(path)[1].lower() in (".so", ".dll", ".dylib"):
-            if name is None or float32:
+        self._dirs, said = _dirs(path), ""
+        if os.path.splitext(file)[1].lower() in (".so", ".dll", ".dylib"):
+            if name is None or float32 or path is not None:
                 raise ValueError("a library is loaded by its model's name, and built already")
-            prefix, path = name, os.path.abspath(path)
+            prefix, path = name, os.path.abspath(file)
         else:
-            self._path = path = _ink(path)
-            if name is None and not {"sequence", "instance"} & {k for k, _ in _names(path)}:
+            self._path = path = _ink(file)
+            if name is None and not {"sequence", "instance"} & {
+                    k for k, _ in _names(path, self._dirs)}:
                 self._name = os.path.splitext(os.path.basename(path))[0]
-            path, said = _library(path, self._name, float32)
+            path, said = _library(path, self._name, float32, self._dirs)
             prefix = "model"
         fixed = _re.search(r"Compiled in as constants, these cannot change: (.*?)\.(?: |$)", said)
         self._fixed = _re.split(", | and ", fixed[1]) if fixed else []
@@ -411,20 +431,20 @@ class Model:
         """Its .ink checked with the parameters assigned since it was made."""
         if self._path is None:
             raise ValueError("a library has no .ink to check")
-        return _check(self._path, self._name, steps, self._float32, self._given)
+        return _check(self._path, self._name, steps, self._float32, self._given, self._dirs)
 
 
-def check(path, name=None, /, *, steps=100, float32=False, **params):
+def check(file, name=None, /, *, steps=100, float32=False, path=None, **params):
     """--check's report on an instance, a model or the file's own step, compiled
     and run; RuntimeError with the report where a term parts."""
-    return _check(path, name, steps, float32, params)
+    return _check(file, name, steps, float32, params, _dirs(path))
 
 
-def _check(path, name, steps, float32, params):
+def _check(path, name, steps, float32, params, dirs):
     path = _ink(path)
     with tempfile.TemporaryDirectory() as folder:
         target = path
-        kinds = dict((n, k) for k, n in _names(path)) if params else {}
+        kinds = dict((n, k) for k, n in _names(path, dirs)) if params else {}
         kind = kinds.get(name, "") if name else None
         if kind == "instance":
             raise ValueError(f"{name} is an instance, checked as the file gives it")
@@ -448,7 +468,7 @@ def _check(path, name, steps, float32, params):
                               and not t.lstrip().startswith("#")), "")
                 text += "".join(f"\n{'>> ' * first.startswith('>>')}{g}" for g in given) + "\n"
             pathlib.Path(target).write_text(text)
-        _inkamath("--check", target, *[name] * bool(name), "--steps", str(steps),
+        _inkamath("--check", target, *[name] * bool(name), "--steps", str(steps), *_search(dirs),
                   *["--float"] * float32, "-o", os.path.join(folder, "check.c"))
         _run([*_cc(), "-O2", "-ffp-contract=off", "check.c", "-o", "check", "-lm"],
              RuntimeError, folder)
@@ -458,40 +478,42 @@ def _check(path, name, steps, float32, params):
 # A .ink imported: its models, functions and values, and its own step.
 
 class _Maker:
-    def __init__(self, path, name):
-        self._path, self._name = path, name
+    def __init__(self, path, name, dirs):
+        self._path, self._name, self._dirs = path, name, dirs
 
     def __call__(self, /, *, float32=False, **params):
-        return Model(self._path, self._name, float32=float32, **params)
+        return Model(self._path, self._name, float32=float32, path=self._dirs, **params)
 
     def check(self, /, *, steps=100, float32=False, **params):
-        return _check(self._path, self._name, steps, float32, params)
+        return _check(self._path, self._name, steps, float32, params, self._dirs)
 
 
 class _Named(_Maker):
     def describe(self):
-        return describe(self._name, file=self._path)
+        return _said(f"?{self._name}", self._path, self._dirs)
 
     def tex(self):
-        return tex(self._name, file=self._path)
+        return _said(f"tex ?{self._name}", self._path, self._dirs)
 
 
 class _Loader:
+    def __init__(self, dirs=()):
+        self._dirs = dirs
+
     @staticmethod
     def create_module(spec):
         return None
 
-    @staticmethod
-    def exec_module(module):
-        path = _ink(module.__file__)
-        names = _names(path)
-        given = {name: _Named(path, name) if kind == "model" else _function(name, path)
+    def exec_module(self, module):
+        path, dirs = _ink(module.__file__), self._dirs
+        names = _names(path, dirs)
+        given = {name: _Named(path, name, dirs) if kind == "model" else _function(name, path, dirs)
                  for kind, name in names if kind in ("model", "function")}
         values = {name for kind, name in names if kind == "value"}
         stem = os.path.splitext(os.path.basename(path))[0]
         if stem not in {name for _, name in names} and {"sequence", "instance"} & {
                 kind for kind, _ in names}:
-            given[stem] = _Maker(path, None)
+            given[stem] = _Maker(path, None, dirs)
         for _, name in names:  # as read before a reload
             vars(module).pop(name, None)
         vars(module).update(given, __all__=sorted([*given, *values]))
@@ -499,18 +521,18 @@ class _Loader:
         def read(name):  # a value read at its first access, and kept
             if name not in values:
                 raise AttributeError(f"module {module.__name__!r} has no attribute {name!r}")
-            value = vars(module)[name] = eval(name, file=path)
+            value = vars(module)[name] = eval(name, file=path, path=dirs)
             return value
         module.__getattr__ = read
 
 
-def load(path):
-    """A .ink as a module, outside sys.modules."""
-    path = _ink(path)
+def load(file, /, *, path=None):
+    """A .ink as a module, outside sys.modules, its uses sought in path after beside it."""
+    file, loader = _ink(file), _Loader(_dirs(path))
     spec = importlib.util.spec_from_file_location(
-        os.path.splitext(os.path.basename(path))[0], path, loader=_Loader)
+        os.path.splitext(os.path.basename(file))[0], file, loader=loader)
     module = importlib.util.module_from_spec(spec)
-    _Loader.exec_module(module)
+    loader.exec_module(module)
     return module
 
 
@@ -526,7 +548,7 @@ class _Finder:
         for folder in filter(lambda f: isinstance(f, str), folders):
             file = os.path.join(folder or os.getcwd(), fullname.rpartition(".")[2] + ".ink")
             if os.path.isfile(file):
-                return importlib.util.spec_from_file_location(fullname, file, loader=_Loader)
+                return importlib.util.spec_from_file_location(fullname, file, loader=_Loader())
         return None
 
 

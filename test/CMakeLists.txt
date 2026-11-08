@@ -255,15 +255,6 @@ if(Python3_Interpreter_FOUND AND NOT INKAMATH_SANITIZE)
         list(APPEND python_env "CC=\"${CMAKE_C_COMPILER}\"")
     endif()
     set_tests_properties(compile_shared_python PROPERTIES ENVIRONMENT "${python_env}")
-    # path= (DESIGN.md, next in line), specified before it is built: skipped
-    # while it is missing, as today.
-    foreach(spec IN ITEMS path)
-        add_test(NAME compile_shared_python_spec_${spec}
-                 COMMAND ${Python3_EXECUTABLE} -B ${CMAKE_CURRENT_SOURCE_DIR}/compile/python_test.py
-                         --spec ${spec})
-        set_tests_properties(compile_shared_python_spec_${spec} PROPERTIES
-                             ENVIRONMENT "${python_env}" SKIP_REGULAR_EXPRESSION ", as today\n")
-    endforeach()
 endif()
 
 # The prelude's functions the interpreter calls on a double (DESIGN.md),

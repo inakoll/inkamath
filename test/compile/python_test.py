@@ -7,7 +7,6 @@ from docs/language.md's and docs/compile.md's examples, from the comments of
 the fixtures, which say how each was found, or from the paper one cites.
 
     python_test.py [pid track pidf bank ctl]
-    python_test.py --spec path
 
 The libraries are compile_shared's, in its order; INKAMATH names the
 interpreter, else the module finds its own; CC is a cc-compatible C
@@ -102,95 +101,6 @@ def model_lines(file, head):
     first = next(k for k, line in enumerate(lines) if line.startswith(head))
     last = next(k for k in range(first, len(lines)) if lines[k] == "}")
     return "\n".join(lines[first:last + 1])
-
-
-# Specified, not yet built (DESIGN.md, next in line), skipped while it is
-# missing, as today: path=, the -I directories of load, Model, check, eval,
-# describe and tex, the fixtures compile/search's, app/model.ink's and
-# app/deep.ink's comments giving their values.
-if sys.argv[1:2] == ["--spec"]:
-    search = here / "search"
-    app, one, two = search / "app", search / "one", search / "two"
-    model, deep = app / "model.ink", app / "deep.ink"
-    try:
-        found = inkamath.load(model, path=[one, two])
-    except TypeError as error:
-        if "multiple values for argument 'path'" not in str(error):
-            raise
-        print("path: load takes no path=, as today")
-        sys.exit(0)
-    same("v by one, two", found.v, [[1, 2, 3, 20]])
-    same("v by two, one", inkamath.load(model, path=(two, one)).v, [[1, 20, 3, 20]])
-    same("eval's shared.s", inkamath.eval("shared.s", file=model, path=[one, two]), 2)
-    same("describe's v", inkamath.describe("v", file=model, path=[one, two]),
-         "v = [gains.k, shared.s, tools.t, tools.w]")
-    refused("load without path", ValueError, lambda: inkamath.load(model),
-            "cannot read shared.ink")
-    for alone in (str(one), one):
-        refused(f"path={alone!r}", TypeError, lambda: inkamath.load(model, path=alone),
-                "path is a list of directories")
-    # load(file, /, *, path=None): the file is no keyword.
-    refused('load(path="model.ink")', TypeError, lambda: inkamath.load(path=str(model)),
-            "positional")
-    # One directory twice, by weakly_canonical, is refused as the command
-    # line refuses it.
-    refused("one given twice", ValueError,
-            lambda: inkamath.load(model, path=[one, two / ".." / "one"]), "is given twice")
-    # A path nothing reads is refused: no file to run, a library built.
-    for name in ("eval", "describe", "tex"):
-        refused(f"{name} with path and no file", TypeError,
-                lambda: getattr(inkamath, name)("pi", path=[one]), "path needs a file")
-    refused("a library given path", ValueError,
-            lambda: Model(work / "pid.so", "pid", path=[one]),
-            "a library is loaded by its model's name, and built already")
-    # A module's own function, model and texts keep its path; deep's comment.
-    deeply = inkamath.load(deep, path=[one, two])
-    same("deep's probe.p", inkamath.eval("probe.p", file=deep, path=[one, two]), 10)
-    same("deep's scale(2)", deeply.scale(2), 20)
-    same("deep's ?scale", inkamath.describe("scale", file=deep, path=[one, two]),
-         "scale(x) = probe.p*x")
-    if not inkamath.tex("scale", file=deep, path=[one, two]).startswith(
-            r"\operatorname{scale}(x) = "):
-        fail("tex(scale) is not scale's head")
-    same("deep.describe()", deeply.deep.describe(),
-         "deep(c = 0) = {\n    y_n | probe.p > 5 = n + c\n}")
-    lines = deeply.deep.tex().splitlines()
-    if len(lines) != 2 or not lines[0].startswith(r"\operatorname{deep}("):
-        fail(f"deep.tex() is {lines!r}, not a head and a line")
-    if not os.environ.get("CC"):
-        print("CC is not set: no .ink compiled, stepped or checked")
-        sys.exit(failed)
-    # y_n = n + s + 3 + c: s = 2 by one, two and 20 by two, one, so the
-    # cache, keyed by the header, builds another library for the other order.
-    gain = Model(model, "gain", path=[one, two])
-    gain.step()
-    same("gain's y_0", gain["y"], 5.0)
-    other = Model(model, "gain", path=[two, one], c=4)
-    other.step()
-    other.step()
-    same("gain's y_1 by two, one, c = 4", other["y"], 28.0)
-    made = found.gain(c=4)
-    made.step()
-    same("load's gain(c=4)'s y_0", made["y"], 9.0)
-    same("check of g", inkamath.check(model, "g", path=[one, two]),
-         "g: 100 steps from 0, against exact values\ng.y: within 0\n")
-    for given in ([one, two], [one, app, two]):
-        same(f"check of gain(c=4) by {len(given)} directories",
-             inkamath.check(model, "gain", path=given, c=4),
-             "gain: 100 steps from 0, against exact values\ngain.y: within 0\n")
-    same("load's gain.check(c=4)", found.gain.check(c=4),
-         "gain: 100 steps from 0, against exact values\ngain.y: within 0\n")
-    # check() checks the model Model() steps: deep's y, n + c by one's
-    # gains, which a line -I app -I one -I two would make app's, and refuse.
-    stepped = Model(deep, "deep", path=[one, two], c=4)
-    stepped.step()
-    stepped.step()
-    same("deep's y_1, c = 4", stepped["y"], 5.0)
-    deeptext = "deep: 100 steps from 0, against exact values\ndeep.y: within 0\n"
-    same("deep's check(c=4)", inkamath.check(deep, "deep", path=[one, two], c=4), deeptext)
-    same("deep's Model(...).check()", stepped.check(), deeptext)
-    same("deep's module check(c=4)", deeply.deep.check(c=4), deeptext)
-    sys.exit(failed)
 
 
 # compile_shared's libraries: shared_test.c's values, the current term read
@@ -482,6 +392,52 @@ same("pidloop's __file__", pathlib.Path(loopfile.__file__).resolve(),
      (work / "pidloop.ink").resolve())
 refused('Model("pid.txt")', ValueError, lambda: Model(work / "pid.txt"))
 
+# path=, the -I directories of load, Model, check, eval, describe and tex
+# (DESIGN.md), the fixtures compile/search's, app/model.ink's and
+# app/deep.ink's comments giving their values.
+search = here / "search"
+app, one, two = search / "app", search / "one", search / "two"
+model, deep = app / "model.ink", app / "deep.ink"
+found = inkamath.load(model, path=[one, two])
+same("v by one, two", found.v, [[1, 2, 3, 20]])
+same("v by two, one", inkamath.load(model, path=(two, one)).v, [[1, 20, 3, 20]])
+same("eval's shared.s", inkamath.eval("shared.s", file=model, path=[one, two]), 2)
+same("describe's v", inkamath.describe("v", file=model, path=[one, two]),
+     "v = [gains.k, shared.s, tools.t, tools.w]")
+refused("load without path", ValueError, lambda: inkamath.load(model),
+        "cannot read shared.ink")
+for alone in (str(one), one):
+    refused(f"path={alone!r}", TypeError, lambda: inkamath.load(model, path=alone),
+            "path is a list of directories")
+# load(file, /, *, path=None): the file is no keyword.
+refused('load(path="model.ink")', TypeError, lambda: inkamath.load(path=str(model)),
+        "positional")
+# One directory twice, by weakly_canonical, is refused as the command
+# line refuses it.
+refused("one given twice", ValueError,
+        lambda: inkamath.load(model, path=[one, two / ".." / "one"]), "is given twice")
+# A path nothing reads is refused: no file to run, a library built.
+for name in ("eval", "describe", "tex"):
+    refused(f"{name} with path and no file", TypeError,
+            lambda: getattr(inkamath, name)("pi", path=[one]), "path needs a file")
+refused("a library given path", ValueError,
+        lambda: Model(work / "pid.so", "pid", path=[one]),
+        "a library is loaded by its model's name, and built already")
+# A module's own function, model and texts keep its path; deep's comment.
+deeply = inkamath.load(deep, path=[one, two])
+same("deep's probe.p", inkamath.eval("probe.p", file=deep, path=[one, two]), 10)
+same("deep's scale(2)", deeply.scale(2), 20)
+same("deep's ?scale", inkamath.describe("scale", file=deep, path=[one, two]),
+     "scale(x) = probe.p*x")
+if not inkamath.tex("scale", file=deep, path=[one, two]).startswith(
+        r"\operatorname{scale}(x) = "):
+    fail("tex(scale) is not scale's head")
+same("deep.describe()", deeply.deep.describe(),
+     "deep(c = 0) = {\n    y_n | probe.p > 5 = n + c\n}")
+lines = deeply.deep.tex().splitlines()
+if len(lines) != 2 or not lines[0].startswith(r"\operatorname{deep}("):
+    fail(f"deep.tex() is {lines!r}, not a head and a line")
+
 if not os.environ.get("CC"):
     print("CC is not set: no .ink compiled, stepped or checked")
     sys.exit(failed)
@@ -681,5 +637,37 @@ still = kalman.kalman(Q=Rows([[0, 0], [0, 0]]))
 still.step(0)
 still.step(21)
 near("kalman's [x_1, x_0] for Q = 0", still.history("x"), [[20.0, 10.0], [0.0, 0.0]], 1e-12)
+
+# path= compiled: model.ink's y_n = n + s + 3 + c, s = 2 by one, two and
+# 20 by two, one, so the cache, keyed by the header, builds another library
+# for the other order.
+gain = Model(model, "gain", path=[one, two])
+gain.step()
+same("gain's y_0", gain["y"], 5.0)
+other = Model(model, "gain", path=[two, one], c=4)
+other.step()
+other.step()
+same("gain's y_1 by two, one, c = 4", other["y"], 28.0)
+made = found.gain(c=4)
+made.step()
+same("load's gain(c=4)'s y_0", made["y"], 9.0)
+same("check of g", inkamath.check(model, "g", path=[one, two]),
+     "g: 100 steps from 0, against exact values\ng.y: within 0\n")
+for given in ([one, two], [one, app, two]):
+    same(f"check of gain(c=4) by {len(given)} directories",
+         inkamath.check(model, "gain", path=given, c=4),
+         "gain: 100 steps from 0, against exact values\ngain.y: within 0\n")
+same("load's gain.check(c=4)", found.gain.check(c=4),
+     "gain: 100 steps from 0, against exact values\ngain.y: within 0\n")
+# check() checks the model Model() steps: deep's y, n + c by one's
+# gains, which a line -I app -I one -I two would make app's, and refuse.
+stepped = Model(deep, "deep", path=[one, two], c=4)
+stepped.step()
+stepped.step()
+same("deep's y_1, c = 4", stepped["y"], 5.0)
+deeptext = "deep: 100 steps from 0, against exact values\ndeep.y: within 0\n"
+same("deep's check(c=4)", inkamath.check(deep, "deep", path=[one, two], c=4), deeptext)
+same("deep's Model(...).check()", stepped.check(), deeptext)
+same("deep's module check(c=4)", deeply.deep.check(c=4), deeptext)
 
 sys.exit(failed)

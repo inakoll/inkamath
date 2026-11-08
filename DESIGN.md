@@ -13974,6 +13974,127 @@ Departures: none of behaviour. docs/language.md and MANIFESTO 3 lines for
 `tools/inkamath.py` 1 changed, for 2; 21,324 to 21,325 lines of sources by `wc -l
 include/inkamath/*.hpp src/*`.
 
+### `-I dir`, and `path=` from Python `[done]`
+
+The owner's request: `-I dir`, where `use` looks after the using file's
+own directory, repeatable, with no environment variable: a path from the
+environment makes a file's meaning depend on the shell, which a command
+line shows. `use` still names a stem alone, so no string enters the
+language. Specified by `cli_spec_search`, its fixtures in
+`test/compile/search`, and `compile_shared_python_spec_path`.
+
+Decided:
+- **Order**: beside the file that names it, at the prompt the working
+  directory, then each -I in the command line's order; the first that
+  holds stem.ink is read. A file found through -I is a file like any, its
+  own uses looking beside it first, then -I: so one stem may name two
+  files in a session, `tools.ink` in two reading two's `shared.ink` where
+  the session reads one's.
+- **Once**: Load keys a file by its weakly_canonical path, as now, so a
+  file reached by two routes is one scope, and a cycle through -I is
+  refused as one beside is.
+- **Every mode** reads it, before or after the file: a run, the prompt,
+  `--compile`, `--check` and its replay of a transcript, `--names`, which
+  takes a file and -I alone, `--names takes a file and -I directories,
+  nothing else`, so names_usage's five cases move. `--help` gains `-I
+  dir      look in dir for a file use names, after the directory of the
+  file naming it; given again, after the one before`.
+- **Found** is a file there: one that cannot be read is refused as
+  today, not passed over for a later directory, so a permission never
+  picks another file.
+- **Not found**: today's words, then the -I directories as given, in
+  order, `cannot read nowhere.ink, nor find it in one or two`, three or
+  more `in a, b or c`; without -I, today's words alone, so models.ink
+  stays.
+- **Refused before anything runs**, as a file that cannot be opened is,
+  each -I checked in the parse loop where it stands, as `--steps` is, so
+  the first wrong in the command line's order is the one said: `-I`
+  last, `-I takes a directory`, a usage error as `-o`'s; the next
+  argument, whatever it is, `-I -I` naming a directory `-I`; a path that
+  is not a directory, `-I x is not a directory`, exit 2, rather than
+  ignored, as a compiler's is, to surface later as a file not found; then
+  the same directory again, compared by weakly_canonical as Load compares
+  files, so a symlink's spelling of it too, `-I x is given twice`, as any
+  option. `-Idir` stays an unknown option, `-o`'s one form. A relative
+  directory is the working directory's, as a compiler's, and named as
+  given.
+- **Python**: `path=`, a list of directories, on `load`, `Model`,
+  `check`, and `eval`, `describe` and `tex`, which run a file too, each
+  made absolute and given as -I in order. A str or a path alone is
+  refused, `path is a list of directories`, as iterating a str would give
+  characters; one directory twice is the command line's `is given twice`,
+  by weakly_canonical. A module from `load` keeps its path for its
+  values, functions, models, their checks, `describe()` and `tex()`, and
+  a `Model` for its `check()`. The first parameter of `load`, `Model`
+  and `check` is `file`, positional-only: `load(file, /, *, path=None)`,
+  and `Model`'s and `check`'s, `path` today, renamed. So
+  `load(path="x.ink")`, which loads x.ink today, is a TypeError, Python's
+  own for the missing file; `load("x.ink", path="y")` is the one of a
+  path not a list. A model parameter named path is then reached as one
+  named float32 or steps is, by `set` or `m["path"]`, not as a keyword
+  of `Model` or `check`.
+- **A path nothing reads is refused** (CLAUDE.md, section 2): `Model`
+  of a library given path=, as given float32, `a library is loaded by
+  its model's name, and built already`; `eval`, `describe` and `tex`
+  given path= and no file, a TypeError, `path needs a file`.
+- **check's copy stays**: every `.ink` beside the file is copied into the
+  temporary directory, so that the wrapper's `use inkamathsource` reads
+  what the file's own uses find, and path is given as -I unchanged.
+  `-I <the file's directory>` in place of the copy was specified first,
+  and the spec review showed it is not the same: it puts the file's
+  directory on the search of every file, so a file found in two that
+  uses a stem in both the file's directory and one reads the first, where
+  `Model` and `eval`, searching beside it then one, read one's. `check`
+  would check another model than `Model` steps. `app/deep.ink`'s probe
+  pins it: one's gains, k = 10, gives y its clause, app's 1 none.
+- **The cache key** stays as it is, SHA-256 of the header, the compiler
+  line and `cc --version`: -I changes the header only by the definitions
+  it finds, and the key with it, and two paths giving one header give
+  one library, rightly. The spec builds both orders of one and two,
+  whose headers differ by `shared.s`.
+- **The import finder takes none**: an import has no arguments, and a
+  list of the module's own would be global, a second way to say path=;
+  sys.path as -I, rejected, would let a file's use find what no command
+  line shows. `load(file, path=...)` is the way.
+- About 70 lines: `main.cpp` 25, the flag, its checks, `--names`' arity,
+  the help, each mode handed the list; `interpreter.hpp` 15, the list
+  beside `directory_`, Load trying it, the message; `tools/inkamath.py`
+  about 30, path through every call, its two refusals and the
+  signatures; docs/language.md section 5 and docs/compile.md's Python a
+  few lines each. The spec's cases join `cli.cmake`'s parts and
+  `python_test.py`'s run, its two spec tests going.
+
+Built as specified. `Interpreter::Search` gives a session the -I
+directories, after `Directory`; `Load` takes the first of beside and
+them where the file exists, and keys it by weakly_canonical as before, so
+the cycle and the once hold by any route. main.cpp's parse loop checks
+each -I where it stands, and every mode's session is given the list. In
+Python, `_dirs` makes path= a list of absolute directories, `_search`
+the -I arguments, and each call that runs the interpreter takes them;
+`load`'s loader is an instance holding its module's, the finder's holding
+none. Every case of the spec passes as written, and no golden, expected
+header, check program, header `--compile` writes of `test/compile`, or
+`--names` listing moves.
+
+Departures:
+- **The spec part became regular cases**, cli.cmake's part 1 after
+  `names_usage`, whose five cases take the new words; `--help`'s two
+  lines are held in the help case, whole, where the spec searched for
+  them after `-i`. The Python spec joined `python_test.py`'s run, what
+  needs no C compiler before `CC` is asked, the models after kalman's.
+  `cli_spec_search` and `compile_shared_python_spec_path` go.
+- **path= is made absolute, not normalized**: `os.path.abspath` collapses
+  `link/..` by its spelling, and so names another directory than the
+  command line's weakly_canonical where `link` is a symlink; joined to
+  the working directory, each reaches `-I` as written. The test's
+  `two/../one` is refused as given twice either way.
+- `main.cpp` 29 lines for 25, `interpreter.hpp` 14 for 15, 21,325 to
+  21,368 lines of sources by `wc -l include/inkamath/*.hpp src/*`;
+  `tools/inkamath.py` 22 for about 30, 533 to 555, of 72 written and 50
+  replaced, the signatures mostly; 65 in all for about 70. docs/language.md
+  section 5 3 lines, docs/compile.md's Python 3, `load(path)` named
+  `load(file)` there.
+
 ---
 
 ## Next in line
@@ -14289,91 +14410,3 @@ LQR), whose defects are C376 to C379, 49 lines, 19,288 to 19,337 at
   evidence for MANIFESTO's clock question.
 - **`lim_n` is unusable**, `lim` being reserved, and a file name must be
   letters then digits, so `use e2e` is refused.
-
-For 2.2.0, the owner's requests, each specified before it is built:
-
-- **`-I dir`, where `use` looks after the using file's own directory**,
-  repeatable, with no environment variable: a path from the environment
-  makes a file's meaning depend on the shell, which a command line shows.
-  `use` still names a stem alone, so no string enters the language.
-  Specified by `cli_spec_search`, its fixtures in `test/compile/search`,
-  and `compile_shared_python_spec_path`.
-  - **Order**: beside the file that names it, at the prompt the working
-    directory, then each -I in the command line's order; the first that
-    holds stem.ink is read. A file found through -I is a file like any, its
-    own uses looking beside it first, then -I: so one stem may name two
-    files in a session, `tools.ink` in two reading two's `shared.ink` where
-    the session reads one's.
-  - **Once**: Load keys a file by its weakly_canonical path, as now, so a
-    file reached by two routes is one scope, and a cycle through -I is
-    refused as one beside is.
-  - **Every mode** reads it, before or after the file: a run, the prompt,
-    `--compile`, `--check` and its replay of a transcript, `--names`, which
-    takes a file and -I alone, `--names takes a file and -I directories,
-    nothing else`, so names_usage's five cases move. `--help` gains `-I
-    dir      look in dir for a file use names, after the directory of the
-    file naming it; given again, after the one before`.
-  - **Found** is a file there: one that cannot be read is refused as
-    today, not passed over for a later directory, so a permission never
-    picks another file.
-  - **Not found**: today's words, then the -I directories as given, in
-    order, `cannot read nowhere.ink, nor find it in one or two`, three or
-    more `in a, b or c`; without -I, today's words alone, so models.ink
-    stays.
-  - **Refused before anything runs**, as a file that cannot be opened is,
-    each -I checked in the parse loop where it stands, as `--steps` is, so
-    the first wrong in the command line's order is the one said: `-I`
-    last, `-I takes a directory`, a usage error as `-o`'s; the next
-    argument, whatever it is, `-I -I` naming a directory `-I`; a path that
-    is not a directory, `-I x is not a directory`, exit 2, rather than
-    ignored, as a compiler's is, to surface later as a file not found; then
-    the same directory again, compared by weakly_canonical as Load compares
-    files, so a symlink's spelling of it too, `-I x is given twice`, as any
-    option. `-Idir` stays an unknown option, `-o`'s one form. A relative
-    directory is the working directory's, as a compiler's, and named as
-    given.
-  - **Python**: `path=`, a list of directories, on `load`, `Model`,
-    `check`, and `eval`, `describe` and `tex`, which run a file too, each
-    made absolute and given as -I in order. A str or a path alone is
-    refused, `path is a list of directories`, as iterating a str would give
-    characters; one directory twice is the command line's `is given twice`,
-    by weakly_canonical. A module from `load` keeps its path for its
-    values, functions, models, their checks, `describe()` and `tex()`, and
-    a `Model` for its `check()`. The first parameter of `load`, `Model`
-    and `check` is `file`, positional-only: `load(file, /, *, path=None)`,
-    and `Model`'s and `check`'s, `path` today, renamed. So
-    `load(path="x.ink")`, which loads x.ink today, is a TypeError, Python's
-    own for the missing file; `load("x.ink", path="y")` is the one of a
-    path not a list. A model parameter named path is then reached as one
-    named float32 or steps is, by `set` or `m["path"]`, not as a keyword
-    of `Model` or `check`.
-  - **A path nothing reads is refused** (CLAUDE.md, section 2): `Model`
-    of a library given path=, as given float32, `a library is loaded by
-    its model's name, and built already`; `eval`, `describe` and `tex`
-    given path= and no file, a TypeError, `path needs a file`.
-  - **check's copy stays**: every `.ink` beside the file is copied into the
-    temporary directory, so that the wrapper's `use inkamathsource` reads
-    what the file's own uses find, and path is given as -I unchanged.
-    `-I <the file's directory>` in place of the copy was specified first,
-    and the spec review showed it is not the same: it puts the file's
-    directory on the search of every file, so a file found in two that
-    uses a stem in both the file's directory and one reads the first, where
-    `Model` and `eval`, searching beside it then one, read one's. `check`
-    would check another model than `Model` steps. `app/deep.ink`'s probe
-    pins it: one's gains, k = 10, gives y its clause, app's 1 none.
-  - **The cache key** stays as it is, SHA-256 of the header, the compiler
-    line and `cc --version`: -I changes the header only by the definitions
-    it finds, and the key with it, and two paths giving one header give
-    one library, rightly. The spec builds both orders of one and two,
-    whose headers differ by `shared.s`.
-  - **The import finder takes none**: an import has no arguments, and a
-    list of the module's own would be global, a second way to say path=;
-    sys.path as -I, rejected, would let a file's use find what no command
-    line shows. `load(file, path=...)` is the way.
-  - About 70 lines: `main.cpp` 25, the flag, its checks, `--names`' arity,
-    the help, each mode handed the list; `interpreter.hpp` 15, the list
-    beside `directory_`, Load trying it, the message; `tools/inkamath.py`
-    about 30, path through every call, its two refusals and the
-    signatures; docs/language.md section 5 and docs/compile.md's Python a
-    few lines each. The spec's cases join `cli.cmake`'s parts and
-    `python_test.py`'s run, its two spec tests going.
