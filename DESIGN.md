@@ -14102,6 +14102,9 @@ Amended by its implementation review, each a failing test first:
   given twice and a parameter path set: `a module's model keeps the path its
   module was loaded with; a parameter path is set by set(path=...) or
   m["path"]`. `tools/inkamath.py` 7 lines, 555 to 562.
+- **path= that is no list**, `path=5`, is refused as a str is, `path is a
+  list of directories`, not by Python's `'int' object is not iterable`.
+  `tools/inkamath.py` 2 lines, 562 to 564.
 
 ---
 

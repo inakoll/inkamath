@@ -89,9 +89,11 @@ def _ink(path):
 def _dirs(path):
     """path=, the -I directories in order, each made absolute but not normalized,
     so that the command line resolves a .. after a symlink as it would."""
-    if isinstance(path, (str, os.PathLike)):
+    if path is None:
+        return []
+    if isinstance(path, (str, os.PathLike)) or not hasattr(type(path), "__iter__"):
         raise TypeError("path is a list of directories")
-    return [os.path.join(os.getcwd(), folder) for folder in path or ()]
+    return [os.path.join(os.getcwd(), folder) for folder in path]
 
 
 def _search(dirs):

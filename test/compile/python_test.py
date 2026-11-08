@@ -406,7 +406,8 @@ same("describe's v", inkamath.describe("v", file=model, path=[one, two]),
      "v = [gains.k, shared.s, tools.t, tools.w]")
 refused("load without path", ValueError, lambda: inkamath.load(model),
         "cannot read shared.ink")
-for alone in (str(one), one):
+# A str, a path or no list at all.
+for alone in (str(one), one, 5):
     refused(f"path={alone!r}", TypeError, lambda: inkamath.load(model, path=alone),
             "path is a list of directories")
 # load(file, /, *, path=None): the file is no keyword.
