@@ -40,6 +40,9 @@ static const char* joint(const string& text) {
 using Interp  = Interpreter<Number>;
 using Outcome = LineEditor::Outcome;
 
+// The -I directories, as given, which every mode's session searches.
+static vector<filesystem::path> searched;
+
 static const char help[] = R"(Usage: inkamath [options] [file...]
        inkamath --compile file [model] [-o header.h]
        inkamath --check file [instance or model] -o check.c
@@ -50,6 +53,8 @@ Runs the files in order and exits; with no file, reads standard input.
 At a terminal the prompt edits the line and keeps its history.
 
   -i          read standard input after the files
+  -I dir      look in dir for a file use names, after the directory of the
+              file naming it; given again, after the one before
   --echo      print each input before its answer, as a transcript
   --version   print the version and exit
   --compile   write the sequences the file defines as a C header over
@@ -170,6 +175,7 @@ static int compile(const string& source, const string& name, const string& targe
     const string file = filesystem::path(source).filename().string();
     Interp       p;
     p.Directory(filesystem::path(source).parent_path());
+    p.Search(searched);
     string         header;
     vector<string> refused;
     bool           models = false;  // and no sequence of its own
@@ -234,6 +240,7 @@ static int check(const string& source, const string& name, const string& target,
     const string file   = filesystem::path(source).filename().string();
     Interp       p;
     p.Directory(filesystem::path(source).parent_path());
+    p.Search(searched);
     string program;
     try {
         if (!run(source, in, p)) return 1;
@@ -289,6 +296,7 @@ static int names(const string& source) {
     }
     Interp p;
     p.Directory(filesystem::path(source).parent_path());
+    p.Search(searched);
     map<string, const char*> kinds;
     try {
         if (!run(source, in, p)) return 1;
@@ -333,6 +341,7 @@ static int replay(const string& source) {
     istringstream text(joined);
     Interp        p;
     p.Directory(filesystem::path(source).parent_path());
+    p.Search(searched);
     const auto marked = [](const string& mark, const string& answer) {
         string        out;
         istringstream answer_lines(answer);
@@ -404,6 +413,24 @@ int main(int argc, char* argv[]) {
                 return 2;
             }
             target = argv[++i];
+        } else if (arg == "-I") {
+            if (i + 1 == argc) {
+                cerr << "inkamath: -I takes a directory\nTry 'inkamath --help'.\n";
+                return 2;
+            }
+            const filesystem::path dir = argv[++i];
+            if (error_code no; !filesystem::is_directory(dir, no)) {
+                cerr << "inkamath: -I " << dir.string() << " is not a directory\n";
+                return 2;
+            }
+            if (ranges::any_of(searched, [&](const filesystem::path& given) {
+                    return filesystem::weakly_canonical(given) == filesystem::weakly_canonical(dir);
+                })) {
+                cerr << "inkamath: -I " << dir.string()
+                     << " is given twice\nTry 'inkamath --help'.\n";
+                return 2;
+            }
+            searched.push_back(dir);
         } else if (arg.size() > 1 && arg[0] == '-') {
             cerr << "inkamath: unknown option '" << arg << "'\nTry 'inkamath --help'.\n";
             return 2;
@@ -413,8 +440,9 @@ int main(int argc, char* argv[]) {
     }
 
     if (naming) {
-        if (files.size() != 1 || argc != 3) {
-            cerr << "inkamath: --names takes a file and nothing else\nTry 'inkamath --help'.\n";
+        if (files.size() != 1 || argc != 3 + 2 * static_cast<int>(searched.size())) {
+            cerr << "inkamath: --names takes a file and -I directories, nothing else\n"
+                    "Try 'inkamath --help'.\n";
             return 2;
         }
         return names(files[0]);
@@ -473,6 +501,7 @@ int main(int argc, char* argv[]) {
     bool           greeted    = false;
     vector<string> history;
     Interp         p;
+    p.Search(searched);
 
     // The files, then standard input: from a person, edited at the prompt, or
     // from a pipe, where spacing and comments are skipped as they are in files.

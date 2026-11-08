@@ -87,143 +87,6 @@ function(reports name program report)
     endif()
 endfunction()
 
-# Specified, not yet built (DESIGN.md, next in line): -I dir, where use
-# looks after the using file's own directory, in every mode, the fixtures
-# in compile/search, app/model.ink's comment giving its values. Skipped
-# while -I is an unknown option, as today, and only then.
-if(PART STREQUAL "spec_search")
-    file(MAKE_DIRECTORY "${OUT}")
-    set(dir "${CMAKE_CURRENT_LIST_DIR}/compile/search")
-    set(model "${dir}/app/model.ink")
-    set(search -I "${dir}/one" -I "${dir}/two")
-    execute_process(COMMAND "${EXE}" ${search} "${model}"
-                    WORKING_DIRECTORY "${OUT}" OUTPUT_VARIABLE out ERROR_VARIABLE err
-                    RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
-    if("${out}${code}" STREQUAL "2" AND
-       "${err}" STREQUAL "inkamath: unknown option '-I'\nTry 'inkamath --help'.\n")
-        message("search_order: -I unknown, as today")
-        return()
-    endif()
-
-    # Beside the file first, then each -I in the command line's order; a
-    # file found through -I looks beside itself first, so tools reads two's
-    # shared where the session reads one's.
-    set(head "use gains\nuse shared\nuse tools\nv = [gains.k, shared.s, tools.t, tools.w]
-gain(c = 0) = { ... }\ng = gain()\n")
-    set(args ${search} "${model}" -i)
-    set(input "v\n")
-    set(stdout "${head}[1, 2, 3, 20]\n")
-    check(search_order)
-    set(args -I "${dir}/two" -I "${dir}/one" "${model}" -i)
-    set(input "v\n")
-    set(stdout "${head}[1, 20, 3, 20]\n")
-    check(search_reversed)
-
-    # At the prompt the session's own directory is the working one, searched
-    # first: unit here, shared from one.
-    file(WRITE "${OUT}/unit.ink" "u = 7\n")
-    set(args -I "${dir}/one")
-    set(input "use unit\nuse shared\n[unit.u, shared.s]\n")
-    set(stdout "use unit\nuse shared\n[7, 2]\n")
-    check(search_prompt)
-
-    # --compile, --check and --names take it too, before or after the file.
-    set(args --compile "${model}" gain ${search})
-    set(stdout "gain in model.ink compiles\n")
-    check(search_compile)
-    set(args ${search} --check "${model}" g -o g.c)
-    check(search_check)
-    reports(search_check g "g: 100 steps from 0, against exact values\ng.y: within 0\n")
-    # deep's probe, in two, takes one's gains, not app's: y has its clause.
-    set(args --check "${dir}/app/deep.ink" deep -o deep.c ${search})
-    check(search_check_nested)
-    reports(search_check_nested deep "deep: 100 steps from 0, against exact values\ndeep.y: within 0\n")
-    # A transcript's replay, beside it the working directory here.
-    file(WRITE "${OUT}/replay.ink" ">> use shared\nuse shared\n\n>> shared.s\n2\n")
-    set(args --check replay.ink -I "${dir}/one")
-    set(stdout "replay.ink: 2 answers, each as recorded\n")
-    check(search_replay)
-    set(args --names "${model}" ${search})
-    set(stdout "instance g\nmodel gain\nfile gains\nfile shared\nfile tools\nvalue v\n")
-    check(search_names)
-    # --names takes a file and -I alone, in these words, which names_usage's
-    # five cases above take too.
-    set(args --names "${model}" -o x.h ${search})
-    set(stderr "inkamath: --names takes a file and -I directories, nothing else\nTry 'inkamath --help'.\n")
-    set(exit 2)
-    check(search_names_usage)
-
-    # A file found nowhere names the -I directories, in order; a cycle
-    # through -I is refused as one beside is, a file being one file by
-    # whatever route it is reached.
-    set(args ${search} "${dir}/app/lost.ink")
-    set(stdout "error: cannot read nowhere.ink, nor find it in ${dir}/one or ${dir}/two\n")
-    set(exit 1)
-    check(search_lost)
-    set(args ${search} -I "${dir}" "${dir}/app/lost.ink")
-    set(stdout "error: cannot read nowhere.ink, nor find it in ${dir}/one, ${dir}/two or ${dir}\n")
-    set(exit 1)
-    check(search_lost_three)
-    # A relative directory is the working directory's, and named as given.
-    file(RELATIVE_PATH one "${OUT}" "${dir}/one")
-    file(RELATIVE_PATH two "${OUT}" "${dir}/two")
-    set(args -I "${one}" -I "${two}" "${model}" -i)
-    set(input "v\n")
-    set(stdout "${head}[1, 2, 3, 20]\n")
-    check(search_relative)
-    set(args -I "${one}" "${dir}/app/lost.ink")
-    set(stdout "error: cannot read nowhere.ink, nor find it in ${one}\n")
-    set(exit 1)
-    check(search_relative_lost)
-    set(args ${search} "${dir}/app/loop.ink")
-    set(stdout "error: ring.ink, line 2: hub.ink, line 2: ring.ink uses itself\n")
-    set(exit 1)
-    check(search_cycle)
-
-    # A directory, after its own -I, once: each checked where the command
-    # line gives it, as --steps is, so the first wrong in its order is said,
-    # and before anything runs.
-    set(args -I)
-    set(stderr "inkamath: -I takes a directory\nTry 'inkamath --help'.\n")
-    set(exit 2)
-    check(search_bare)
-    set(args -I "${dir}/none" "${model}")
-    set(stderr "inkamath: -I ${dir}/none is not a directory\n")
-    set(exit 2)
-    check(search_missing)
-    set(args -I "${model}" "${model}")
-    set(stderr "inkamath: -I ${model} is not a directory\n")
-    set(exit 2)
-    check(search_file)
-    set(args -I "${dir}/one" -I "${dir}/two/../one" "${model}")
-    set(stderr "inkamath: -I ${dir}/two/../one is given twice\nTry 'inkamath --help'.\n")
-    set(exit 2)
-    check(search_twice)
-    set(args -I "${dir}/none" -I)
-    set(stderr "inkamath: -I ${dir}/none is not a directory\n")
-    set(exit 2)
-    check(search_first)
-    set(args -I -I "${dir}/one")
-    set(stderr "inkamath: -I -I is not a directory\n")
-    set(exit 2)
-    check(search_dashed)
-    set(args "-I${dir}/one" "${model}")
-    set(stderr "inkamath: unknown option '-I${dir}/one'\nTry 'inkamath --help'.\n")
-    set(exit 2)
-    check(search_joined)
-
-    # --help says it after -i.
-    execute_process(COMMAND "${EXE}" --help OUTPUT_VARIABLE help)
-    string(FIND "${help}" "  -i          read standard input after the files
-  -I dir      look in dir for a file use names, after the directory of the
-              file naming it; given again, after the one before
-" at)
-    if(at EQUAL -1)
-        message(SEND_ERROR "search_help: --help does not say -I after -i\n${help}")
-    endif()
-    return()
-endif()
-
 # The cases run as four tests of about equal time under the sanitizers: PART
 # 1 up to charpoly's refusal, 2 from it, 3 from eig's, 4 from the frequency
 # response's, and all where PART is not given.
@@ -375,6 +238,8 @@ Runs the files in order and exits; with no file, reads standard input.
 At a terminal the prompt edits the line and keeps its history.
 
   -i          read standard input after the files
+  -I dir      look in dir for a file use names, after the directory of the
+              file naming it; given again, after the one before
   --echo      print each input before its answer, as a transcript
   --version   print the version and exit
   --compile   write the sequences the file defines as a C header over
@@ -478,11 +343,124 @@ check(names_failing)
 file(COPY ${compiled}/mix.ink DESTINATION "${OUT}")
 foreach(given "" "mix.ink;mix.ink" "mix.ink;-i" "mix.ink;--echo" "mix.ink;-o;x.h")
     set(args --names ${given})
-    set(stderr "inkamath: --names takes a file and nothing else\nTry 'inkamath --help'.\n")
+    set(stderr "inkamath: --names takes a file and -I directories, nothing else\nTry 'inkamath --help'.\n")
     set(exit 2)
     string(MAKE_C_IDENTIFIER "names_usage_${given}" name)
     check(${name})
 endforeach()
+
+# -I dir (DESIGN.md), where use looks after the using file's own directory,
+# in every mode, the fixtures in compile/search, app/model.ink's comment
+# giving its values.
+set(dir "${CMAKE_CURRENT_LIST_DIR}/compile/search")
+set(model "${dir}/app/model.ink")
+set(search -I "${dir}/one" -I "${dir}/two")
+# Beside the file first, then each -I in the command line's order; a
+# file found through -I looks beside itself first, so tools reads two's
+# shared where the session reads one's.
+set(head "use gains\nuse shared\nuse tools\nv = [gains.k, shared.s, tools.t, tools.w]
+gain(c = 0) = { ... }\ng = gain()\n")
+set(args ${search} "${model}" -i)
+set(input "v\n")
+set(stdout "${head}[1, 2, 3, 20]\n")
+check(search_order)
+set(args -I "${dir}/two" -I "${dir}/one" "${model}" -i)
+set(input "v\n")
+set(stdout "${head}[1, 20, 3, 20]\n")
+check(search_reversed)
+
+# At the prompt the session's own directory is the working one, searched
+# first: unit here, shared from one.
+file(WRITE "${OUT}/unit.ink" "u = 7\n")
+set(args -I "${dir}/one")
+set(input "use unit\nuse shared\n[unit.u, shared.s]\n")
+set(stdout "use unit\nuse shared\n[7, 2]\n")
+check(search_prompt)
+
+# --compile, --check and --names take it too, before or after the file.
+set(args --compile "${model}" gain ${search})
+set(stdout "gain in model.ink compiles\n")
+check(search_compile)
+set(args ${search} --check "${model}" g -o g.c)
+check(search_check)
+reports(search_check g "g: 100 steps from 0, against exact values\ng.y: within 0\n")
+# deep's probe, in two, takes one's gains, not app's: y has its clause.
+set(args --check "${dir}/app/deep.ink" deep -o deep.c ${search})
+check(search_check_nested)
+reports(search_check_nested deep "deep: 100 steps from 0, against exact values\ndeep.y: within 0\n")
+# A transcript's replay, beside it the working directory here.
+file(WRITE "${OUT}/replay.ink" ">> use shared\nuse shared\n\n>> shared.s\n2\n")
+set(args --check replay.ink -I "${dir}/one")
+set(stdout "replay.ink: 2 answers, each as recorded\n")
+check(search_replay)
+set(args --names "${model}" ${search})
+set(stdout "instance g\nmodel gain\nfile gains\nfile shared\nfile tools\nvalue v\n")
+check(search_names)
+# --names takes a file and -I alone, in these words, which names_usage's
+# five cases above take too.
+set(args --names "${model}" -o x.h ${search})
+set(stderr "inkamath: --names takes a file and -I directories, nothing else\nTry 'inkamath --help'.\n")
+set(exit 2)
+check(search_names_usage)
+
+# A file found nowhere names the -I directories, in order; a cycle
+# through -I is refused as one beside is, a file being one file by
+# whatever route it is reached.
+set(args ${search} "${dir}/app/lost.ink")
+set(stdout "error: cannot read nowhere.ink, nor find it in ${dir}/one or ${dir}/two\n")
+set(exit 1)
+check(search_lost)
+set(args ${search} -I "${dir}" "${dir}/app/lost.ink")
+set(stdout "error: cannot read nowhere.ink, nor find it in ${dir}/one, ${dir}/two or ${dir}\n")
+set(exit 1)
+check(search_lost_three)
+# A relative directory is the working directory's, and named as given.
+file(RELATIVE_PATH one "${OUT}" "${dir}/one")
+file(RELATIVE_PATH two "${OUT}" "${dir}/two")
+set(args -I "${one}" -I "${two}" "${model}" -i)
+set(input "v\n")
+set(stdout "${head}[1, 2, 3, 20]\n")
+check(search_relative)
+set(args -I "${one}" "${dir}/app/lost.ink")
+set(stdout "error: cannot read nowhere.ink, nor find it in ${one}\n")
+set(exit 1)
+check(search_relative_lost)
+set(args ${search} "${dir}/app/loop.ink")
+set(stdout "error: ring.ink, line 2: hub.ink, line 2: ring.ink uses itself\n")
+set(exit 1)
+check(search_cycle)
+
+# A directory, after its own -I, once: each checked where the command
+# line gives it, as --steps is, so the first wrong in its order is said,
+# and before anything runs.
+set(args -I)
+set(stderr "inkamath: -I takes a directory\nTry 'inkamath --help'.\n")
+set(exit 2)
+check(search_bare)
+set(args -I "${dir}/none" "${model}")
+set(stderr "inkamath: -I ${dir}/none is not a directory\n")
+set(exit 2)
+check(search_missing)
+set(args -I "${model}" "${model}")
+set(stderr "inkamath: -I ${model} is not a directory\n")
+set(exit 2)
+check(search_file)
+set(args -I "${dir}/one" -I "${dir}/two/../one" "${model}")
+set(stderr "inkamath: -I ${dir}/two/../one is given twice\nTry 'inkamath --help'.\n")
+set(exit 2)
+check(search_twice)
+set(args -I "${dir}/none" -I)
+set(stderr "inkamath: -I ${dir}/none is not a directory\n")
+set(exit 2)
+check(search_first)
+set(args -I -I "${dir}/one")
+set(stderr "inkamath: -I -I is not a directory\n")
+set(exit 2)
+check(search_dashed)
+set(args "-I${dir}/one" "${model}")
+set(stderr "inkamath: unknown option '-I${dir}/one'\nTry 'inkamath --help'.\n")
+set(exit 2)
+check(search_joined)
 
 
 # What the compiler cannot express it refuses by name, and writes nothing

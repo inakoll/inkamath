@@ -128,6 +128,8 @@ public:
     // Where 'use' looks for a file named at the prompt: beside the file being
     // run, or the working directory.
     void Directory(std::filesystem::path directory) { directory_ = std::move(directory); }
+    // Where it looks after that, each -I in order (DESIGN.md).
+    void Search(std::vector<std::filesystem::path> search) { search_ = std::move(search); }
 
 private:
     Result                                            Run(const std::string& s);
@@ -377,7 +379,8 @@ private:
     ReferenceStack<U> stack_;
     int               digits_ = numeric_interface_precision;
 
-    std::filesystem::path directory_ = ".";
+    std::filesystem::path              directory_ = ".";
+    std::vector<std::filesystem::path> search_;
     // The files used, each read once; null while one is being read.
     std::map<std::string, std::shared_ptr<Scope<U>>> files_;
 };
@@ -2044,18 +2047,29 @@ std::string Interpreter<T, U>::Use(const std::string& s) {
 }
 
 // A file's definitions, run into a scope of their own, beside the file that
-// names it. One that fails loads nothing.
+// names it, else in the first -I that holds it. One that fails loads nothing.
 template <Parsable T, Numeric U>
 std::shared_ptr<Scope<U>> Interpreter<T, U>::Load(const std::string& name) {
-    const std::string           file = name + ".ink";
-    const std::filesystem::path path = directory_ / file;
-    const std::string           key  = std::filesystem::weakly_canonical(path).string();
+    const std::string     file = name + ".ink";
+    std::filesystem::path path = directory_ / file;
+    std::error_code       absent;
+    const auto            found = [&] { return std::filesystem::exists(path, absent); };
+    for (auto dir = search_.begin(); dir != search_.end() && !found(); ++dir) path = *dir / file;
+    const std::string key = std::filesystem::weakly_canonical(path).string();
     if (const auto loaded = files_.find(key); loaded != files_.end()) {
         if (!loaded->second) Fail(file, " uses itself");
         return loaded->second;
     }
     std::ifstream in(path);
-    if (!in) Fail("cannot read ", file);
+    if (!in) {
+        std::string where;
+        for (std::size_t k = 0; k < search_.size() && !found(); ++k)
+            where += (k == 0                   ? ", nor find it in "
+                      : k + 1 < search_.size() ? ", "
+                                               : " or ") +
+                     search_[k].string();
+        Fail("cannot read ", file, where);
+    }
     const auto statements = Statements(in);
 
     auto scope                            = std::make_shared<Scope<U>>();

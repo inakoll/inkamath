@@ -1344,7 +1344,10 @@ changes its instances, as a function redefined changes what calls it.
 of its own: the session reaches its names qualified, `filters.lowpass`, and
 `use filters (lowpass)` brings in unqualified those listed. A file is read
 once, holds definitions only, and one that cannot be read or parsed loads
-nothing and says where. The prelude that defines `ceil`, `mod`, `exp`, `log`,
+nothing and says where. A file not beside it, the working directory at the
+prompt, is sought in each directory the command line gives as `-I dir`, in
+its order; one found there looks beside itself first too. The prelude
+that defines `ceil`, `mod`, `exp`, `log`,
 `tanh`, `sin`, `cos`, `atan`, `atan2`, `asin`, `acos`, `acosh`, `abs`,
 `max`, `min`, `clamp`, `charpoly`, `conv`, `polyval`, `roots`, `hurwitz`,
 `schurcohn`, `rho`, `rhob`, `abscissa`, `abscissab`, `eig`, `eigb`, `chol`,

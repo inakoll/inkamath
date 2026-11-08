@@ -1,4 +1,4 @@
-# -I's order (DESIGN.md, next in line), run with -I one -I two: gains beside
+# -I's order (DESIGN.md), run with -I one -I two: gains beside
 # this file, not one's; shared from one, not two's; tools from two, whose
 # own uses find unit and shared beside it, before one's. So v is [1, 2, 3,
 # 20] and y_n = n + 5.
