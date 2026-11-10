@@ -14536,7 +14536,9 @@ From `MANIFESTO.md`'s open line, a compiled derivative of a limit:
   in float within a hundred units; and the refusals above. `cli.cmake`'s
   part `spec_limgrad`, skipped while the refusal reads as today. When
   built, `compile_grad_refused`'s b compiles, `compile_hessian_refused`'s c
-  and `compile_sums_refused`'s d take the words above, and so do
+  reads "a second derivative through a limit, for now" and
+  `compile_sums_refused`'s d "a derivative of a power whose exponent is not
+  a constant, for now", the spec repeating neither; and so move
   `compile/grad.ink`'s comment, `docs/compile.md` and `MANIFESTO.md`'s
   open line.
 
