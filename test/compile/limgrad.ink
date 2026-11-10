@@ -87,7 +87,7 @@ alongside = beside(u_n = ~(n/50 - 1))
 # and 0 above; so is a comparison of the index alone, and so is exp, whose
 # guards reduce its argument: 2e^x, once --check no longer refuses it
 # (DESIGN.md, the entry's prelude). A sum without an upper bound is walked
-# as a limit is, 4w for w^2/2^k.
+# as a limit is, 4t for t^2/2^k.
 ab(x)_0 = 0
 ab(x)_k = ab(x)_(k-1)/2 + abs(x) - max(x, 0)
 gi(x)_0 = 1
