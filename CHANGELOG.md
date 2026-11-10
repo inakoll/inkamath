@@ -25,7 +25,9 @@ every defect by its number, are in [`DESIGN.md`](DESIGN.md).
 2 defects, C439 and C440: under `grad`, a limit whose terms call `exp`, or
 another of the prelude's functions the header implements, is no longer
 refused as a staircase, and a sum without an upper bound whose terms step is
-refused as `lim` is, where it answered 0.
+refused as `lim` is, where it answered 0. So sums it answered before are
+refused now, as `lim` already refused them: `grad_(t = 1/3) sum_(q=1)
+atan2(t, q)/3^q`, atan2 stepping at its cut.
 
 ## 2.2.0 — 2026-11-08
 
