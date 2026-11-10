@@ -65,16 +65,20 @@ atthird = constant(u_n = n)
 
 # 'alongside': a sequence walked beside the limit, nt read at its index,
 # carries its part in its window; a limit of matrices stops by its largest
-# cell's step, the part's by its own.
+# cell's step, the part's by its own; and the model's own sequence hq reads
+# its parameter h, 4x, at 34 terms, at 2 where x is 0.
 nt(x)_0 = 1
 nt(x)_k = nt(x)_(k-1)*x/k/2
 nu(x)_0 = 0
 nu(x)_k = nu(x)_(k-1) + nt(x)_k
 mx(x)_0 = [1; 0]
 mx(x)_k = [x/2, 0; 1/4, x/3]*mx(x)_(k-1) + [1; x]
-beside(u_n) = {
+beside(u_n, h = 1/2) = {
+    hq(x)_0 = 0
+    hq(x)_k = h*hq(x)_(k-1) + x^2
     e_n = grad_(t = u_n) lim nu(t)
     m_n = grad_(t = u_n) lim mx(t)
+    q_n = grad_(t = u_n) lim hq(t)
 }
 alongside = beside(u_n = ~(n/50 - 1))
 

@@ -208,7 +208,7 @@ if(PART STREQUAL "spec_limgrad")
             "rootmix\\.y${within0}")
     limgrad(atthird atthird "atthird: ${until0}" "atthird\\.y${within0}" "atthird\\.z${within0}")
     limgrad(alongside alongside "alongside: ${until0}" "alongside\\.e${within0}"
-            "alongside\\.m${within0}")
+            "alongside\\.m${within0}" "alongside\\.q${within0}")
     limgrad(vee vee "vee: ${until0}" "vee\\.y${within0}" "vee\\.x${within0}" "vee\\.w${within0}"
             "vee\\.e${within0}")
     # In float, each part closing as the value does, on floats a unit or two
