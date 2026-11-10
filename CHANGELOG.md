@@ -17,6 +17,8 @@ every defect by its number, are in [`DESIGN.md`](DESIGN.md).
   points. A limit whose terms step with the name at a comparison or a floor
   is refused in the interpreter's words, and a second derivative through a
   limit for now.
+  Under `--float`, a part whose value settles exactly may never close, NaN
+  there (C442).
 
 ### Fixed
 
