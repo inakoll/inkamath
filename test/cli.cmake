@@ -112,20 +112,22 @@ if(PART STREQUAL "spec_limgrad")
     check(compile_limgrad_float)
     strict(compile_limgrad_float limgrad_float.h)
 
-    # a to d step with t at a comparison or a floor, as C215 refuses them;
-    # d is t by its binary digits, which the interpreter answers 0 where it
-    # is 1; e, f and h are second derivatives, h's by a grad in the terms;
-    # m's power at the index moves.
+    # a to d and g step with t at a comparison or a floor, as C215 refuses
+    # them, g's in mod; d is t by its binary digits, which the interpreter
+    # answers 0 where it is 1; e, f and h are second derivatives, h's by a
+    # grad in the terms; m's power at the index moves.
     file(WRITE "${OUT}/limgrad_refused.ink"
          "a_n = grad_(t = x_n) lim bis(t)\nb_n = grad_(t = x_n) lim fl(t)\n"
          "c_n = grad_(t = x_n) lim gd(t)\n"
          "d_n = grad_(t = x_n) sum_(q=1) (floor(2^q*t) - 2*floor(2^(q-1)*t))/2^q\n"
          "e_n = grad_(t = x_n)^2 lim p(t)\nf_n = grad_(s = x_n) grad_(t = s) s*lim p(t)\n"
-         "h_n = grad_(t = x_n) lim nw(t)\nk_n = grad_(t = x_n) lim tp(t)\n"
+         "g_n = grad_(t = x_n) lim md(t)\nh_n = grad_(t = x_n) lim nw(t)\n"
+         "k_n = grad_(t = x_n) lim tp(t)\n"
          "m_n = grad_(y = x_n) sum_(q=0) y^q/!q\n"
          "bis(x)_0 = [0; 1]\nbis(x)_n = bis(x)_(n-1) + (bis(x)_(n-1)[2] - bis(x)_(n-1)[1])/2*"
          "([1; 0] - ((bis(x)_(n-1)[1] + bis(x)_(n-1)[2])/2 > x)*[1; 1])\n"
          "fl(x)_n = floor(10^n*x)/10^n\n"
+         "md(x)_0 = 0\nmd(x)_k = md(x)_(k-1)/2 + mod(x, 1)\n"
          "gd(x)_0 = 0\ngd(x)_k | x > 1 = gd(x)_(k-1)/2 + 1\ngd(x)_k = gd(x)_(k-1)/2 + x\n"
          "p(r)_0 = 1\np(r)_k = r*p(r)_(k-1)/4 + 1\n"
          "nw(x)_0 = 1\nnw(x)_k = nw(x)_(k-1) - (nw(x)_(k-1)^2 - x)/grad_(v = nw(x)_(k-1)) v^2\n"
@@ -137,7 +139,9 @@ if(PART STREQUAL "spec_limgrad")
                   "cannot compile b: grad cannot differentiate lim fl${stepped}"
                   "cannot compile c: grad cannot differentiate lim gd${stepped}"
                   "cannot compile d: grad cannot differentiate sum_(q=1)${stepped}"
-                  "cannot compile e${second}cannot compile f${second}cannot compile h${second}"
+                  "cannot compile e${second}cannot compile f${second}"
+                  "cannot compile g: grad cannot differentiate lim md${stepped}"
+                  "cannot compile h${second}"
                   "cannot compile k: a tensor in a limit, for now\n"
                   "cannot compile m: a derivative of a power whose exponent is not a constant, "
                   "for now\n")
