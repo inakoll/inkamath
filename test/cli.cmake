@@ -2054,9 +2054,9 @@ set(args --compile ${limgrad} walks --float -o limgrad_float.h)
 check(compile_limgrad_float)
 strict(compile_limgrad_float limgrad_float.h)
 
-# a to d, g and j step with t at a comparison or a floor, as C215
-# refuses them, g's in mod and j's in ilogb, which a session answers at
-# ~0.3 and refuses at 3/10; d is t by its binary digits, which the
+# a to d, g, j and m step with t at a comparison or a floor, as C215
+# refuses them, g's in mod, j's in ilogb, which a session answers at
+# ~0.3 and refuses at 3/10, and m's in exp's argument; d is t by its binary digits, which the
 # interpreter answers 0 where it is 1; f and h are second derivatives,
 # h's by a grad in the terms. A Hessian of a limit, and a power at a
 # sum's index whose base moves, are compile_hessian_refused's c and
@@ -2068,6 +2068,8 @@ file(WRITE "${OUT}/limgrad_refused.ink"
      "f_n = grad_(s = x_n) grad_(t = s) s*lim p(t)\n"
      "g_n = grad_(t = x_n) lim md(t)\nh_n = grad_(t = x_n) lim nw(t)\n"
      "j_n = grad_(t = x_n) lim lb(t)\nk_n = grad_(t = x_n) lim tp(t)\n"
+     "m_n = grad_(t = x_n) lim ef(t)\n"
+     "ef(x)_0 = 0\nef(x)_k = ef(x)_(k-1)/2 + exp(floor(2^k*x)/2^k)\n"
      "bis(x)_0 = [0; 1]\nbis(x)_n = bis(x)_(n-1) + (bis(x)_(n-1)[2] - bis(x)_(n-1)[1])/2*"
      "([1; 0] - ((bis(x)_(n-1)[1] + bis(x)_(n-1)[2])/2 > x)*[1; 1])\n"
      "fl(x)_n = floor(10^n*x)/10^n\n"
@@ -2088,7 +2090,8 @@ string(CONCAT stdout "cannot compile a: grad cannot differentiate lim bis${stepp
               "cannot compile g: grad cannot differentiate lim md${stepped}"
               "cannot compile h${second}"
               "cannot compile j: grad cannot differentiate lim lb${stepped}"
-              "cannot compile k: a tensor in a limit, for now\n")
+              "cannot compile k: a tensor in a limit, for now\n"
+              "cannot compile m: grad cannot differentiate lim ef${stepped}")
 set(exit 1)
 check(compile_limgrad_refused)
 

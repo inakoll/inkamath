@@ -14291,6 +14291,15 @@ Departures:
   one, so that no step closes by either rule; the spec checks no matrix
   limit in float.
 
+Amended by its implementation review, each a failing test first:
+- **A step in the argument of a continuous prelude function was dropped**:
+  the count went back to where it stood before the call's arguments
+  compiled, not after, so `ef(x)_k = ef(x)_(k-1)/2 +
+  exp(floor(2^k*x)/2^k)` compiled under grad, its part 0 where 2e^x is
+  the derivative and the interpreter refuses; and so abs, max, min, sin
+  and log of a stepping argument. `cli.cmake`'s `compile_limgrad_refused`
+  m holds it. 2 lines of `compile.hpp`, 1 of comment; 21,548 to 21,550.
+
 ## Next in line
 
 After phase 14's step 2, with the exact target deferred: the small fixes

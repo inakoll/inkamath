@@ -1126,18 +1126,19 @@ private:
     // its argument three times (DESIGN.md). A constant call folds, and one
     // of another shape is written where it is called, as any other.
     // abs, max and min, and the functions the header implements but ilogb,
-    // are continuous where their guards step (C215, C439).
+    // are continuous where their guards step, not where their arguments do
+    // (C215, C439).
     PExpression<Value> Prelude(const std::string& name, const Reference<Value>& function,
                                const ParametersCall<Value>& call) {
-        const std::size_t  steps = steps_;
-        PExpression<Value> out   = Preluded(name, function, call);
+        std::size_t        argued = steps_;
+        PExpression<Value> out    = Preluded(name, function, call, argued);
         for (const char* f : {"abs", "max", "min", "exp", "tanh", "log", "sin", "cos", "atan",
                               "asin", "acos", "acosh"})
-            if (function.Name() == f) steps_ = steps;
+            if (function.Name() == f) steps_ = argued;
         return out;
     }
     PExpression<Value> Preluded(const std::string& name, const Reference<Value>& function,
-                                const ParametersCall<Value>& call) {
+                                const ParametersCall<Value>& call, std::size_t& argued) {
         const auto& names    = function.Clauses().front().parameters.parameters_names();
         bool        constant = true, scalar = call.parameters_expression().size() == names.size();
         std::string       given, moving;
@@ -1149,6 +1150,7 @@ private:
             given += (given.empty() ? "" : ", ") + code.cells[0].text;
             Staircase(function, code);
         }
+        argued = steps_;
         std::set<const Reference<Value>*> seen;
         // Under reverse mode, one of several arguments is written where called:
         // its part function gives one slope, which one argument's node takes.
