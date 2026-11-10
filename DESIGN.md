@@ -14701,12 +14701,12 @@ through a walking function:
     out**, `Cells` at a fixed index: two forms of one term, where the walk
     compiles its cells at `k_` anyway.
   - **The walk's function**, `static inline double heat_walk0(const heat*
-    m_, double k_, ...)`, named once by its text as a limit's is
-    (`heat_lim0`): the index as a double, then each argument as a limit's,
+    m_, double K_, ...)`, named once by its text as a limit's is
+    (`heat_lim0`): the index K as a double, then each argument as a limit's,
     `arg_x` and `part_x`, a matrix's term into `out_`, a single value's
     returned. Its term at the lowest base L is `t1_`, the window before it,
     `t2_` and on, NaN, no clause applying there; then `for (long long k_ =
-    L + 1; k_ <= K; ++k_)` its term by `Iterate`, a base clause past L at
+    L + 1; k_ <= K_; ++k_)` its term by `Iterate`, a base clause past L at
     `k_ == b`, the window moved on as a limit's, and a sequence read at k
     less a constant walked beside with its own; the term at K answered.
     Its arguments and what reads only them are computed before the loop,
