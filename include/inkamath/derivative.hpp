@@ -29,6 +29,11 @@ class Derivative {
 public:
     explicit Derivative(ReferenceStack<T>& stack) : stack_(stack), ordinary_(stack) {}
 
+    // abs, max and min are continuous where their guards step, and so are
+    // the functions the header implements, ilogb aside (C439).
+    static constexpr const char* continuous[] = {"abs", "max", "min",  "exp",  "tanh", "log",
+                                                 "sin", "cos", "atan", "asin", "acos", "acosh"};
+
     // Each name's part, in the order written.
     std::vector<T> At(GradExpression<T>& grad) {
         const Local    local(*this);
@@ -860,12 +865,9 @@ private:
                     result     = std::move(*fast);
                 }
             }
-            // abs, max and min are continuous where their guards step, and so
-            // are the functions the header implements, ilogb aside (C439).
             const auto& names = stack_.Builtins().names;
-            for (const char* f : {"abs", "max", "min", "exp", "tanh", "log", "sin", "cos", "atan",
-                                  "asin", "acos", "acosh"})
-                if (definition.Name() == f && &definition == names.at(f).get()) stepped_ = 0;
+            for (const char* f : continuous)
+                if (&definition == names.at(f).get()) stepped_ = 0;
             stepped_ &= Size() - 1;
             remember(result, stepped_);
             stepped_ |= outer;

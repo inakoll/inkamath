@@ -14312,6 +14312,8 @@ Amended by its implementation review, each a failing test first:
   the derivative and the interpreter refuses; and so abs, max, min, sin
   and log of a stepping argument. `cli.cmake`'s `compile_limgrad_refused`
   m holds it. 2 lines of `compile.hpp`, 1 of comment; 21,548 to 21,550.
+- **The continuous functions are listed once**, `Derivative::continuous`,
+  which `Prelude` reads, where each header wrote them: no line net.
 
 ## Next in line
 

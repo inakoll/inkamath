@@ -1125,15 +1125,13 @@ private:
     // written where it is called, each of log's thirteen steps would write
     // its argument three times (DESIGN.md). A constant call folds, and one
     // of another shape is written where it is called, as any other.
-    // abs, max and min, and the functions the header implements but ilogb,
-    // are continuous where their guards step, not where their arguments do
-    // (C215, C439).
+    // Derivative's continuous functions step where their arguments do, not
+    // where their guards do (C215, C439).
     PExpression<Value> Prelude(const std::string& name, const Reference<Value>& function,
                                const ParametersCall<Value>& call) {
         std::size_t        argued = steps_;
         PExpression<Value> out    = Preluded(name, function, call, argued);
-        for (const char* f : {"abs", "max", "min", "exp", "tanh", "log", "sin", "cos", "atan",
-                              "asin", "acos", "acosh"})
+        for (const char* f : Derivative<Value>::continuous)
             if (function.Name() == f) steps_ = argued;
         return out;
     }
