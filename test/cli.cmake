@@ -103,7 +103,7 @@ if(PART STREQUAL "spec_limgrad")
         message("compile_limgrad: a derivative of a limit refused, as today")
         return()
     endif()
-    foreach(model IN ITEMS walks zero rooted fails constant beside kinks)
+    foreach(model IN ITEMS walks zero ended rooted fails constant beside kinks)
         set(args --compile ${story} ${model} -o limgrad_${model}.h)
         check(compile_limgrad_${model})
         strict(compile_limgrad_${model} limgrad_${model}.h)
@@ -207,7 +207,8 @@ if(PART STREQUAL "spec_limgrad")
     limgrad(twowalk twowalk "twowalk: ${until0}" "twowalk\\.v${within0}"
             "twowalk\\.g\\.a${within0}" "twowalk\\.g\\.b${within0}" "twowalk\\.r${within0}"
             "twowalk\\.o${within0}")
-    limgrad(tozero tozero "tozero: ${until0}" "tozero\\.y${within0}" "tozero\\.x${within0}")
+    limgrad(tozero tozero "tozero: ${until0}" "tozero\\.y${within0}")
+    limgrad(toend toend "toend: ${until0}" "toend\\.x${within0}")
     limgrad(blowup blowup "blowup: ${steps}"
             "blowup\\.y: no value compared, the step NaN where the interpreter gives none, as at 0: the derivative of r did not converge within 100 terms \\(last term ~4\\.225502e\\+29\\)")
     limgrad(rootmix rootmix "rootmix: ${steps} until 1 and inexact ones from there"
@@ -222,13 +223,15 @@ if(PART STREQUAL "spec_limgrad")
     limgrad(vee vee "vee: ${until0}" "vee\\.y${within0}" "vee\\.x${within0}" "vee\\.w${within0}"
             "vee\\.e${within0}")
     # In float, each part closing as the value does, on floats a unit or two
-    # apart: by its form, as compile/float.ink's reports are, each under a
-    # hundred units.
+    # apart, and toend's term kept where it is in double: by its form, as
+    # compile/float.ink's reports are, each under a hundred units.
     set(float --float)
     set(units ": within [0-9.e+-]+, ([0-9](\\.[0-9])?|[1-9][0-9]) units of a float, the interpreter's terms about [0-9.e+-]+ from the exact ones")
     limgrad(twowalk floated "twowalk: 100 steps from 0 in float, against exact values until 0 and inexact ones from there"
             "twowalk\\.v${units}" "twowalk\\.g\\.a${units}" "twowalk\\.g\\.b${units}"
             "twowalk\\.r${units}" "twowalk\\.o${units}")
+    limgrad(toend toendf "toend: 100 steps from 0 in float, against exact values until 0 and inexact ones from there"
+            "toend\\.x${units}")
     return()
 endif()
 

@@ -14456,15 +14456,15 @@ From `MANIFESTO.md`'s open line, a compiled derivative of a limit:
     `Convergence` of their own, each its own steps in both measures. The
     limit is the first term where all close at once. The term kept is the
     first where all are near at once and not all closed, answered where a
-    later term is NaN or the walk runs out (`tozero`). A NaN value or part
-    ends the walk, on the term kept if there is one, else NaN, where the
-    interpreter's `Convergence` refuses it (`nanheld`, `nanout`). A part that
-    does not converge makes the limit NaN, value and part, where the
+    later term is NaN or the walk runs out (`tozero`, `toend`). A NaN value
+    or part ends the walk, on the term kept if there is one, else NaN, where
+    the interpreter's `Convergence` refuses it (`nanheld`, `nanout`). A part
+    that does not converge makes the limit NaN, value and part, where the
     interpreter refuses the grad (`blowup`, `rootmix`), and a guard reading
     it NaN under grad, as `Falls` has it now. The value a pass reads is its
-    own walk's: `twowalk.g.a` reads L 1.1e-11 to 9.7e-11 from what the
-    value alone stops on. Rejected: the value under grad from the
-    value-only function, shared with a read outside grad.
+    own walk's: `twowalk.g.a` reads L 1.1e-11 to 9.7e-11 from what the value
+    alone stops on. Rejected: the value under grad from the value-only
+    function, shared with a read outside grad.
   - **C353's noise rule, on each part.** Each part is a `Convergence` in
     `Walk`, measured as the value is, so in the step each takes the value's
     rule against its own term: a step within two ulps of it is taken for 0,
@@ -14512,7 +14512,8 @@ From `MANIFESTO.md`'s open line, a compiled derivative of a limit:
   - **`--float`**: the walk closes on floats a unit or two apart where the
     value and every part are finite and each within two float units of the
     one before, the value's step not 0 (C279); otherwise by lim's rule, as
-    in double.
+    in double. A term kept is kept as in double (`toend`); a walk to 0 whose
+    floats reach 0 closes on it instead, as one of values alone does.
   - **Beside, matrices**: a sequence walked beside the limit carries its
     part in its window (`alongside.e`); a limit of matrices walks each part
     as a matrix, by its largest cell's step, as the value (`alongside.m`).
@@ -14542,14 +14543,14 @@ From `MANIFESTO.md`'s open line, a compiled derivative of a limit:
   Specified in `test/compile/limgrad.ink`, its stops worked out by
   `Convergence`'s rule over Python's doubles and fractions: each model
   compiled, strict, `walks` in float too; each instance within 0 of the
-  interpreter in every term, `blowup` NaN where it refuses, and `twowalk`
-  in float within a hundred units; and the refusals above. `cli.cmake`'s
-  part `spec_limgrad`, skipped while the refusal reads as today. When
-  built, `compile_grad_refused`'s b compiles, `compile_hessian_refused`'s c
-  reads "a second derivative through a limit, for now" and
-  `compile_sums_refused`'s d "a derivative of a power whose exponent is not
-  a constant, for now", the spec repeating neither; and so move
-  `compile/grad.ink`'s comment, `docs/compile.md` and `MANIFESTO.md`'s
+  interpreter in every term, `blowup` and `nanout` NaN where it refuses, and
+  `twowalk` and `toend` in float within a hundred units; and the refusals
+  above. `cli.cmake`'s part `spec_limgrad`, skipped while the refusal reads
+  as today. When built, `compile_grad_refused`'s b compiles,
+  `compile_hessian_refused`'s c reads "a second derivative through a limit,
+  for now" and `compile_sums_refused`'s d "a derivative of a power whose
+  exponent is not a constant, for now", the spec repeating neither; and so
+  move `compile/grad.ink`'s comment, `docs/compile.md` and `MANIFESTO.md`'s
   open line.
 
   Cost, in lines of `compile.hpp`, about 225: the limit's function with

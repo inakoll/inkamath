@@ -29,16 +29,21 @@ twowalk = walks(u_n = ~(1/4 + n/400))
 # 'tozero': (t/2)^k never closes on its own size, nor its part, so each walk
 # answers the first term where the value and the part are both within
 # 1e-10 absolute, at 14 to 20, the value alone at 13 to 18: z after its 100
-# terms, c where its terms end at 40.
+# terms, and in 'toend' c where its terms end at 40. In float, c keeps the
+# same terms, within 13 units of a float; z's terms reach 0, and its walk
+# closes on 0 at 55 to 80, as a walk of values alone to 0 does in float.
 z(a)_0 = 1
 z(a)_k = a*z(a)_(k-1)/2
 c(a)_0 = 1
 c(a)_k | k < 40 = a*c(a)_(k-1)/2
 zero(u_n) = {
     y_n = grad_(t = u_n) lim z(t)
-    x_n = grad_(t = u_n) lim c(t)
 }
 tozero = zero(u_n = ~(1/4 + n/400))
+ended(u_n) = {
+    x_n = grad_(t = u_n) lim c(t)
+}
+toend = ended(u_n = ~(1/4 + n/400))
 
 # 'blowup': Newton's root converges at 0 and its part does not, the
 # interpreter's refusal and the step's NaN: its 100th term is
