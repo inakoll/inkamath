@@ -14465,6 +14465,15 @@ From `MANIFESTO.md`'s open line, a compiled derivative of a limit:
     own walk's: `twowalk.g.a` reads L 1.1e-11 to 9.7e-11 from what the
     value alone stops on. Rejected: the value under grad from the
     value-only function, shared with a read outside grad.
+  - **C353's noise rule, on each part.** Each part is a `Convergence` in
+    `Walk`, measured as the value is, so in the step each takes the value's
+    rule against its own term: a step within two ulps of it is taken for 0,
+    and C279's rule applies. No instance tells this from parts measured
+    without it: a pause rounds to an ulp where a partial sum crosses a power
+    of two, which in `evens`' series under grad, its powers walked beside,
+    happens at its first terms alone, k = 3 to 7, far above the tolerance.
+    Of 18,900 points, and 40,000 near each power of two its derivative's
+    limit reaches, none stopped otherwise.
   - **Reached: nothing in the step.** The value-only function answers the
     term it stops on, or the one kept, and nothing of what is left;
     `Convergence::Reached` moves the interpreter's value in `--check`'s
