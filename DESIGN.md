@@ -14686,8 +14686,8 @@ through a walking function:
     `rho` written out is 1.1 MB of header, 8.0 s to build and 7.3 µs a
     step at 2x2, 2.4 MB, 16 s and 20 µs at 4x4, and 4.2 MB, 25 s and 38 µs
     at 6x6, for each call; one term of `rhou` is 3.2, 7.1 and 20 KB, and
-    what rho computes around it 13, 31 and 66 KB, so walked it is some 16,
-    38 and 86 KB, a fiftieth. `eig`, written out today, is 1.7 MB and 14 s
+    rho written out to one term 13, 31 and 66 KB, so walked it is some 16,
+    38 and 86 KB, a fiftieth to a seventieth. `eig`, written out today, is 1.7 MB and 14 s
     at 2x2 and 5.8 MB and 52 s at 4x4.
 
     Rejected: **no third case**, every constant index not by cells written
