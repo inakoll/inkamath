@@ -3,6 +3,25 @@
 What changed for someone using inkamath, release by release. The reasons, and
 every defect by its number, are in [`DESIGN.md`](DESIGN.md).
 
+## 2.3.0 — 2026-11-10
+
+### Added
+
+- **`grad` through `lim` and a sum without an upper bound, compiled**:
+  `--compile` walks each moving argument's part beside it and answers the
+  limit's part beside its value, both stopping by the interpreter's rule, by
+  one name or several, of a single value or a matrix, each within 0 of the
+  interpreter where its values are doubles. A limit whose terms step with
+  the name at a comparison or a floor is refused in the interpreter's words,
+  and a second derivative through a limit for now.
+
+### Fixed
+
+2 defects, C439 and C440: under `grad`, a limit whose terms call `exp`, or
+another of the prelude's functions the header implements, is no longer
+refused as a staircase, and a sum without an upper bound whose terms step is
+refused as `lim` is, where it answered 0.
+
 ## 2.2.0 — 2026-11-08
 
 ### Added
