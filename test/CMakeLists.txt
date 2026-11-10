@@ -99,18 +99,6 @@ foreach(part 1 2 3 4)
                      -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
     set_tests_properties(cli_${part} PROPERTIES TIMEOUT ${cli_timeout})
 endforeach()
-# A derivative of a limit compiled (DESIGN.md, next in line), specified
-# before it is built: cli.cmake's part spec_limgrad, skipped while it is
-# refused, as today.
-foreach(spec IN ITEMS limgrad)
-    add_test(NAME cli_spec_${spec}
-             COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=spec_${spec}
-                     -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli_spec_${spec}
-                     -DCASE_TIMEOUT=${cli_case_timeout} -DCC=${CMAKE_C_COMPILER}
-                     -DCC_ID=${CMAKE_C_COMPILER_ID} -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
-    set_tests_properties(cli_spec_${spec} PROPERTIES TIMEOUT ${cli_timeout}
-                         SKIP_REGULAR_EXPRESSION ", as today\n")
-endforeach()
 # bench's workloads, each a transcript bench/run.cmake measures, replayed so
 # that one gone stale fails here rather than at its next measure. The
 # slowest, under the sanitizers, take 7 s; train.ink is data, no transcript.
@@ -342,7 +330,10 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          adjoint:sinabs adjoint:gate3 adjoint:under adjoint:aside adjoint:cube
                          adjoint:pinned gradmany:pair
                          gradmany:same gradmany:stair matpow:ex matpow:inv matpow:nest
-                         matpow:many matpow:back matpow:sing transformer:unseen:4 transformer:tuned:4
+                         matpow:many matpow:back matpow:sing limgrad:twowalk limgrad:tozero
+                         limgrad:toend limgrad:blowup limgrad:rootmix limgrad:nanheld
+                         limgrad:nanout limgrad:atthird limgrad:alongside limgrad:vee
+                         transformer:unseen:4 transformer:tuned:4
                          split:carried:4 split:apart:4 split:twins:4 pendulum:one spin:twirl:20
                          iekf:walk:21
                          tip:reach tip:rested series:taylor series:wave series:later
@@ -893,6 +884,26 @@ set_tests_properties(check_back_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^back: 100 steps from 0${inexact0}\nback\\.A: within 0${about}\nback\\.a: within 0, from 1${about}\nback\\.b: within 0, from 1${about}\nback\\.c: within 0, from 1${about}\nback\\.d: within 0, from 1${about}\nback\\.e: within 0, from 1${about}\nback\\.f: within 0, from 1${about}\nback\\.g: within 0, from 1${about}\nback\\.h: within 0, from 1${about}\nback\\.k: within 0, from 1${about}\nback\\.q: within 0${about}\n$")
 set_tests_properties(check_sing_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^sing: 100 steps from 0${inexact0}\nsing\\.a: within 0, from 1${about}\nsing\\.b: within 0, from 1${about}\nsing\\.c: within 0, from 1${about}\nsing\\.d: within 0, from 1${about}\nsing\\.e: within 0${about}\nsing\\.x: within 0\n$")
+# A derivative of a limit compiled (DESIGN.md), as compile/limgrad.ink gives
+# it: every term within 0, and NaN where the interpreter refuses.
+set(nanned ": no value compared, the step NaN where the interpreter gives none, as at 0: the derivative of")
+foreach(report IN ITEMS
+        "twowalk:^twowalk: 100 steps from 0${inexact0}\ntwowalk\\.g\\.a: within 0${about}\ntwowalk\\.g\\.b: within 0${about}\ntwowalk\\.o: within 0${about}\ntwowalk\\.r: within 0${about}\ntwowalk\\.v: within 0${about}\n$"
+        "tozero:^tozero: 100 steps from 0${inexact0}\ntozero\\.y: within 0${about}\n$"
+        "toend:^toend: 100 steps from 0${inexact0}\ntoend\\.x: within 0${about}\n$"
+        "blowup:^blowup: 100 steps from 0, against exact values\nblowup\\.y${nanned} r did not converge within 100 terms \\(last term ~4\\.225502e\\+29\\)\n$"
+        "rootmix:^rootmix: 100 steps from 0, against exact values until 1 and inexact ones from there\nrootmix\\.y: within 0${about}\n$"
+        "nanheld:^nanheld: 100 steps from 0${inexact0}\nnanheld\\.y: within 0\\; the interpreter's terms about 5\\.8e-11 from the exact ones\n$"
+        "nanout:^nanout: 100 steps from 0, against exact values\nnanout\\.y${nanned} zn has no limit: a term is -?nan\n$"
+        "atthird:^atthird: 100 steps from 0${inexact0}\natthird\\.y: within 0${about}\natthird\\.z: within 0${about}\n$"
+        "alongside:^alongside: 100 steps from 0${inexact0}\nalongside\\.e: within 0${about}\nalongside\\.m: within 0${about}\nalongside\\.q: within 0${about}\n$"
+        "vee:^vee: 100 steps from 0${inexact0}\nvee\\.e: within 0${about}\nvee\\.w: within 0${about}\nvee\\.x: within 0${about}\nvee\\.y: within 0${about}\n$")
+    string(FIND "${report}" ":" colon)
+    string(SUBSTRING "${report}" 0 ${colon} instance)
+    math(EXPR colon "${colon} + 1")
+    string(SUBSTRING "${report}" ${colon} -1 expected)
+    set_tests_properties(check_${instance}_report PROPERTIES PASS_REGULAR_EXPRESSION "${expected}")
+endforeach()
 # A trained transformer, as compile/transformer.ink gives it.
 set_tests_properties(check_unseen_4_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^unseen: 4 steps from 0${inexact0}\nunseen\\.Z: within [1-9](\\.[0-9])?e-1[5-9]${about}\n$")
@@ -1312,7 +1323,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentu
                          robertson:rober tensorgrad:small tensorgrad:saliency:3 split:carried:4
                          split:twins:4
                          orthogonal:rational chol:factored chol:naive chol:sole float:shove
-                         polyconv:tune lcg:lcgs)
+                         polyconv:tune lcg:lcgs limgrad:twowalk limgrad:toend)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -1352,6 +1363,8 @@ set(parts "0\\.096026361 at 6, where the interpreter gives 0\\.10000000000000001
 set(exact "within 0, 0 units of a float")
 set(until1f "against exact values until 1 and inexact ones from there")
 set(floats "[0-9.e+-]+, [0-9.e+-]+ units of a float")
+# compile/limgrad.ink's, each part closing as the value does, under a hundred units.
+set(hundred "[0-9.e+-]+, ([0-9](\\.[0-9])?|[1-9][0-9]) units of a float${about}")
 foreach(report IN ITEMS
         "calm:^calm: 100 steps from 0${in_float}\ncalm\\.v: within 1\\.1e-06, 1\\.4 units of a float\n$"
         "wild:^wild: 100 steps from 0${in_float}\nwild\\.d: ${parts}$"
@@ -1415,7 +1428,9 @@ foreach(report IN ITEMS
         "shove:^shove: 100 steps from 0${in_float}\nshove\\.s: within 5\\.9e-08, 1\\.4e\\+07 units of a float at step 5\nshove\\.y: within 5\\.9e-08, 1\\.4e\\+07 units of a float in y\\[2,1,1\\] at step 7\n$"
         "naive:^naive: 100 steps from 0 in float, ${until1f}\n(naive\\.(Pp|K|P): within [^\n]+\n)+naive\\.L\\[1,1\\]: [-a-z()]+ at 1, where the interpreter gives ~0\\.00099999999750012493\\; the interpreter's term about [0-9.e+-]+ from the exact one\nnaive\\.x: within [^\n]+\n$"
         "sole:^sole: 100 steps from 0${inexact}\n(sole\\.[gy]: within [0-9.e+-]+, 0\\.[0-9]+ units of a float${about}\n)+$"
-        "cls:^cls: 100 steps from 0${inexact}\ncls\\.z: within 2\\.4e-08, 0\\.49 units of a float\ncls\\.q: within 1\\.9e-06, 1\\.5 units of a float${about}\ncls\\.s: within 6\\.3e-08, 2\\.1 units of a float${about}\ncls\\.loss: within 4\\.1e-07, 3\\.8 units of a float${about}\n$")
+        "cls:^cls: 100 steps from 0${inexact}\ncls\\.z: within 2\\.4e-08, 0\\.49 units of a float\ncls\\.q: within 1\\.9e-06, 1\\.5 units of a float${about}\ncls\\.s: within 6\\.3e-08, 2\\.1 units of a float${about}\ncls\\.loss: within 4\\.1e-07, 3\\.8 units of a float${about}\n$"
+        "twowalk:^twowalk: 100 steps from 0${inexact}\ntwowalk\\.g\\.a: within ${hundred}\ntwowalk\\.g\\.b: within ${hundred}\ntwowalk\\.o: within ${hundred}\ntwowalk\\.r: within ${hundred}\ntwowalk\\.v: within ${hundred}\n$"
+        "toend:^toend: 100 steps from 0${inexact}\ntoend\\.x: within ${hundred}\n$")
     string(FIND "${report}" ":" colon)
     string(SUBSTRING "${report}" 0 ${colon} instance)
     math(EXPR colon "${colon} + 1")

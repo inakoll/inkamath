@@ -1,5 +1,5 @@
-# A derivative of a limit compiled (DESIGN.md, next in line): grad through
-# lim and through a sum without an upper bound, forward mode's walk of a
+# A derivative of a limit compiled (DESIGN.md): grad through lim and
+# through a sum without an upper bound, forward mode's walk of a
 # value and one part, each by lim's rule, once for each cell of each name,
 # as Derivative::Limit walks it. Every point is a double, or a constant the
 # step folds, so each term is the interpreter's within 0. The stops below
@@ -104,9 +104,8 @@ alongside = beside(u_n = ~(n/50 - 1))
 # 'vee': abs and max are continuous where their guards step, so a limit of
 # terms that read them is differentiated, 2(|x| - max(x, 0)), -2x below 0
 # and 0 above; so is a comparison of the index alone, and so is exp, whose
-# guards reduce its argument: 2e^x, once --check no longer refuses it
-# (DESIGN.md, the entry's prelude). A sum without an upper bound is walked
-# as a limit is, 4t for t^2/2^k.
+# guards reduce its argument: 2e^x, which --check refused before C439. A
+# sum without an upper bound is walked as a limit is, 4t for t^2/2^k.
 ab(x)_0 = 0
 ab(x)_k = ab(x)_(k-1)/2 + abs(x) - max(x, 0)
 gi(x)_0 = 1

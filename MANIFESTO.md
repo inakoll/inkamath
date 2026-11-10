@@ -328,8 +328,9 @@ dual type; reverse mode for a matrix or several names, a tape in the
 interpreter and an adjoint step compiled (`DESIGN.md`, *Differentiation*,
 *Reverse mode in the interpreter*, *The compiler's adjoint step*;
 `test/data/reverse.ink`, `test/compile/adjoint.ink`, `gradmany.ink`,
-`hessian.ink`). Open: an order past 2 compiled, and a compiled derivative of
-a limit, which are refused.
+`hessian.ink`), and through a limit, the walk carrying each part beside its
+value (`limgrad.ink`). Open: an order past 2 compiled, and a compiled second
+derivative through a limit, which are refused.
 
 The objection that sank symbolic simplification, that the identities are
 unsound over matrices whose extents are unknown before evaluation, does not

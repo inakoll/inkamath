@@ -92,6 +92,7 @@ What compiles
 | A sequence with parameters read at a constant index, `f(x)_K` | written out as a sum with constant bounds is, each term below the one read a temporary of the step | [`iterates.ink`](../test/compile/iterates.ink) takes a determinant by Faddeev-LeVerrier, grad through it, and a few steps of projected gradient |
 | A sequence with parameters read at a limit's index less a constant, `t(x)_k` | walked beside the limit in its loop | [`series.ink`](../test/compile/series.ink) writes e^x and a rotation's exponential as the limits of their partial sums, as on paper |
 | A sum without an upper bound, `sum_(q=0) x^q/!q` | walked as such a limit is | [`sums.ink`](../test/compile/sums.ink) |
+| `grad` through a limit or a sum without an upper bound | the walk takes each moving argument's part beside it and answers the limit's part beside its value, the value and each part stopping by the interpreter's rule, together, once for each cell of each name, as forward mode walks it; refused, as the interpreter refuses it, where its terms step with the name at a comparison or a floor | [`limgrad.ink`](../test/compile/limgrad.ink) differentiates Newton's root, a series and a limit of matrices |
 | A limit of matrices | fills an array, cell by cell | [`steady.ink`](../test/compile/steady.ink) finds a chain's steady state and, by power iteration, a matrix's dominant direction at every step |
 | A limit's iterate | has temporaries as a step has, a matrix inverse or a call nested in an argument computed once per iterate | [`implicit.ink`](../test/compile/implicit.ink) takes each step of backward Euler on a stiff chemical system by Newton's method under `lim`, its inverse written as the paper writes it |
 | `grad` by a single value, and by a matrix | by a value forward, each value carrying its part beside it by the interpreter's rules; by a matrix in reverse mode as the interpreter takes it, the body written once and swept back; through a matrix inverse and a whole matrix power by their products, as the interpreter's; so the step's gradient is the interpreter's to the bit where the interpreter's values are doubles | [`grad.ink`](../test/compile/grad.ink) trains a line and a logistic regression; [`matpow.ink`](../test/compile/matpow.ink) differentiates an arm's mass matrix inverted |
@@ -126,7 +127,7 @@ is compiled by name. Refused:
   after it, one bound in a term's index, and one a sum without an upper bound
   carries past a term.
 - For now, a nest of grads three deep or holding a grad by several names, and
-  a derivative of a limit.
+  a second derivative through a limit.
 - For now, a tensor in a limit.
 - A block that does not fill its band
   ([`blocks.ink`](../test/compile/blocks.ink)).

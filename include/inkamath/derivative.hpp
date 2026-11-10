@@ -36,6 +36,18 @@ public:
         for (const Jet& part : Grad(grad)) parts.push_back(*part[0]);
         return parts;
     }
+    // An expression's value and part by one grad's name, its names bound
+    // to the values and parts given: a limit the compiler folds (C432).
+    using Given = std::vector<std::tuple<std::string, T, std::optional<T>>>;
+    std::pair<T, std::optional<T>> At(Expression<T>& e, const std::string& by, const Given& jets) {
+        const Local       local(*this);
+        const Order       order(*this, by, "");
+        std::list<Shadow> shadows;
+        for (const auto& [name, value, part] : jets)
+            shadows.emplace_back(*this, name, part ? Jet{value, *part} : Jet{value, {}});
+        const Jet out = Eval(e);
+        return {*out[0], out[1] ? std::optional<T>(*out[1]) : std::nullopt};
+    }
 
     // What grad refuses by the names its body reads, before any value: the
     // compiler asks it too (DESIGN.md, grad compiled).
