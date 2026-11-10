@@ -8289,9 +8289,11 @@ evaluator, where the larger gap is.
     five lines where the map costs three over Routh, and its fraction-free
     form doubles the bits at each step.
   - **Compiled**: `charpoly` compiles since *A sequence with parameters
-    read at a constant index, compiled*; `rho` and `abscissa` do not yet,
-    `hurwitzb`'s factorial refused. grad refuses them in `compile.hpp`'s
-    call where an argument moves, `Staircase`, as `derivative.hpp` does:
+    read at a constant index, compiled*; `rho` and `abscissa` of a
+    constant matrix fold since C443, and of a moving one do not yet,
+    `hurwitzr`'s sequence with parameters by cells refused. grad refuses
+    them in `compile.hpp`'s call where an argument moves, `Staircase`, as
+    `derivative.hpp` does:
     without it, their refusal under grad came only from the factorial and
     from `A^0`'s derivative, and once those compile grad would answer the
     staircase's 0. A case of `test/cli.cmake` holds both.
@@ -13315,11 +13317,11 @@ for, which `eig` refuses complex:
   that holds only there". Until a model needs a pole's sensitivity.
 
   **Not compiled**, in a helper's words: at a moving argument "the
-  clauses of rootst have different shapes", at a constant one "a sequence
-  with parameters by cells, for now", and under grad "grad cannot
-  differentiate roots yet". Refusing it by name, "a complex number", was
-  3 lines of `compile.hpp` for clearer words: rejected, the helper's
-  being a refusal all the same.
+  clauses of rootst have different shapes", and under grad "grad cannot
+  differentiate roots yet"; at a constant one it folds since C443, refused
+  "a complex number" where a root is complex. Refusing it by name, "a
+  complex number", was 3 lines of `compile.hpp` for clearer words:
+  rejected, the helper's being a refusal all the same.
 
   Rejected:
   - **A companion matrix and eig**: eig refuses a complex eigenvalue, its
