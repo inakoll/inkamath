@@ -386,6 +386,11 @@ fl(x)_n = floor(10^n*x)/10^n
 >> grad_(x = 1/3) lim fl(x)
 error: grad cannot differentiate lim fl, whose terms step with x at a comparison or a floor
 
+# So is a sum without an upper bound, t by its binary digits, where it
+# answered 0 (C440).
+>> grad_(t = 1/3) sum_(q=1) (floor(2^q*t) - 2*floor(2^(q-1)*t))/2^q
+error: grad cannot differentiate sum_(q=1), whose terms step with t at a comparison or a floor
+
 >> gi(x)_0 = 1
 gi(x)_0 = 1
 

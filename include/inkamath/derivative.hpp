@@ -1176,6 +1176,14 @@ private:
             if (u[s]) stepped_ |= s;
     }
 
+    // Terms that stepped with a variable, refused in the walk's name (C215).
+    void Unstepped(const std::string& what) const {
+        if (const std::size_t with = stepped_ & (Size() - 1))
+            throw std::runtime_error(
+                "grad cannot differentiate " + what + ", whose terms step with " +
+                grads_[std::bit_width(with) - 1].first + " at a comparison or a floor");
+    }
+
     // Each part converging by the rule lim follows, and the limit when all
     // have at the same term.
     struct Walk {
@@ -1233,10 +1241,7 @@ private:
         const Setting<std::size_t> stepped(stepped_, 0);
         const auto                 at = [&](long long k) {
             Jet term = Term(definition, call, true, static_cast<int>(k), arguments);
-            if (const std::size_t with = stepped_ & (Size() - 1))
-                throw std::runtime_error(
-                    "grad cannot differentiate lim " + name + ", whose terms step with " +
-                    grads_[std::bit_width(with) - 1].first + " at a comparison or a floor");
+            Unstepped("lim " + name);
             return term;
         };
         const Clause<T>* const highest = definition.EndBase(false);
@@ -1329,9 +1334,13 @@ private:
         const std::string what = series.Product() ? "product" : "sum";
         Walk              walk("the " + what, Size(), "a partial " + what);
         Jet               total;
+        const std::string head = (series.Product() ? "prod_(" : "sum_(") + series.Index() + "=" +
+                                 std::to_string(first) + ")";
+        const Setting<std::size_t> stepped(stepped_, 0);
         for (int n = 0; n < static_cast<int>(Convergence<T>::max_terms); ++n) {
             try {
                 total = n == 0 ? term(first) : combine(total, term(first + n));
+                Unstepped(head);
                 if (walk.Next(total)) return walk.Limit(total);
             } catch (const DepthExceeded&) {
                 throw;
