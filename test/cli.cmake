@@ -199,7 +199,8 @@ if(PART STREQUAL "spec_limgrad")
     set(until0 "${steps} until 0 and inexact ones from there")
     set(within0 ": within 0, the interpreter's terms about [0-9.e+-]+ from the exact ones")
     limgrad(twowalk twowalk "twowalk: ${until0}" "twowalk\\.v${within0}"
-            "twowalk\\.g\\.a${within0}" "twowalk\\.g\\.b${within0}" "twowalk\\.r${within0}")
+            "twowalk\\.g\\.a${within0}" "twowalk\\.g\\.b${within0}" "twowalk\\.r${within0}"
+            "twowalk\\.o${within0}")
     limgrad(tozero tozero "tozero: ${until0}" "tozero\\.y${within0}" "tozero\\.x${within0}")
     limgrad(blowup blowup "blowup: ${steps}"
             "blowup\\.y: no value compared, the step NaN where the interpreter gives none, as at 0: the derivative of r did not converge within 100 terms \\(last term ~4\\.225502e\\+29\\)")
@@ -217,7 +218,7 @@ if(PART STREQUAL "spec_limgrad")
     set(units ": within [0-9.e+-]+, ([0-9](\\.[0-9])?|[1-9][0-9]) units of a float, the interpreter's terms about [0-9.e+-]+ from the exact ones")
     limgrad(twowalk floated "twowalk: 100 steps from 0 in float, against exact values until 0 and inexact ones from there"
             "twowalk\\.v${units}" "twowalk\\.g\\.a${units}" "twowalk\\.g\\.b${units}"
-            "twowalk\\.r${units}")
+            "twowalk\\.r${units}" "twowalk\\.o${units}")
     return()
 endif()
 

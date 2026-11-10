@@ -12,16 +12,17 @@
 # does, at 18 to 33, and the walk by a 3 to 6 terms later, so that v's cell
 # by b, taken where a's stops, would be 1.5e-11 to 1.9e-10 off; and g.a,
 # L + a*q, reads L where a's walk stops, 1.1e-11 to 9.7e-11 from the value
-# lim s(a, b) alone answers. A grad by a vector or by two names gives way to
-# forward mode at the limit, whose terms move, as the interpreter's does; r's
-# limit does not move, so r stays in reverse mode, an ulp from forward mode's
-# at 64 of its steps.
+# lim s(a, b) alone answers, as o reads it beside the part by a. A grad by a
+# vector or by two names gives way to forward mode at the limit, whose terms
+# move, as the interpreter's does; r's limit does not move, so r stays in
+# reverse mode, an ulp from forward mode's at 64 of its steps.
 s(a, b)_0 = 0
 s(a, b)_k = a*s(a, b)_(k-1) + b
 walks(u_n) = {
     v_n = grad_(w = [u_n; 1 - u_n]) lim s(w[1], w[2])
     g_n = grad_(a = u_n, b = 1 - u_n) (a*lim s(a, b) + b)
     r_n = grad_(w = [u_n, 1 - u_n]) w[1, 1]*w[1, 2]*lim s(u_n, 1/2)/3
+    o_n = lim s(u_n, 1 - u_n) + grad_(a = u_n) lim s(a, 1 - u_n)
 }
 twowalk = walks(u_n = ~(1/4 + n/400))
 
