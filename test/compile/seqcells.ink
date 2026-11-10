@@ -92,8 +92,9 @@ idx = walked(x_n = ~(n/8))
 # x^2 < 1/2; H, the 4x4's lower block, [-x, 1; -1, 2/3], a complex pair of
 # modulus (1 - 2x/3)^(1/2) and real part 1/3 - x/2 throughout. With x from
 # -0.99 to 0.99 by 0.02, never 0 nor +-2^(-1/2): h is 1 where x < 0, and 0 for
-# the 4x4 at every x, H's real part above 0; s is 1 where |x| < (7/16)^(1/2),
-# n from 17 to 82, and for the 4x4 from 50 to 82. hurwitz and schurcohn are
+# the 4x4 at every x, H's real part above 0 below x = 2/3 and G's from 0;
+# s is 1 where |x| < (7/16)^(1/2), n from 17 to 82, and for the 4x4 from
+# 50 to 82. hurwitz and schurcohn are
 # taken in doubles by the interpreter as by the step, in the same order. rho
 # and abscissa read the doubles as the fractions they are and bisect
 # exactly (DESIGN.md, C275), and the step bisects in doubles: Python's
