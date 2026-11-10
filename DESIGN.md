@@ -14791,7 +14791,7 @@ through a walking function:
     reach `hurwitz` too; where they stop once it walks is not specified
     here, and the implementation reports it.
 
-  Found specifying this, a fix of its own, landed first:
+  Found specifying this, a fix of its own, to land first:
   - **abscissa of a moving matrix was refused by a recursion the
     interpreter never takes to its end**: `abscissaq(p) | p[m] == 0 =
     abscissaq(abscissat(p))` compiled down to a polynomial of no
