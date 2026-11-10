@@ -14264,7 +14264,8 @@ program and header `test/CMakeLists.txt` generates, every case's file in
 `test/cli.cmake`'s parts, and `--compile` of every file and model of
 `test/compile`, with and without `--float`, are byte-identical to
 master's at 6e491ef, but `estimate.ink` whole, whose `steep.x`, an
-instance's argument, compiles now.
+instance's argument, compiles now, and the case's file
+`grad_refused.ink`, which loses b.
 
 How:
 - **A part is the value's name and a `p`**: `t1_p` beside `t1_`, `t_p`,
