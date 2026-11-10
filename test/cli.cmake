@@ -87,6 +87,167 @@ function(reports name program report)
     endif()
 endfunction()
 
+# Specified, not yet built (DESIGN.md, next in line): a sequence with
+# parameters walked. Each model of compile/seqcells.ink compiled, strict,
+# stencil in float too; the walk named once and called once for one term;
+# rho's bisection walked, by its headers' sizes; an instance of each
+# checked to the lines its comment gives; and what stays refused in its
+# words. Skipped while a sequence by cells is refused as today, and only
+# then.
+if(PART STREQUAL "spec_seqcells")
+    file(MAKE_DIRECTORY "${OUT}")
+    set(story "${CMAKE_CURRENT_LIST_DIR}/compile/seqcells.ink")
+    execute_process(COMMAND "${EXE}" --compile "${story}" stencil -o heat.h
+                    WORKING_DIRECTORY "${OUT}" OUTPUT_VARIABLE out ERROR_VARIABLE err
+                    RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
+    if("${out}${code}" STREQUAL "1" AND
+       "${err}" STREQUAL "inkamath: cannot compile a: a sequence with parameters by cells, for now\n")
+        message("compile_seqcells: a sequence with parameters by cells refused, as today")
+        return()
+    endif()
+    foreach(model IN ITEMS stencil:heat ends:ends parts:parts walked:walked stab:stab
+                           stab4:stab4 halving:halving)
+        string(REPLACE ":" ";" model "${model}")
+        list(GET model 1 header)
+        list(GET model 0 model)
+        set(args --compile ${story} ${model} -o ${header}.h)
+        check(compile_seqcells_${model})
+        strict(compile_seqcells_${model} ${header}.h)
+    endforeach()
+    set(args --compile ${story} stencil --float -o heatf.h)
+    check(compile_seqcells_float)
+    strict(compile_seqcells_float heatf.h -Wdouble-promotion)
+
+    # One walk for a and b, the index its argument; one call for e's two cells.
+    holds(compile_seqcells_stencil heat.h "static inline double heat_walk0("
+          "heat_walk0(m_, 3.0, " "heat_walk0(m_, (double)m_->index_, ")
+    file(READ "${OUT}/heat.h" text)
+    string(FIND "${text}" "heat_walk1" at)
+    if(NOT at EQUAL -1)
+        message(SEND_ERROR "compile_seqcells_stencil: heat.h defines a second walk")
+    endif()
+    file(READ "${OUT}/ends.h" text)
+    string(REGEX MATCHALL "ends_walk0\\(m_" calls "${text}")
+    list(LENGTH calls count)
+    if(NOT count EQUAL 1)
+        message(SEND_ERROR "compile_seqcells_ends: ends.h calls its walk ${count} times, not once")
+    endif()
+    # rhou's 256 terms walked, as they reach hurwitzr by cells: written out,
+    # some 2.2 and 4.7 MB.
+    foreach(bound IN ITEMS stab:200000 stab4:400000)
+        string(REPLACE ":" ";" bound "${bound}")
+        list(GET bound 0 header)
+        list(GET bound 1 bytes)
+        holds(compile_seqcells_${header} ${header}.h "static inline double ${header}_walk")
+        file(SIZE "${OUT}/${header}.h" size)
+        if(NOT size LESS bytes)
+            message(SEND_ERROR "compile_seqcells_${header}: ${header}.h is ${size} bytes, not under ${bytes}")
+        endif()
+    endforeach()
+
+    # a's terms change size; b reads its own term at floor(k/2), c with other
+    # arguments; d is a second derivative and e's index moves with t; f has
+    # no base clause; g is past the interpreter's fill and k below y's base,
+    # both constants; m is a tensor.
+    file(WRITE "${OUT}/seqcells_refused.ink"
+         "a_n = w([x_n; 1; 2])_n\nb_n = h(x_n)_n\nc_n = r(x_n)_n\n"
+         "d_n = grad_(t = x_n)^2 q(t)_n\ne_n = grad_(t = x_n) q(t)_(floor(t))\nf_n = p(x_n)_n\n"
+         "g_n = q(x_n)_20000000\nk_n = y(x_n)_(-1)\nm_n = tq(x_n)_n\n"
+         "w(a)_0 = a\nw(a[j<=m])_t[r<=m-t] = w(a)_(t-1)[r]\n"
+         "h(s)_0 = 0\nh(s)_k = 2*h(s)_(floor(k/2)) + s\nr(x)_0 = x\nr(x)_k = r(x/2)_(k-1) + 1\n"
+         "q(x)_0 = x\nq(x)_k = q(x)_(k-1)/2 + 1\np(x)_k = p(x)_(k-1)/2\n"
+         "y(x)_0 = [x; 1]\ny(x)_k[j<=2] = y(x)_(k-1)[j]*x\n"
+         "tq(x)_0 = [1;; 0]\ntq(x)_k = tq(x)_(k-1)*x/2 + [1;; x]\n")
+    set(args --compile seqcells_refused.ink)
+    string(CONCAT stdout "cannot compile a: a walk of w, whose terms change size\n"
+                  "cannot compile b: h_(...): an index other than a whole multiple of k plus a constant\n"
+                  "cannot compile c: r's term read with other arguments than its own\n"
+                  "cannot compile d: a second derivative through a walk of q, for now\n"
+                  "cannot compile e: an index that moves with t, for now\n"
+                  "cannot compile f: p has no base clause to walk from\n"
+                  "cannot compile g: q_20000000 is 20000000 terms from its base, and a fill stops at 10000000\n"
+                  "cannot compile k: y has no clause for index -1\n"
+                  "cannot compile m: a tensor in a walk of tq, for now\n")
+    set(exit 1)
+    check(compile_seqcells_refused)
+
+    if(NOT CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
+        return()
+    endif()
+    # An instance's report: its first line matching the first pattern, then
+    # each line given found, and no other. A list splits at ';', which a
+    # line's estimate holds, so it is read as ','.
+    function(seqcells instance program first)
+        execute_process(COMMAND "${EXE}" --check "${story}" ${instance} ${float} -o ${program}.c
+                        WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
+                        ERROR_VARIABLE errors OUTPUT_VARIABLE errors TIMEOUT ${CASE_TIMEOUT})
+        if(NOT failed)
+            # Uncontracted, as test/CMakeLists.txt builds a check (C97).
+            execute_process(COMMAND "${CC}" -std=c11 -O2 -ffp-contract=off ${program}.c
+                                    -o ${program} -lm
+                            WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
+                            ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
+        endif()
+        if(failed)
+            message(SEND_ERROR "check_seqcells_${program}: ${program}.c not built\n${errors}")
+            return()
+        endif()
+        execute_process(COMMAND "${OUT}/${program}" WORKING_DIRECTORY "${OUT}"
+                        OUTPUT_VARIABLE report RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
+        string(REPLACE ";" "," lines "${report}")
+        string(REPLACE "\n" ";" lines "${lines}")
+        list(REMOVE_ITEM lines "")
+        list(POP_FRONT lines got)
+        list(LENGTH lines count)
+        list(LENGTH ARGN want)
+        set(bad "")
+        if(NOT code EQUAL 0 OR NOT "${got}" MATCHES "^${first}$" OR NOT count EQUAL want)
+            set(bad 1)
+        endif()
+        foreach(pattern IN LISTS ARGN)
+            set(found "")
+            foreach(line IN LISTS lines)
+                if(line MATCHES "^${pattern}$")
+                    set(found 1)
+                endif()
+            endforeach()
+            if(NOT found)
+                set(bad 1)
+            endif()
+        endforeach()
+        if(bad)
+            string(REPLACE ";" "\n" patterns "${ARGN}")
+            message(SEND_ERROR "check_seqcells_${program}: exit ${code}\n${report}--- where\n"
+                               "${first}\n${patterns}")
+        endif()
+    endfunction()
+    set(float "")
+    set(steps "100 steps from 0, against exact values until 0 and inexact ones from there")
+    set(about "(, the interpreter's terms about [0-9.e+-]+ from the exact ones)?")
+    set(within0 ": within 0${about}")
+    # Under 1e-15 and under 1e-13, as %.2g prints them.
+    set(e15 ": within (0|[0-9.]+e-(1[6-9]|[2-9][0-9]|[1-9][0-9][0-9]))${about}")
+    set(e13 ": within (0|[0-9.]+e-(1[4-9]|[2-9][0-9]|[1-9][0-9][0-9]))${about}")
+    seqcells(heat heat "heat: ${steps}" "heat\\.a${within0}" "heat\\.b${within0}")
+    seqcells(rim rim "rim: ${steps}" "rim\\.e${within0}")
+    seqcells(sens sens "sens: ${steps}" "sens\\.g${e15}" "sens\\.v${within0}")
+    seqcells(idx idx "idx: ${steps}" "idx\\.a${within0}" "idx\\.b${within0}" "idx\\.c${within0}"
+             "idx\\.d${within0}" "idx\\.e${e15}")
+    foreach(instance IN ITEMS pair quad)
+        seqcells(${instance} ${instance} "${instance}: ${steps}" "${instance}\\.G${within0}"
+                 "${instance}\\.a${e13}" "${instance}\\.h${within0}" "${instance}\\.r${e13}"
+                 "${instance}\\.s${within0}")
+    endforeach()
+    seqcells(fixed fixed "fixed: ${steps}" "fixed\\.y${within0}")
+    # In float, the stencil's floats under a hundred units of the
+    # interpreter's doubles.
+    set(float --float)
+    set(units ": within [0-9.e+-]+, ([0-9](\\.[0-9])?|[1-9][0-9]) units of a float${about}")
+    seqcells(heat floated "heat: 100 steps from 0 in float, against exact values until 0 and inexact ones from there"
+             "heat\\.a${units}" "heat\\.b${units}")
+    return()
+endif()
+
 # The cases run as four tests of about equal time under the sanitizers: PART
 # 1 up to charpoly's refusal, 2 from it, 3 from eig's, 4 from the frequency
 # response's, and all where PART is not given.
@@ -2746,6 +2907,86 @@ far(A, B) = sum_(j=1)^3 sum_(k=1)^3 abs(A[j,k] - B[j,k])
 set(args --check walked.ink)
 set(stdout "walked.ink: 8 answers, each as recorded\n")
 check(compile_series_values)
+
+# A sequence with parameters walked (DESIGN.md, next in line): the values of
+# compile/seqcells.ink's instances, by fractions, and by the eigenvalues'
+# closed forms at 40 digits, rho and abscissa held within 1e-14, the
+# interpreter's bisection within a unit or two of a double of them; which
+# --check then holds the walk to, once built.
+file(COPY "${CMAKE_CURRENT_LIST_DIR}/compile/seqcells.ink" DESTINATION "${OUT}")
+file(WRITE "${OUT}/seqvalues.ink" [[
+>> use seqcells
+use seqcells
+
+>> seqcells.heat.a_7 == [13/64; 45/128; 69/128; 21/32; 21/32; 69/128; 45/128; 13/64]
+~1
+
+>> abs(seqcells.rim.e_5 - 0.6222098214285714) < 10^-15
+~1
+
+>> seqcells.sens.g_5 == 0.6005859375
+1
+
+>> seqcells.sens.g_7 == 0.5572509765625
+1
+
+>> seqcells.sens.v_9 == [1/64; 3/32; 15/64; 5/16; 15/64; 3/32; 1/64; 0]
+1
+
+>> seqcells.idx.a_5 == 1.95703125
+~1
+
+>> frac seqcells.idx.e_3
+43/24
+
+>> abs(seqcells.pair.r_10 - 1.36113914953808546422) < 10^-14
+~1
+
+>> abs(seqcells.pair.a_10 + 1.0088608504619146423) < 10^-14
+~1
+
+>> abs(seqcells.pair.r_30 - 0.65513357416636801517) < 10^-14
+~1
+
+>> abs(seqcells.pair.a_30 + 0.5850000000000000199) < 10^-14
+~1
+
+>> abs(seqcells.pair.r_95 - 1.65140006983239379240) < 10^-14
+~1
+
+>> abs(seqcells.pair.a_95 - 1.65140006983239379240) < 10^-14
+~1
+
+>> [seqcells.pair.h_49, seqcells.pair.h_50, seqcells.pair.s_16, seqcells.pair.s_17, seqcells.pair.s_82, seqcells.pair.s_83] == [1, 0, 0, 1, 1, 0]
+~1
+
+>> abs(seqcells.quad.r_10 - 1.36113914953808546422) < 10^-14
+~1
+
+>> abs(seqcells.quad.a_10 - 0.72833333333333335109) < 10^-14
+~1
+
+>> abs(seqcells.quad.r_30 - 1.12249721603218241963) < 10^-14
+~1
+
+>> abs(seqcells.quad.a_30 - 0.52833333333333333999) < 10^-14
+~1
+
+>> abs(seqcells.quad.r_50 - 0.99666109251507020649) < 10^-14
+~1
+
+>> abs(seqcells.quad.a_50 - 0.32833333333333333322) < 10^-14
+~1
+
+>> [seqcells.quad.h_70, seqcells.quad.s_49, seqcells.quad.s_50, seqcells.quad.s_82, seqcells.quad.s_83] == [0, 0, 1, 1, 0]
+~1
+
+>> abs(seqcells.fixed.y_5[1] - 10/7) + abs(seqcells.fixed.y_5[2] - 4) < 10^-9
+~1
+]])
+set(args --check seqvalues.ink)
+set(stdout "seqvalues.ink: 23 answers, each as recorded\n")
+check(compile_seqcells_values)
 # a and b read t elsewhere than at the walking index less a constant; c and d
 # give it arguments that change as the walk does; e differentiates through it;
 # f's term reads the limit's own at its index, and g's its own with other
