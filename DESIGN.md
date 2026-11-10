@@ -14480,10 +14480,10 @@ From `MANIFESTO.md`'s open line, a compiled derivative of a limit:
     interpreter's words, "grad cannot differentiate lim bis, whose terms
     step with t at a comparison or a floor", and "sum_(q=1)" for a sum:
     where a comparison or a floor compiled in the walk's terms, a sequence
-    walked beside included, has an operand that carries a part. Not inside
-    abs, max and min, nor the prelude's functions written as C, whose guards
-    step where they are continuous (`vee`); a comparison of the index alone
-    carries none. Rejected: NaN at run time. The compiler knows where a part
+    walked beside included, has an operand that carries a part, or ilogb,
+    which steps, has an argument that does. Not inside abs, max and min, nor
+    the prelude's other functions written as C, whose guards step where they
+    are continuous (`vee`); a comparison of the index alone carries none. Rejected: NaN at run time. The compiler knows where a part
     is when it compiles a comparison, a staircase is refused so already
     (`Staircase`), and a refusal says why. It departs where the comparison
     is in a clause the walk never takes before it stops, which the
