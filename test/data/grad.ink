@@ -407,6 +407,18 @@ ab(x)_n = ab(x)_(n-1)/2 + abs(x) - max(x, 0)
 >> grad_(x = -1) lim ab(x)
 ~-2
 
+# So are the prelude's functions the header implements, whose guards
+# reduce their argument: exp walking its definition at an exact point is
+# 2e, where it was refused as a staircase (C439).
+>> ee(x)_0 = 1
+ee(x)_0 = 1
+
+>> ee(x)_n = ee(x)_(n-1)/2 + exp(x)
+ee(x)_n = ee(x)_(n-1)/2 + exp(x)
+
+>> grad_(x = 1) lim ee(x)
+~5.43656366
+
 # A partial is taken one name at a time, and a derivative is an expression
 # like any other: it can be differentiated, and defined as a function of its
 # point.
