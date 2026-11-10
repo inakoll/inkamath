@@ -87,6 +87,140 @@ function(reports name program report)
     endif()
 endfunction()
 
+# Specified, not yet built (DESIGN.md, next in line): a derivative of a
+# limit compiled. Each model of compile/limgrad.ink compiled, strict, an
+# instance of each checked to the lines its comment gives, and what stays
+# refused in its words. Skipped while a derivative of a limit is refused as
+# today, and only then.
+if(PART STREQUAL "spec_limgrad")
+    file(MAKE_DIRECTORY "${OUT}")
+    set(story "${CMAKE_CURRENT_LIST_DIR}/compile/limgrad.ink")
+    execute_process(COMMAND "${EXE}" --compile "${story}" walks -o limgrad_walks.h
+                    WORKING_DIRECTORY "${OUT}" OUTPUT_VARIABLE out ERROR_VARIABLE err
+                    RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
+    if("${out}${code}" STREQUAL "1" AND
+       "${err}" STREQUAL "inkamath: cannot compile g: a derivative of a limit, for now\n")
+        message("compile_limgrad: a derivative of a limit refused, as today")
+        return()
+    endif()
+    foreach(model IN ITEMS walks zero rooted constant beside kinks)
+        set(args --compile ${story} ${model} -o limgrad_${model}.h)
+        check(compile_limgrad_${model})
+        strict(compile_limgrad_${model} limgrad_${model}.h)
+    endforeach()
+    set(args --compile ${story} walks --float -o limgrad_float.h)
+    check(compile_limgrad_float)
+    strict(compile_limgrad_float limgrad_float.h)
+
+    # a to d step with t at a comparison or a floor, as C215 refuses them;
+    # d is t by its binary digits, which the interpreter answers 0 where it
+    # is 1; e, f and h are second derivatives, h's by a grad in the terms;
+    # m's power at the index moves.
+    file(WRITE "${OUT}/limgrad_refused.ink"
+         "a_n = grad_(t = x_n) lim bis(t)\nb_n = grad_(t = x_n) lim fl(t)\n"
+         "c_n = grad_(t = x_n) lim gd(t)\n"
+         "d_n = grad_(t = x_n) sum_(q=1) (floor(2^q*t) - 2*floor(2^(q-1)*t))/2^q\n"
+         "e_n = grad_(t = x_n)^2 lim p(t)\nf_n = grad_(s = x_n) grad_(t = s) s*lim p(t)\n"
+         "h_n = grad_(t = x_n) lim nw(t)\nk_n = grad_(t = x_n) lim tp(t)\n"
+         "m_n = grad_(y = x_n) sum_(q=0) y^q/!q\n"
+         "bis(x)_0 = [0; 1]\nbis(x)_n = bis(x)_(n-1) + (bis(x)_(n-1)[2] - bis(x)_(n-1)[1])/2*"
+         "([1; 0] - ((bis(x)_(n-1)[1] + bis(x)_(n-1)[2])/2 > x)*[1; 1])\n"
+         "fl(x)_n = floor(10^n*x)/10^n\n"
+         "gd(x)_0 = 0\ngd(x)_k | x > 1 = gd(x)_(k-1)/2 + 1\ngd(x)_k = gd(x)_(k-1)/2 + x\n"
+         "p(r)_0 = 1\np(r)_k = r*p(r)_(k-1)/4 + 1\n"
+         "nw(x)_0 = 1\nnw(x)_k = nw(x)_(k-1) - (nw(x)_(k-1)^2 - x)/grad_(v = nw(x)_(k-1)) v^2\n"
+         "tp(x)_0 = [1;; 0]\ntp(x)_k = tp(x)_(k-1)*x/2 + [1;; x]\n")
+    set(args --compile limgrad_refused.ink)
+    set(stepped ", whose terms step with t at a comparison or a floor\n")
+    set(second ": a second derivative through a limit, for now\n")
+    string(CONCAT stdout "cannot compile a: grad cannot differentiate lim bis${stepped}"
+                  "cannot compile b: grad cannot differentiate lim fl${stepped}"
+                  "cannot compile c: grad cannot differentiate lim gd${stepped}"
+                  "cannot compile d: grad cannot differentiate sum_(q=1)${stepped}"
+                  "cannot compile e${second}cannot compile f${second}cannot compile h${second}"
+                  "cannot compile k: a tensor in a limit, for now\n"
+                  "cannot compile m: a derivative of a power whose exponent is not a constant, "
+                  "for now\n")
+    set(exit 1)
+    check(compile_limgrad_refused)
+
+    if(NOT CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
+        return()
+    endif()
+    # An instance's report: its first line as given, then each line given
+    # found, and no other. A list splits at ';', which a line's estimate
+    # holds, so it is read as ','.
+    function(limgrad instance program first)
+        execute_process(COMMAND "${EXE}" --check "${story}" ${instance} ${float} -o ${program}.c
+                        WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
+                        ERROR_VARIABLE errors OUTPUT_VARIABLE errors TIMEOUT ${CASE_TIMEOUT})
+        if(NOT failed)
+            # Uncontracted, as test/CMakeLists.txt builds a check (C97).
+            execute_process(COMMAND "${CC}" -std=c11 -O2 -ffp-contract=off ${program}.c
+                                    -o ${program} -lm
+                            WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
+                            ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
+        endif()
+        if(failed)
+            message(SEND_ERROR "check_limgrad_${program}: ${program}.c not built\n${errors}")
+            return()
+        endif()
+        execute_process(COMMAND "${OUT}/${program}" WORKING_DIRECTORY "${OUT}"
+                        OUTPUT_VARIABLE report RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
+        string(REPLACE ";" "," lines "${report}")
+        string(REPLACE "\n" ";" lines "${lines}")
+        list(REMOVE_ITEM lines "")
+        list(POP_FRONT lines got)
+        list(LENGTH lines count)
+        list(LENGTH ARGN want)
+        set(bad "")
+        if(NOT code EQUAL 0 OR NOT "${got}" STREQUAL "${first}" OR NOT count EQUAL want)
+            set(bad 1)
+        endif()
+        foreach(pattern IN LISTS ARGN)
+            set(found "")
+            foreach(line IN LISTS lines)
+                if(line MATCHES "^${pattern}$")
+                    set(found 1)
+                endif()
+            endforeach()
+            if(NOT found)
+                set(bad 1)
+            endif()
+        endforeach()
+        if(bad)
+            string(REPLACE ";" "\n" patterns "${ARGN}")
+            message(SEND_ERROR "check_limgrad_${program}: exit ${code}\n${report}--- where\n"
+                               "${first}\n${patterns}")
+        endif()
+    endfunction()
+    set(float "")
+    set(steps "100 steps from 0, against exact values")
+    set(until0 "${steps} until 0 and inexact ones from there")
+    set(within0 ": within 0, the interpreter's terms about [0-9.e+-]+ from the exact ones")
+    limgrad(twowalk twowalk "twowalk: ${until0}" "twowalk\\.v${within0}"
+            "twowalk\\.g\\.a${within0}" "twowalk\\.g\\.b${within0}" "twowalk\\.r${within0}")
+    limgrad(tozero tozero "tozero: ${until0}" "tozero\\.y${within0}" "tozero\\.x${within0}")
+    limgrad(blowup blowup "blowup: ${steps}"
+            "blowup\\.y: no value compared, the step NaN where the interpreter gives none, as at 0: the derivative of r did not converge within 100 terms \\(last term ~4\\.225502e\\+29\\)")
+    limgrad(rootmix rootmix "rootmix: ${steps} until 1 and inexact ones from there"
+            "rootmix\\.y${within0}")
+    limgrad(atthird atthird "atthird: ${until0}" "atthird\\.y${within0}" "atthird\\.z${within0}")
+    limgrad(alongside alongside "alongside: ${until0}" "alongside\\.e${within0}"
+            "alongside\\.m${within0}")
+    limgrad(vee vee "vee: ${until0}" "vee\\.y${within0}" "vee\\.x${within0}" "vee\\.w${within0}"
+            "vee\\.e${within0}")
+    # In float, each part closing as the value does, on floats a unit or two
+    # apart: by its form, as compile/float.ink's reports are, each under a
+    # hundred units.
+    set(float --float)
+    set(units ": within [0-9.e+-]+, ([0-9](\\.[0-9])?|[1-9][0-9]) units of a float, the interpreter's terms about [0-9.e+-]+ from the exact ones")
+    limgrad(twowalk floated "twowalk: 100 steps from 0 in float, against exact values until 0 and inexact ones from there"
+            "twowalk\\.v${units}" "twowalk\\.g\\.a${units}" "twowalk\\.g\\.b${units}"
+            "twowalk\\.r${units}")
+    return()
+endif()
+
 # The cases run as four tests of about equal time under the sanitizers: PART
 # 1 up to charpoly's refusal, 2 from it, 3 from eig's, 4 from the frequency
 # response's, and all where PART is not given.

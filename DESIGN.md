@@ -14427,3 +14427,123 @@ LQR), whose defects are C376 to C379, 49 lines, 19,288 to 19,337 at
   evidence for MANIFESTO's clock question.
 - **`lim_n` is unusable**, `lim` being reserved, and a file name must be
   letters then digits, so `use e2e` is refused.
+
+From `MANIFESTO.md`'s open line, a compiled derivative of a limit:
+
+- **A derivative of a limit compiled.** The interpreter differentiates `lim`
+  and a sum without an upper bound by walking each value with its parts
+  (`Derivative::Limit`, `Walk`, C72); `--compile` refuses either where an
+  argument moves, "a derivative of a limit, for now" (`Converge`), so
+  Newton's root or a series has no gradient in the step.
+
+  Decided:
+  - **The refusal goes** for a first derivative, by one name or several,
+    of a single value or a matrix, at a point that moves or a constant. The
+    limit's function takes each moving argument's part beside it, `part_x`
+    beside `arg_x` as a prelude function's part does, and gives the limit's
+    part beside its value, through `part_`, an array for a matrix. A limit
+    read outside grad keeps today's function. An unbounded sum comes with
+    it: its walk is `Converge` and its term `Product` or `Broadcast` of
+    codes that carry parts, a few lines where keeping its refusal is one.
+  - **One walk per seed.** Forward mode takes a pass per cell of each name,
+    each walking the value and that cell's part, in the interpreter and in
+    the step, which calls the function once a pass, the same text for each.
+    So each cell stops where its own walk does: `twowalk.v`'s cell by b
+    3 to 6 terms before a's. Rejected: one walk of the value and every
+    part, a call per grad, which takes each cell where the slowest stops,
+    1.5e-11 to 1.9e-10 off there.
+  - **`Walk`'s coupling.** The value and each part converge by a
+    `Convergence` of their own, each its own steps in both measures. The
+    limit is the first term where all have closed. The term kept is the
+    first where all are near at once and not all closed, answered where a
+    later term is NaN or the walk runs out (`tozero`). A NaN value or part
+    ends the walk, on the term kept if there is one, else NaN. A part that
+    does not converge makes the limit NaN, value and part, where the
+    interpreter refuses the grad (`blowup`, `rootmix`), and a guard reading
+    it NaN under grad, as `Falls` has it now. The value a pass reads is its
+    own walk's: `twowalk.g.a` reads L 1.1e-11 to 9.7e-11 from what the
+    value alone stops on. Rejected: the value under grad from the
+    value-only function, shared with a read outside grad.
+  - **Reached: nothing in the step.** The value-only function answers the
+    term it stops on, or the one kept, and nothing of what is left;
+    `Convergence::Reached` moves the interpreter's value in `--check`'s
+    disturbed runs alone (`Number::inexact`), and the report's estimate
+    shows it. So with the parts: the step answers each as it stops, and the
+    oracle moves each by its own walk's remainder, as `estimate.ink`'s
+    `steep` already holds of a sum under grad.
+  - **An absent part is 0.** `Walk` compares a part a term lacks as a
+    zero, and the step writes 0.0 in its window: the same steps. Where
+    that 0 meets an infinity in the next term the step is NaN and the
+    interpreter leaves the term out (C324): C435's boundary, kept by its
+    ruling, and not pinned here.
+  - **Terms that step refused while compiling (C215)**, in the
+    interpreter's words, "grad cannot differentiate lim bis, whose terms
+    step with t at a comparison or a floor", and "sum_(q=1)" for a sum:
+    where a comparison or a floor compiled in the walk's terms, a sequence
+    walked beside included, has an operand that carries a part. Not inside
+    abs, max and min, nor the prelude's functions written as C, whose guards
+    step where they are continuous (`vee`); a comparison of the index alone
+    carries none. Rejected: NaN at run time. The compiler knows where a part
+    is when it compiles a comparison, a staircase is refused so already
+    (`Staircase`), and a refusal says why. It departs where the comparison
+    is in a clause the walk never takes before it stops, which the
+    interpreter answers and the step refuses.
+  - **Reverse mode gives way where the interpreter's does**: a term of the
+    walk that carries a node throws `Forward`, and the whole grad is forward
+    mode's (`twowalk.v`, `twowalk.g`); a limit whose arguments do not move
+    stays in reverse mode (`twowalk.r`). Rejected: the limit as a node of
+    the tape, its parts swept back, or the implicit function at its fixed
+    point. Either sums in another order than forward mode's, 1e-16 apart,
+    and the second departs from C72's rule besides.
+  - **Constant arguments fold exactly, parts too** (C432): a limit whose
+    arguments and their parts are constants is folded by the interpreter's
+    own walk, `Derivative` given their jets. Walked in doubles instead,
+    `atthird`'s parts are 2.2e-16 to 4.4e-16 off, times n.
+  - **`--float`**: the walk closes on floats a unit or two apart where the
+    value and every part are finite and each within two float units of the
+    one before, the value's step not 0 (C279); otherwise by lim's rule, as
+    in double.
+  - **Beside, matrices**: a sequence walked beside the limit carries its
+    part in its window (`alongside.e`); a limit of matrices walks each part
+    as a matrix, by its largest cell's step, as the value (`alongside.m`).
+  - **Refused, for now**: a second derivative through a limit, a Hessian,
+    a grad around a grad around one, or a grad in a differentiated limit's
+    terms, Newton's step by grad, "a second derivative through a limit, for
+    now": the walk would carry outer and cross parts, a nest's machinery
+    inside the limit's function. A tensor limit, as now. A power at the
+    index whose base moves, "a derivative of a power whose exponent is not a
+    constant, for now", as outside a limit.
+
+  Found specifying this, each a fix of its own:
+  - **`--check` refuses a limit whose terms call exp under grad.** Each of
+    its runs walks the prelude to hear its guards, and exp's compare the
+    argument that moves, which C215 takes for a step: with `ee(x)_k =
+    ee(x)_(k-1)/2 + exp(x)`, `grad_(t = ~(n/8)) lim ee(t)` is refused at
+    every step where a session answers 2e^t, and a session refuses
+    `grad_(x = 1) lim ee(x)`, exp walking its definition at an exact point.
+    Proposed: the prelude's functions the header implements are continuous
+    where their guards step, as abs, max and min are in `Derivative::Term`;
+    not ilogb, mod or ceil. It lands first; `vee.e` assumes it.
+  - **An unbounded sum's derivative ignores C215.** The refusal is in
+    `Limit` alone: `grad_(t = 1/3) sum_(q=1) (floor(2^q*t) - 2*floor(2^(q-1)
+    *t))/2^q`, t by its binary digits, is 0 where it is 1. The step refuses
+    it in the words above, which the fix would give the interpreter.
+
+  Specified in `test/compile/limgrad.ink`, its stops worked out by
+  `Convergence`'s rule over Python's doubles and fractions: each model
+  compiled, strict, `walks` in float too; each instance within 0 of the
+  interpreter in every term, `blowup` NaN where it refuses, and `twowalk`
+  in float within a hundred units; and the refusals above. `cli.cmake`'s
+  part `spec_limgrad`, skipped while the refusal reads as today. When
+  built, `compile_grad_refused`'s b compiles, `compile_hessian_refused`'s c
+  and `compile_sums_refused`'s d take the words above, and so do
+  `compile/grad.ink`'s comment, `docs/compile.md` and `MANIFESTO.md`'s
+  open line.
+
+  Cost, in lines of `compile.hpp`, about 225: the limit's function with
+  parts, its signature, each part's steps and tests, the term kept, NaN
+  and float, 110; the arguments' parts and a call per pass, 20; windows
+  and terms beside with their parts, 30; C215's refusal, 25; the constant
+  fold, 25, with 10 of `derivative.hpp`; the second derivative's refusal
+  and reverse mode giving way, 10; the sum, 5. The two fixes, some 15
+  more.
