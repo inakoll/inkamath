@@ -1198,9 +1198,9 @@ private:
         const std::string derived = called + "_d" + moving, jumped = called + "_j" + moving;
         const std::string present = called + "_m" + moving;
         if (!parts_.count(derived)) {
-            const std::size_t steps = steps_;
-            const Code        body  = inside(true);
-            if (steps_ != steps) stepping_.insert(derived);
+            const std::size_t stepped = steps_;
+            const Code        body    = inside(true);
+            if (steps_ != stepped) stepping_.insert(derived);
             // Where its part is there, 'max_ma', its clause's, as the
             // interpreter takes it, not wherever an argument's is (C388).
             if (body.moves) {
@@ -3694,7 +3694,7 @@ private:
         }
         Walked walked{name, what, names, 0, {0, 0}, &lists_.emplace_back(), &lists_.emplace_back()};
         walked.parted                                = parted;
-        const std::size_t          steps             = steps_;
+        const std::size_t          stepped           = steps_;
         Walked* const              outer_limit       = std::exchange(limit_, &walked);
         auto* const                outer_temporaries = std::exchange(temporaries_, walked.based);
         // Its names are its own: a step's t1_ is not its term before (C308).
@@ -3727,7 +3727,7 @@ private:
         nan_temporaries_ = std::move(outer_nans);
         const auto reads = std::exchange(read_parameters_, std::move(outer_reads));
         read_parameters_.insert(reads.begin(), reads.end());
-        if (parted && steps_ != steps)
+        if (parted && steps_ != stepped)
             throw Reason("grad cannot differentiate " + what + ", whose terms step with " + grad_ +
                          " at a comparison or a floor");
         if (constant && reads.empty()) return parted ? Folded(expression) : Fold(expression);
