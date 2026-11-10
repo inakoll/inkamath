@@ -14,13 +14,14 @@
 # L + a*q, reads L where a's walk stops, 1.1e-11 to 9.7e-11 from the value
 # lim s(a, b) alone answers. A grad by a vector or by two names gives way to
 # forward mode at the limit, whose terms move, as the interpreter's does; r's
-# limit does not move, so r stays in reverse mode.
+# limit does not move, so r stays in reverse mode, an ulp from forward mode's
+# at 64 of its steps.
 s(a, b)_0 = 0
 s(a, b)_k = a*s(a, b)_(k-1) + b
 walks(u_n) = {
     v_n = grad_(w = [u_n; 1 - u_n]) lim s(w[1], w[2])
     g_n = grad_(a = u_n, b = 1 - u_n) (a*lim s(a, b) + b)
-    r_n = grad_(w = [u_n, 1 - u_n]) w[1, 1]*w[1, 2]*lim s(u_n, 1/2)
+    r_n = grad_(w = [u_n, 1 - u_n]) w[1, 1]*w[1, 2]*lim s(u_n, 1/2)/3
 }
 twowalk = walks(u_n = ~(1/4 + n/400))
 
