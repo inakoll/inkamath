@@ -14457,7 +14457,8 @@ From `MANIFESTO.md`'s open line, a compiled derivative of a limit:
     limit is the first term where all close at once. The term kept is the
     first where all are near at once and not all closed, answered where a
     later term is NaN or the walk runs out (`tozero`). A NaN value or part
-    ends the walk, on the term kept if there is one, else NaN. A part that
+    ends the walk, on the term kept if there is one, else NaN, where the
+    interpreter's `Convergence` refuses it (`nanheld`, `nanout`). A part that
     does not converge makes the limit NaN, value and part, where the
     interpreter refuses the grad (`blowup`, `rootmix`), and a guard reading
     it NaN under grad, as `Falls` has it now. The value a pass reads is its

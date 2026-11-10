@@ -103,7 +103,7 @@ if(PART STREQUAL "spec_limgrad")
         message("compile_limgrad: a derivative of a limit refused, as today")
         return()
     endif()
-    foreach(model IN ITEMS walks zero rooted constant beside kinks)
+    foreach(model IN ITEMS walks zero rooted fails constant beside kinks)
         set(args --compile ${story} ${model} -o limgrad_${model}.h)
         check(compile_limgrad_${model})
         strict(compile_limgrad_${model} limgrad_${model}.h)
@@ -212,6 +212,10 @@ if(PART STREQUAL "spec_limgrad")
             "blowup\\.y: no value compared, the step NaN where the interpreter gives none, as at 0: the derivative of r did not converge within 100 terms \\(last term ~4\\.225502e\\+29\\)")
     limgrad(rootmix rootmix "rootmix: ${steps} until 1 and inexact ones from there"
             "rootmix\\.y${within0}")
+    limgrad(nanheld nanheld "nanheld: ${until0}"
+            "nanheld\\.y: within 0, the interpreter's terms about 5\\.8e-11 from the exact ones")
+    limgrad(nanout nanout "nanout: ${steps}"
+            "nanout\\.y: no value compared, the step NaN where the interpreter gives none, as at 0: the derivative of zn has no limit: a term is -?nan")
     limgrad(atthird atthird "atthird: ${until0}" "atthird\\.y${within0}" "atthird\\.z${within0}")
     limgrad(alongside alongside "alongside: ${until0}" "alongside\\.e${within0}"
             "alongside\\.m${within0}" "alongside\\.q${within0}")

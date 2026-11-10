@@ -52,6 +52,20 @@ rooted(u_n) = {
 blowup = rooted(u_n = ~0)
 rootmix = rooted(u_n = ~(mod(n, 3)/4))
 
+# 'nanheld': (x - x)*(2^k/x) is 0, and its part ~0 times -2^k/x^2, which
+# overflows from 61 at x = 10^-145: NaN where the value is not. The part
+# 2^-k is near with the value first at 34, the term kept and answered at 61,
+# its remainder 2^-34 the estimate. 'nanout', at 10^-151, overflows from 21,
+# before any term is kept: the interpreter's refusal and the step's NaN,
+# its sign the platform's.
+zn(x)_0 = x
+zn(x)_k = zn(x)_(k-1)/2 + (x - x)*(2^k/x)
+fails(u_n) = {
+    y_n = grad_(t = u_n) lim zn(t)
+}
+nanheld = fails(u_n = ~(10^-145))
+nanout = fails(u_n = ~(10^-151))
+
 # 'atthird': a limit at a constant point folds exactly, its part too: walked
 # in doubles, g3's part at 3/7 stops at 31 as exactly but 4.4e-16 from it,
 # and s's parts at [3/7; 4/7], at 32 and 28, 2.2e-16 each, times n.
