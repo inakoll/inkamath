@@ -1749,6 +1749,40 @@ set(stdout "cannot compile g: grad cannot differentiate rho yet\ncannot compile 
 set(exit 1)
 check(compile_charpoly_refused)
 
+# C443: a call of constants, or its limit, folds as the interpreter answers
+# it, before its body is compiled, which refused rho, schurcohn, hurwitz,
+# roots and h by their sequences with parameters by cells. One that reads a
+# value, which may move, is compiled, and one the interpreter refuses is
+# refused in its words.
+file(WRITE "${OUT}/c443.ink" "G(a, b) = [a, b; 0, a/2]\npair(a, b) = [a, b/4; b/8, a]\nh(q)_0 = q\nh(q)_k[j<=2] = h(q)_(k-1)[j]/2\nc = [1; 2]\nf(x) = c[1]*x\nx_n = rho(G(1/2, 1)) + n\ny_n = schurcohn(charpoly(pair(1/2, 1)))*n\nz_n = hurwitz([1; 3; 2]) - hurwitz([1; -3; 2]) + n\ne_n = eig(pair(1, 1)*pair(1, 1)')[2] + n\nu_n = h([1; 2])_3[2] + n\ng_n = grad_(t = n) t^2*abscissa(G(-1/2, 1))\nk_n = grad_(t = 1/2) G(t, t)[1,2]*n\nr_n = roots([1; -3; 2])[2] + n\nl_n = [0, 1]*lim h([1; 2]) + n\nv_n = f(4) + n\nw_n = f(3) + n\n")
+set(args --compile c443.ink -o c443.h)
+check(compile_c443)
+holds(compile_c443 c443.h "    m_->x[0] = 0.5 + (double)m_->index_;\n"
+      "    m_->y[0] = 1.0 * (double)m_->index_;\n" "    m_->z[0] = 1.0 + (double)m_->index_;\n"
+      "    m_->u[0] = 0.25 + (double)m_->index_;\n"
+      "    m_->g[0] = 2.0 * pow((double)m_->index_, 1.0) * 1.0 * -0.25;\n"
+      "    m_->k[0] = 1.0 * (double)m_->index_;\n"
+      "    m_->r[0] = 2.0 + (double)m_->index_;\n"
+      "    m_->l[0] = 5.820766091346741e-11 + (double)m_->index_;\n"
+      "    m_->v[0] = m_->c[0][0] * 4.0 + (double)m_->index_;\n"
+      "    m_->w[0] = m_->c[0][0] * 3.0 + (double)m_->index_;\n")
+file(WRITE "${OUT}/c443m.ink" "m(a = 1) = {\n    v = a*2\n}\ng = m(a = 3)\nf(x) = g.a*x\nw_n = f(2) + n\n")
+set(args --compile c443m.ink -o c443m.h)
+check(compile_c443_member)
+holds(compile_c443_member c443m.h "    m_->w[0] = m_->g.a * 2.0 + (double)m_->index_;\n")
+set(args --check c443.ink -o c443.c)
+check(check_c443)
+reports(check_c443 c443 "c443.ink: 100 steps from 0, against exact values until 0 and inexact ones from there
+e: within 0; the interpreter's terms about 1.4e-14 from the exact ones
+g: within 0\nk: within 0
+l: within 0; the interpreter's terms about 5.8e-11 from the exact ones
+r: within 0\nu: within 0\nv: within 0\nw: within 0\nx: within 0\ny: within 0\nz: within 0\n")
+file(WRITE "${OUT}/c443r.ink" "r_n = eig([0, 1; -1, 0])[1] + n\ns_n = rho([~1e308, ~1e308; ~1e308, ~1e308]*10) + n\n")
+set(args --compile c443r.ink)
+set(stdout "cannot compile r: eig needs a matrix whose eigenvalues are all real\ncannot compile s: rho needs finite cells, not ~inf\n")
+set(exit 1)
+check(compile_c443_refused)
+
 # check_not_transcript reads the models.ink part 1 writes.
 file(WRITE "${OUT}/models.ink" "gain(k = 2, x_n) = { y_n = k*x_n + z_n }\n")
 

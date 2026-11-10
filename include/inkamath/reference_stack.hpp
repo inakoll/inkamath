@@ -225,8 +225,8 @@ public:
     // 1 where a double was read as the rational it is, 2 where one was
     // approximated past a thousand digits, else 0.
     std::function<int(const Reference<T>&, T&)> checked;
-    // Told of each global Eval reads: grad checks the ones evaluation
-    // reaches (C313).
+    // Told of each global Eval or a cell read of a literal reads: grad checks
+    // the ones evaluation reaches (C313), and a constant call folds (C443).
     std::function<void(const Reference<T>&)> globals;
 
     [[nodiscard]] Scope<T>&       Target() const { return *target_; }
@@ -354,6 +354,7 @@ public:
         if (!dynamic_cast<const RefExpression<T>*>(&e) || FindBinding(e.Name())) return nullptr;
         const definition_type definition = FindGlobal(e.Name());
         const T*              kept       = definition ? definition->Kept() : nullptr;
+        if (kept && globals) globals(*definition);
         if (kept) Step();
         return kept;
     }

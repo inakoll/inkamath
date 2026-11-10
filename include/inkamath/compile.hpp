@@ -939,9 +939,19 @@ private:
         });
         Defaults(function, expansion);
         based.reset();
-        Code result = lag  ? Beside(name, function, expansion, *lag)
-                      : at ? Term(name, function, expansion, *at)
-                           : Memoized(name, function, expansion, outer);
+        std::optional<std::string> refused;
+        if (!lag && !outer && nans.empty())
+            if (std::optional<Code> folded = Constant(function, call, expansion, at, refused))
+                return *folded;
+        Code result;
+        try {
+            result = lag  ? Beside(name, function, expansion, *lag)
+                     : at ? Term(name, function, expansion, *at)
+                          : Memoized(name, function, expansion, outer);
+        } catch (const Reason&) {
+            if (refused) throw Undefined(*refused);
+            throw;
+        }
         // The interpreter computes an argument the function does not read, so
         // its refusal is the call's (C189).
         std::string written, nan;
@@ -954,6 +964,72 @@ private:
         for (Cell& cell : result.cells) cell = Cell("(" + nan + cell.text + ")", primary);
         result.constant.reset();
         return result;
+    }
+
+    // A call of constants, or its limit, as the interpreter answers it from
+    // their values, before its body is compiled, which may refuse what the
+    // interpreter answers: rho's sequences with parameters by cells (C443).
+    // None where it reads a value but the prelude's, or a member, which may
+    // move, or where the interpreter refuses it, which the compiled body may
+    // not, a name nothing defines an input there: 'refused' then says why.
+    std::optional<Code> Constant(const Reference<Value>&      function,
+                                 const ParametersCall<Value>& call, const Expansion& expansion,
+                                 std::optional<int> at, std::optional<std::string>& refused) {
+        for (const auto& [given, code] : expansion.values)
+            if (!code.constant || !code.part.empty() || !code.outer.empty()) return std::nullopt;
+        std::set<const Reference<Value>*> seen;
+        // Read where it is called, a function is computed from what it is given.
+        const auto still = [&](const Reference<Value>& read) {
+            const auto& clauses = read.Clauses();
+            if (clauses.empty()) return false;
+            if (read.home == &definitions_.Builtins() || !seen.insert(&read).second) return true;
+            return !clauses.front().parameters.parameters_names().empty() &&
+                   std::ranges::none_of(clauses, [](const auto& c) { return Membered(c); });
+        };
+        if (!still(function)) return std::nullopt;
+        const auto value = [](const Value& v) { return std::make_shared<ValExpression<Value>>(v); };
+        const auto& names = function.Clauses().front().parameters.parameters_names();
+        std::vector<PExpression<Value>> given;
+        for (std::size_t i = 0; i < names.size(); ++i)
+            if (i < call.parameters_expression().size() || call.parameters_dict().count(names[i]))
+                given.push_back(std::make_shared<EqualExpression<Value>>(
+                    std::make_shared<RefExpression<Value>>(names[i]),
+                    value(*expansion.values.at(names[i]).constant)));
+        const ParametersCall<Value> constants(
+            given.empty() ? nullptr
+                          : std::make_shared<MatExpression<Value>>(1, given.size(), given),
+            at ? value(Value(Number(*at))) : nullptr, call.limit());
+        bool                 moves = false;
+        std::optional<Value> folded;
+        definitions_.Apart([&] {  // nothing memoised, so that each global read is told
+            const Setting<decltype(definitions_.globals)> reading(
+                definitions_.globals,
+                [&](const Reference<Value>& read) { moves = moves || !still(read); });
+            definitions_.BeginEvaluation();
+            const typename ReferenceStack<Value>::Within within(definitions_, function.home);
+            const typename ReferenceStack<Value>::Frame  frame(definitions_);
+            if (definitions_.Global(function.Name()).get() != &function) return void(moves = true);
+            try {
+                folded = definitions_.Eval(function.Name(), constants);
+            } catch (const std::runtime_error& error) {
+                refused = error.what();
+            }
+        });
+        if (moves) refused.reset();
+        if (moves || !folded) return std::nullopt;
+        return Literal(*folded);
+    }
+    static bool Membered(const PExpression<Value>& e) {
+        return e && (dynamic_cast<const MemberExpression<Value>*>(e.get()) ||
+                     std::ranges::any_of(e->Children(), [](const auto& c) { return Membered(c); }));
+    }
+    static bool Membered(const Clause<Value>& c) {
+        const ParametersDefinition<Value>& p = c.parameters;
+        for (const PExpression<Value>& e :
+             {c.expression, p.guard(), p.rows(), p.cols(), p.slices()})
+            if (Membered(e)) return true;
+        return std::ranges::any_of(p.parameters_dict(),
+                                   [](const auto& d) { return Membered(d.second); });
     }
 
     // Within a step, or a loop that binds places alone, a sum's or a
@@ -3646,6 +3722,9 @@ private:
         for (const auto& [parameter, argument] : call.parameters_dict())
             given.values.emplace(parameter, Emit(argument));
         Defaults(sequence, given);
+        std::optional<std::string> refused;  // in the compiler's words, as before
+        if (std::optional<Code> folded = Constant(sequence, call, given, std::nullopt, refused))
+            return Answer(*folded);
         // 'arg_x': no name of the language has a '_', and no name of the
         // function's own begins so.
         Expansion inside{{}, {}, sequence.home ? sequence.home : scope_, nullptr, {}, {}};
