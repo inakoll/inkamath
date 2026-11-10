@@ -14667,8 +14667,9 @@ through a walking function:
       less a constant, f by cells now too;
     - else written out as today, where K folds to a whole constant at most
       1000 terms from the lowest base clause, and f is not by cells and
-      reaches none by cells: no clause of f, nor of a function or sequence
-      its clauses call or read, through all they call, is by cells;
+      reaches none by cells: no sequence that f's clauses read, through
+      all the functions and sequences they call or read, is by cells, a
+      function by cells such as `charpoly` being no matter;
     - else walked: f by cells, at any index; f reaching one by cells, as
       `rhou`, `abscissau` and `hurwitzt` reach `hurwitzr`; K not a
       constant; or K past 1000 terms, which was refused, "r_1001 is 1001
