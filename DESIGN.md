@@ -14493,11 +14493,12 @@ From `MANIFESTO.md`'s open line, a compiled derivative of a limit:
     walked beside included, has an operand that carries a part, or ilogb,
     which steps, has an argument that does. Not inside abs, max and min, nor
     the prelude's other functions written as C, whose guards step where they
-    are continuous (`vee`); a comparison of the index alone carries none. Rejected: NaN at run time. The compiler knows where a part
-    is when it compiles a comparison, a staircase is refused so already
-    (`Staircase`), and a refusal says why. It departs where the comparison
-    is in a clause the walk never takes before it stops, which the
-    interpreter answers and the step refuses.
+    are continuous (`vee`); a comparison of the index alone carries none.
+    Rejected: NaN at run time. The compiler knows where a part is when it
+    compiles a comparison, a staircase is refused so already (`Staircase`),
+    and a refusal says why. It departs where the comparison is in a clause
+    the walk never takes before it stops, which the interpreter answers and
+    the step refuses.
   - **Reverse mode gives way where the interpreter's does**: a term of the
     walk that carries a node throws `Forward`, and the whole grad is forward
     mode's (`twowalk.v`, `twowalk.g`); a limit whose arguments do not move
