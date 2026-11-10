@@ -14298,6 +14298,11 @@ Departures:
   its part alternating by five float units as its value alternates by
   one, so that no step closes by either rule; the spec checks no matrix
   limit in float.
+- **Reverse mode gives way where a moving argument is never read**, the
+  interpreter's terms carrying no node: with `cz(x)_0 = 1` and `cz(x)_k =
+  cz(x)_(k-1)/2 + 1`, `grad_(w = [u, 1 - u]) w[1, 1]*w[1, 2]*lim
+  cz(w[1, 1])/3` is forward mode's in the step, 5.6e-17 from the
+  interpreter's reverse mode; accepted by the review's ruling.
 
 Amended by its implementation review, each a failing test first:
 - **A step in the argument of a continuous prelude function was dropped**:
