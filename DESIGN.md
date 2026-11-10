@@ -14156,12 +14156,18 @@ Decided:
 - **C353's noise rule, on each part.** Each part is a `Convergence` in
   `Walk`, measured as the value is, so in the step each takes the value's
   rule against its own term: a step within two ulps of it is taken for 0,
-  and C279's rule applies. No instance tells this from parts measured
-  without it: a pause rounds to an ulp where a partial sum crosses a power
-  of two, which in `evens`' series under grad, its powers walked beside,
-  happens at its first terms alone, k = 3 to 7, far above the tolerance.
-  Of 18,900 points, and 40,000 near each power of two its derivative's
-  limit reaches, none stopped otherwise.
+  and C279's rule applies. In `evens`' series under grad, its powers
+  walked beside, a pause rounds to an ulp where a partial sum crosses a
+  power of two, at its first terms alone, k = 3 to 7, far above the
+  tolerance: of 18,900 points, and 40,000 near each power of two its
+  derivative's limit reaches, none stopped otherwise. Newton's root does
+  tell the two apart, C401's departure in the parts: with `ri(x)_0 = 1`
+  and `ri(x)_k = (ri(x)_(k-1) + x/ri(x)_(k-1))/2`, the value settles
+  exactly and its part alternates by an ulp, which the step takes for 0,
+  closing a term after the interpreter. `grad_(t = u) lim ri(t + 1)` at
+  u = 1/4 + n/500 is 1.1e-16 off at 2 of 100 points, at 0.392 and 0.394,
+  and answers at 5 more the interpreter refuses (C441); `lim ri(t*t + 1)`
+  is 5.6e-17 off at 0.372. Accepted by the review's ruling.
 - **Reached: nothing in the step.** The value-only function answers the
   term it stops on, or the one kept, and nothing of what is left;
   `Convergence::Reached` moves the interpreter's value in `--check`'s
