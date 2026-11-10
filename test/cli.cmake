@@ -106,7 +106,7 @@ if(PART STREQUAL "spec_seqcells")
         return()
     endif()
     foreach(model IN ITEMS stencil:heat ends:ends parts:parts walked:walked stab:stab
-                           stab4:stab4 halving:halving)
+                           stab4:stab4 fourfold:fourfold halving:halving)
         string(REPLACE ":" ";" model "${model}")
         list(GET model 1 header)
         list(GET model 0 model)
@@ -175,8 +175,8 @@ if(PART STREQUAL "spec_seqcells")
         return()
     endif()
     # An instance's report: its first line matching the first pattern, then
-    # each line given found, and no other. A list splits at ';', which a
-    # line's estimate holds, so it is read as ','.
+    # each line given found, and no other, its program exiting with exits. A
+    # list splits at ';', which a line's estimate holds, so it is read as ','.
     function(seqcells instance program first)
         execute_process(COMMAND "${EXE}" --check "${story}" ${instance} ${float} -o ${program}.c
                         WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
@@ -201,7 +201,7 @@ if(PART STREQUAL "spec_seqcells")
         list(LENGTH lines count)
         list(LENGTH ARGN want)
         set(bad "")
-        if(NOT code EQUAL 0 OR NOT "${got}" MATCHES "^${first}$" OR NOT count EQUAL want)
+        if(NOT code EQUAL exits OR NOT "${got}" MATCHES "^${first}$" OR NOT count EQUAL want)
             set(bad 1)
         endif()
         foreach(pattern IN LISTS ARGN)
@@ -222,6 +222,7 @@ if(PART STREQUAL "spec_seqcells")
         endif()
     endfunction()
     set(float "")
+    set(exits 0)
     set(steps "100 steps from 0, against exact values until 0 and inexact ones from there")
     set(about "(, the interpreter's terms about [0-9.e+-]+ from the exact ones)?")
     set(within0 ": within 0${about}")
@@ -239,6 +240,13 @@ if(PART STREQUAL "spec_seqcells")
                  "${instance}\\.s${within0}")
     endforeach()
     seqcells(fixed fixed "fixed: ${steps}" "fixed\\.y${within0}")
+    # C275's limit in the step: rho of a fourfold 1/3 bisected in doubles,
+    # 0.333386 where the interpreter's is 1/3's double, from the first step.
+    set(exits 1)
+    set(gives "where the interpreter gives ~0\\.33333333333333331")
+    set(one "(, the interpreter's term about [0-9.e+-]+ from the exact one)?")
+    seqcells(degen degen "degen: ${steps}" "degen\\.r: 0\\.33338[0-9]+ at 0, ${gives}${one}")
+    set(exits 0)
     # In float, the stencil's floats under a hundred units of the
     # interpreter's doubles.
     set(float --float)
@@ -2983,9 +2991,12 @@ use seqcells
 
 >> abs(seqcells.fixed.y_5[1] - 10/7) + abs(seqcells.fixed.y_5[2] - 4) < 10^-9
 ~1
+
+>> seqcells.degen.r_5 == ~(1/3)
+~1
 ]])
 set(args --check seqvalues.ink)
-set(stdout "seqvalues.ink: 23 answers, each as recorded\n")
+set(stdout "seqvalues.ink: 24 answers, each as recorded\n")
 check(compile_seqcells_values)
 # a and b read t elsewhere than at the walking index less a constant; c and d
 # give it arguments that change as the walk does; e differentiates through it;

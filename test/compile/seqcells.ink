@@ -134,6 +134,26 @@ stab4(x_n) = {
 }
 quad = stab4(x_n = ~((2*n - 99)/100))
 
+# 'degen': C275's limit in the step, by the owner's decision. The step's
+# rho and abscissa bisect in doubles, as compiled eig and smax do, their
+# counts reading a characteristic polynomial in doubles, where the
+# interpreter reads the doubles as the fractions they are. At x times the
+# 4x4 identity, x 1/3's double, a fourfold eigenvalue, that polynomial's
+# rounding parts the root, and the step's rho is 0.33338569110885224, by
+# Python's doubles in the prelude's order, as the interpreter's own was
+# 0.33339 before C275; the interpreter's is x, 0.33333333333333331. At
+# every step, so '--check' reports the first and exits 1:
+#
+#     degen: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     degen.r: 0.33338569110885224 at 0, where the interpreter gives ~0.33333333333333331
+#
+# the line ending with the interpreter's estimate, if any, '; the
+# interpreter's term about <e> from the exact one'.
+fourfold(x_n) = {
+    r_n = rho(x_n*[1, 0, 0, 0; 0, 1, 0, 0; 0, 0, 1, 0; 0, 0, 0, 1])
+}
+degen = fourfold(x_n = ~(1/3))
+
 # 'fixed': a limit of a sequence by cells walks its cells as a step's term
 # by cells is written, where 'j is not defined' refused it. Its limit is
 # [2x; 4], each cell halving its distance to it; the walk stops by lim's

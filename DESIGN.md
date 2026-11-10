@@ -14774,15 +14774,18 @@ through a walking function:
     interpreter's exact term, rounded once (C443); at exact arguments and
     an index that moves, the step rounds where the interpreter is exact,
     `idx.e`. In float, within units of a float, a walk being its terms.
-    **`rho` and
-    `abscissa`** are the exception: the interpreter reads their doubles
-    as the fractions they are and bisects exactly (C275), and the step
-    bisects in doubles, as `eig` and `smax` compiled already do. On the
-    spec's matrices, eigenvalues simple, within 2.7e-15; where they repeat
-    or their scales part, far off: by Python's doubles in the prelude's
-    order, a fourfold 1/3 is 0.333386, and `abscissa(-D(8))` C275's 778 for
-    -1. `--check` measures it; the header's comment on the walk says the
-    step's tests are rounded.
+  - **`rho` and `abscissa` bisect in doubles**, by the owner's decision:
+    C275's limit in the step. The interpreter reads their doubles as the
+    fractions they are and bisects exactly (C275); the step's counts read
+    a characteristic polynomial in doubles, as the interpreter's did before
+    C275 and as compiled `eig` and `smax` do already. On the spec's
+    matrices, eigenvalues simple, within 2.7e-15; where they repeat or
+    their scales part, far off, by Python's doubles in the prelude's order:
+    a fourfold 1/3 gives 0.333386, and `abscissa(-D(8))` gives 778 for -1,
+    D(n) C275's `(j == k)*~10^(j-1)`. `degen` pins the first, which
+    `--check` reports at its first step; the header's comment on the walk
+    says the step's tests are rounded. Rejected: exact tests in the step,
+    a rational arithmetic the header would carry for one function.
   - **The prelude**: `hurwitz` walks `hurwitzt` with `hurwitzr` beside it;
     `schurcohn` the same of its map; `rho` and `abscissa` walk `rhou` and
     `abscissau`, each term calling `hurwitzt`'s walk; `eig` compiles
@@ -14807,14 +14810,14 @@ through a walking function:
   and in float; `rim`, two cells of one call; `sens`, grad by a value at n
   and by a vector at 3; `idx`, the index's NaN, a constant past 1000, and
   an exact argument; `pair` and `quad`, hurwitz, schurcohn, rho and
-  abscissa of a moving 2x2 and 4x4; `fixed`, a limit by cells; and a file
-  of nine refusals. `cli.cmake`'s part `spec_seqcells`, run by
-  `cli_spec_seqcells`, compiles each model, strict, checks each instance
-  to its comment's lines and pins the walk's name and calls and the
-  stability headers' sizes, skipped while the stencil is refused as today
-  and only then; `compile_seqcells_values`, in `cli.cmake`'s part 3,
-  holds the interpreter's values to fractions and to the eigenvalues'
-  closed forms, and passes now. When built:
+  abscissa of a moving 2x2 and 4x4; `degen`, rho of a fourfold 1/3;
+  `fixed`, a limit by cells; and a file of nine refusals. `cli.cmake`'s
+  part `spec_seqcells`, run by `cli_spec_seqcells`, compiles each model,
+  strict, checks each instance to its comment's lines and pins the walk's
+  name and calls and the stability headers' sizes, skipped while the
+  stencil is refused as today and only then; `compile_seqcells_values`,
+  in `cli.cmake`'s part 3, holds the interpreter's values to fractions and
+  to the eigenvalues' closed forms, and passes now. When built:
   `compile_iterates_refused` loses a, b and u, which compile, and
   iterates.ink's comment with it; `compile_charpoly_refused` loses s and x;
   `compile_series_refused`'s a and b and `compile_sums_refused`'s e, `t`
