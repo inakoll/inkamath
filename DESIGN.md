@@ -14454,7 +14454,7 @@ From `MANIFESTO.md`'s open line, a compiled derivative of a limit:
     1.5e-11 to 1.9e-10 off there.
   - **`Walk`'s coupling.** The value and each part converge by a
     `Convergence` of their own, each its own steps in both measures. The
-    limit is the first term where all have closed. The term kept is the
+    limit is the first term where all close at once. The term kept is the
     first where all are near at once and not all closed, answered where a
     later term is NaN or the walk runs out (`tozero`). A NaN value or part
     ends the walk, on the term kept if there is one, else NaN. A part that
