@@ -11,9 +11,12 @@ every defect by its number, are in [`DESIGN.md`](DESIGN.md).
   `--compile` walks each moving argument's part beside it and answers the
   limit's part beside its value, both stopping by the interpreter's rule, by
   one name or several, of a single value or a matrix, each within 0 of the
-  interpreter where its values are doubles. A limit whose terms step with
-  the name at a comparison or a floor is refused in the interpreter's words,
-  and a second derivative through a limit for now.
+  interpreter where its values are doubles, save where C401's rule, C353's
+  step within two ulps taken for 0, closes a walk a term apart: Newton's root
+  under `grad`, its part alternating by an ulp, is 1.1e-16 off at some
+  points. A limit whose terms step with the name at a comparison or a floor
+  is refused in the interpreter's words, and a second derivative through a
+  limit for now.
 
 ### Fixed
 
