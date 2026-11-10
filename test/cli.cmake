@@ -112,8 +112,8 @@ if(PART STREQUAL "spec_limgrad")
     check(compile_limgrad_float)
     strict(compile_limgrad_float limgrad_float.h)
 
-    # a to d, g and i step with t at a comparison or a floor, as C215
-    # refuses them, g's in mod and i's in ilogb, which a session answers at
+    # a to d, g and j step with t at a comparison or a floor, as C215
+    # refuses them, g's in mod and j's in ilogb, which a session answers at
     # ~0.3 and refuses at 3/10; d is t by its binary digits, which the
     # interpreter answers 0 where it is 1; f and h are second derivatives,
     # h's by a grad in the terms. A Hessian of a limit, and a power at a
@@ -125,7 +125,7 @@ if(PART STREQUAL "spec_limgrad")
          "d_n = grad_(t = x_n) sum_(q=1) (floor(2^q*t) - 2*floor(2^(q-1)*t))/2^q\n"
          "f_n = grad_(s = x_n) grad_(t = s) s*lim p(t)\n"
          "g_n = grad_(t = x_n) lim md(t)\nh_n = grad_(t = x_n) lim nw(t)\n"
-         "i_n = grad_(t = x_n) lim lb(t)\nk_n = grad_(t = x_n) lim tp(t)\n"
+         "j_n = grad_(t = x_n) lim lb(t)\nk_n = grad_(t = x_n) lim tp(t)\n"
          "bis(x)_0 = [0; 1]\nbis(x)_n = bis(x)_(n-1) + (bis(x)_(n-1)[2] - bis(x)_(n-1)[1])/2*"
          "([1; 0] - ((bis(x)_(n-1)[1] + bis(x)_(n-1)[2])/2 > x)*[1; 1])\n"
          "fl(x)_n = floor(10^n*x)/10^n\n"
@@ -145,7 +145,7 @@ if(PART STREQUAL "spec_limgrad")
                   "cannot compile f${second}"
                   "cannot compile g: grad cannot differentiate lim md${stepped}"
                   "cannot compile h${second}"
-                  "cannot compile i: grad cannot differentiate lim lb${stepped}"
+                  "cannot compile j: grad cannot differentiate lim lb${stepped}"
                   "cannot compile k: a tensor in a limit, for now\n")
     set(exit 1)
     check(compile_limgrad_refused)
