@@ -89,7 +89,8 @@ What compiles
 | A function written as a limit | — | [`logistic.ink`](../test/compile/logistic.ink) trains a logistic regression, its `exp` a limit written in inkamath |
 | A limit inside a limit | — | [`softmax.ink`](../test/compile/softmax.ink) writes softmax and cross-entropy, `log` being Newton's method on `exp` |
 | A guard that reads a limit | where the limit's walk runs out, it does not hold, as interpreted, whatever else it reads, so the action to take in doubt is the later clause | [`fallback.ink`](../test/compile/fallback.ink), an MPC whose plan falls back to a fixed gain where projected gradient cycles |
-| A sequence with parameters read at a constant index, `f(x)_K` | written out as a sum with constant bounds is, each term below the one read a temporary of the step | [`iterates.ink`](../test/compile/iterates.ink) takes a determinant by Faddeev-LeVerrier, grad through it, and a few steps of projected gradient |
+| A sequence with parameters read at a constant index, `f(x)_K`, reaching no term by cells | written out as a sum with constant bounds is, each term below the one read a temporary of the step | [`iterates.ink`](../test/compile/iterates.ink) takes a determinant by Faddeev-LeVerrier, grad through it, and a few steps of projected gradient |
+| A sequence with parameters by cells, `u(u0, c)_k[i<=8]`, one reaching such a term, as `rho` and `abscissa` do, or one read at an index that is not a constant or past 1000 terms | a function that walks it from its lowest base clause to the index at each call, a limit's walk without its test, NaN where the interpreter has no term; `rho` and `abscissa` bisect in doubles, so they may part from the interpreter's exact bisection where eigenvalues repeat | [`seqcells.ink`](../test/compile/seqcells.ink) steps the heat equation by its stencil and tests a moving matrix's stability |
 | A sequence with parameters read at a limit's index less a constant, `t(x)_k` | walked beside the limit in its loop | [`series.ink`](../test/compile/series.ink) writes e^x and a rotation's exponential as the limits of their partial sums, as on paper |
 | A sum without an upper bound, `sum_(q=0) x^q/!q` | walked as such a limit is | [`sums.ink`](../test/compile/sums.ink) |
 | `grad` through a limit or a sum without an upper bound | the walk takes each moving argument's part beside it and answers the limit's part beside its value, the value and each part stopping by the interpreter's rule, together, once for each cell of each name, as forward mode walks it; refused, as the interpreter refuses it, where its terms step with the name at a comparison or a floor | [`limgrad.ink`](../test/compile/limgrad.ink) differentiates Newton's root, a series and a limit of matrices |
@@ -127,8 +128,11 @@ is compiled by name. Refused:
   after it, one bound in a term's index, and one a sum without an upper bound
   carries past a term.
 - For now, a nest of grads three deep or holding a grad by several names, and
-  a second derivative through a limit.
-- For now, a tensor in a limit.
+  a second derivative through a limit or a walk.
+- For now, a tensor in a limit or a walk, and a walk's index that moves with
+  grad's name.
+- A walk whose terms change size, and a sequence with no base clause that
+  reads its own terms.
 - A block that does not fill its band
   ([`blocks.ink`](../test/compile/blocks.ink)).
 - At another rate: a hold of a term not computed yet, saying to read the term

@@ -1,4 +1,4 @@
-# A sequence with parameters walked (DESIGN.md, next in line): a term read
+# A sequence with parameters walked (DESIGN.md): a term read
 # as f(args)_K, where f is by cells, reaches a sequence by cells, or K is
 # not a constant, compiles to a function of the header that walks k from
 # the lowest base clause to K with a window of the terms before, as a
@@ -119,7 +119,7 @@ idx = walked(x_n = ~(n/8))
 # and stab4's under 400,000, where written out they would be some 2.2 and
 # 4.7 MB. abscissa compiles once abscissaq's recursion, which no
 # polynomial whose first coefficient is 1 takes to its end, is NaN there
-# rather than refused (DESIGN.md, the entry's prelude). Their values, by
+# rather than refused (DESIGN.md, C444). Their values, by
 # the eigenvalues' closed forms, are held to the interpreter's by
 # cli.cmake's compile_seqcells_values.
 stab(x_n) = {

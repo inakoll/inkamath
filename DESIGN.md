@@ -14320,6 +14320,307 @@ Amended by its implementation review, each a failing test first:
 - **The continuous functions are listed once**, `Derivative::continuous`,
   which `Prelude` reads, where each header wrote them: no line net.
 
+### A sequence with parameters walked `[done]`
+
+For 2.4.0, by the owner's decision, sequences with parameters compiled
+through a walking function. `--compile` writes `f(x)_K` out term by term
+where K is a constant (*A sequence with parameters read at a constant
+index, compiled*), and refuses it elsewhere: at an index that is not a
+constant, "a sequence with parameters read at an index that is not a
+constant", and by cells at any index, "a sequence with parameters by
+cells, for now" (`Chained`, C185). So the prelude's `hurwitz`,
+`schurcohn`, `rho` and `abscissa` of a moving matrix are refused, through
+`hurwitzr(q[j<=m])_k[j<=m]`, and so is a user's stencil `u(u0, c)_k[i<=N]`
+and any read at the step's index, `q(x_n)_n`, which the interpreter
+answers. The owner's decision: such a read compiles to a function of the
+header that walks k from the base clauses to K with a window of the terms
+before, the compiled limit's machinery (`Converge`: bases, windows,
+sequences walked beside) without its closing test; cells inside each term
+written out; and a small constant index not by cells written out as today,
+so that nothing that compiles today moves.
+
+Decided:
+- **Which reads walk.** A read `f(args)_K` of a sequence with
+  parameters, wherever the step, a limit's function or a walk's compiles
+  it, is
+  - walked beside, as *A sequence with parameters read at `lim`'s walking
+    index* has it, in a limit's or a walk's terms at its walking index
+    less a constant, f by cells now too;
+  - else written out as today, where K folds to a whole constant at most
+    1000 terms from the lowest base clause, and f is not by cells and
+    reaches none by cells: no sequence that f's clauses read, through
+    all the functions and sequences they call or read, is by cells, a
+    function by cells such as `charpoly` being no matter, and a clause
+    behind a guard that folds false, `| 1 > 2`, reading nothing;
+  - else walked: f by cells, at any index; f reaching one by cells, as
+    `rhou`, `abscissau` and `hurwitzt` reach `hurwitzr`; K not a
+    constant; or K past 1000 terms, which was refused, "r_1001 is 1001
+    terms from its base, and a step writes out at most 1000".
+
+  A read that compiles today reaches no sequence by cells, which was
+  refused, but through a clause a guard folding false leaves unread,
+  which the reach does not count; so none moves: `folded`'s `ff(x)_k |
+  1 > 2 = gf(x)_k[1]`, gf by cells, keeps ff_3 written out, its header
+  pinned. `eig`'s `eigu(A, i)_256`
+  reaches none, and stays written out. A sequence that reaches one by
+  cells is the threshold the owner asked to weigh for rho. Measured with
+  a copy of the prelude's chain, `hurwitzr` replaced by a function by
+  cells so that all of it writes out today, compiled at a moving matrix
+  and stepped by GCC 13 at -O2:
+  `rho` written out is 1.1 MB of header, 8.0 s to build and 7.3 µs a
+  step at 2x2, 2.4 MB, 16 s and 20 µs at 4x4, and 4.2 MB, 25 s and 38 µs
+  at 6x6, for each call; one term of `rhou` is 3.2, 7.1 and 20 KB, and
+  rho written out to one term 13, 31 and 66 KB, so walked it is some 16,
+  38 and 86 KB, a fiftieth to a seventieth. `eig`, written out today, is 1.7 MB and 14 s
+  at 2x2 and 5.8 MB and 52 s at 4x4.
+
+  Rejected: **no third case**, every constant index not by cells written
+  out: rho at the sizes above, a bisection of 256 terms that each call
+  `hurwitzt`'s walk. **A size threshold**, a constant past N walked:
+  below 128 it moves `iterates.ink`'s Kahan header, pinned term by term,
+  and from 128 to 255 it is tuned to the prelude's 256. **Every constant
+  index walked**: the header of every model `iterates.ink` compiles
+  moves, and a term read ahead, *Recursion from the tip*, has no walk,
+  its window being behind it. **By cells at a constant index written
+  out**, `Cells` at a fixed index: two forms of one term, where the walk
+  compiles its cells at `k_` anyway.
+- **The walk's function**, `static inline double heat_walk0(const heat*
+  m_, double K_, ...)`, named once by its text as a limit's is
+  (`heat_lim0`): the index K as a double, then each argument as a limit's,
+  `arg_x` and `part_x`, a matrix's term into `out_`, a single value's
+  returned. Its term at the lowest base L is `t1_`, the window before it,
+  `t2_` and on, NaN, no clause applying there; then `for (long long k_ =
+  L + 1; k_ <= K_; ++k_)` its term by `Iterate`, a base clause past L at
+  `k_ == b`, the window moved on as a limit's, and a sequence read at k
+  less a constant walked beside with its own; the term at K answered.
+  Its arguments and what reads only them are computed before the loop,
+  as a limit's. Its comment says it walks K terms at each call.
+- **The index**: K's code where the read is, a double. The walk is NaN
+  where K is NaN, not whole, below L, or more than 10,000,000 terms past
+  it, the interpreter's fill's bound, as the interpreter refuses each,
+  "q has no clause for index -3", "an index must be a whole number, not
+  0.5", "q_20000000 is 20000000 terms from its base, and a fill stops at
+  10000000"; past the bound by the few hundred terms the interpreter's
+  recursion reaches before it fills, it answers and the step is NaN,
+  accepted. A term the walk reaches that reads below L is NaN from its
+  window, where the interpreter refuses that K: `q(x)_k = q(x)_(k-2) + 1`
+  from 0 alone is NaN at odd K and answers at even, as the interpreter.
+  A constant K is checked while compiling, in the same words. A
+  sequence with no base clause is its general clause at K, a closed
+  form, and one whose clause reads its own term is refused, "p has no
+  base clause to walk from", where the interpreter nests out of depth.
+  Departure: an index read from an input or a term, `q(1)_(N_n)`, is
+  refused by the interpreter where that value is approximated, "an index
+  must be exact, and ~2 was approximated", which a step cannot tell; the
+  step answers there, and `--check` reports it. Rejected: refusing an
+  index that reads an input, which loses a K the host sets, the gain *A
+  sequence with parameters read at a constant index* granted a loop.
+- **Walked again at each read**, by the owner's decision: a read at the
+  step's index walks n terms at step n, so a step's time grows with n,
+  where the interpreter remembers its terms. Rejected: the last walk
+  kept in the struct and continued where the next read is later, state
+  a step would carry and arguments compared bit for bit at each read,
+  for what the recurrence written as a sequence of the step,
+  `w_n = w_(n-1)/2 + 1`, does in one term.
+- **A parameter at the index**: a walked read whose K reads a parameter
+  of the model reads it from the struct at each step, as the step reads
+  every parameter, so `_update` after the host sets it changes the walk
+  (`counted`); a read written out compiles it in, as today, and says so
+  in the header's first comment, `mpc`'s "cannot change: iters.".
+- **Arguments that change as a limit walks stay refused**, on purpose:
+  `compile_series_refused`'s c and d, `t(sc(x)_(k-1))_k` and `t(k*x)_k`,
+  and `compile_sums_refused`'s c, `t(q*x_n)_q`. A read at the walking
+  index less a constant is walked beside, one walk for the limit, its
+  window carried from iterate to iterate; arguments that change as it
+  walks have no window to carry, and walking each iterate's read anew
+  is the quadratic walk *A sequence with parameters read at `lim`'s
+  walking index* rejected. Only reads that are not at the walking index
+  less a constant, `t(x)_(2*k)`, walk at each iterate.
+- **Cells**: a clause by cells, base or general, is a term of its cells
+  as the interpreter's `EvaluateTerm` makes it, each cell the chain of
+  the clauses that may give it (`CellOf`), the term written whole its
+  fallback, the index `k_`. The size is measured once, every term's the
+  same; a term whose size changes or whose bound reads the index is
+  refused, "a walk of w, whose terms change size", as a limit's. A limit
+  of a sequence by cells takes the same terms: `lim hl([x_n; 1])`,
+  refused "j is not defined", compiles.
+- **Guards**, of clauses and of cells, compiled in each term at run
+  time, as a limit's: `rhou`'s `| m > 64 and rhos(rhou(A)_(m-1))` reads
+  `k_` and `t1_`. A guarded base clause is a chain at its index.
+- **One call for one term**: a read is declared once for its function,
+  its arguments' code and K's, as a limit's call is, so `u(a, c)_n[1]`
+  and `u(a, c)_n[4]` are one call; at another index, another. Two
+  sequences that read each other walk as one, the other beside: `mb`,
+  reading `ma` at its own index, walks `ma` beside it (`forms.c`); read
+  through `ma`, which reads `mb` one back, `mb` beside would read the
+  walk's own term at its index, refused in limread's words. Rejected:
+  one walk shared by reads of one sequence at several indices, a
+  function for each set of them; reads that are a walk's own terms share
+  its window already.
+- **Under grad**, forward mode, as 2.3.0's limit: each moving argument's
+  part beside it, the term's part beside its value, the window's parts
+  walked with it, a call a pass. Reverse mode gives way to forward where
+  a walk's term carries a node, as a limit's (`Forward`). A comparison in
+  a term is differentiated as in a term written out, by the clause taken:
+  a walk is no limit, and C215 is a limit's. Refused, for now: a second
+  derivative, "a second derivative through a walk of q, for now", the
+  walk carrying outer parts as a limit would; and an index that reads a
+  moving name, "an index that moves with t, for now", which the
+  interpreter answers at an exact t where the index is flat, and refuses
+  where t is approximated or the index jumps. A tensor term, "a tensor
+  in a walk of tq, for now", as a limit's. Kept: some 12 lines on
+  `Converge`'s parts.
+- **`--check` and `--float`**: a walk's terms are the interpreter's
+  operations in its order, so at double arguments each term is within 0
+  of the interpreter's; a call of constants, index included, folds to the
+  interpreter's exact term, rounded once (C443); at exact arguments and
+  an index that moves, the step rounds where the interpreter is exact,
+  `idx.e`. In float, within units of a float, a walk being its terms.
+- **`rho` and `abscissa` bisect in doubles**, by the owner's decision:
+  C275's limit in the step. The interpreter reads their doubles as the
+  fractions they are and bisects exactly (C275); the step's counts read
+  a characteristic polynomial in doubles, as the interpreter's did before
+  C275 and as compiled `eig` and `smax` do already. On the spec's
+  matrices, eigenvalues simple, within 2.7e-15; where they repeat or
+  their scales part, far off, by Python's doubles in the prelude's order:
+  a fourfold 1/3 gives 0.333386, and `abscissa(-D(8))` gives 778 for -1,
+  D(n) C275's `(j == k)*~10^(j-1)`. `degen` pins the first, which
+  `--check` reports at its first step; the header's comment on the walk
+  says the step's tests are rounded. Rejected: exact tests in the step,
+  a rational arithmetic the header would carry for one function.
+- **The prelude**: `hurwitz` walks `hurwitzt` with `hurwitzr` beside it;
+  `schurcohn` the same of its map; `rho` and `abscissa` walk `rhou` and
+  `abscissau`, each term calling `hurwitzt`'s walk; `eig` compiles
+  already, written out. `roots` stays refused at a moving argument,
+  `rootst`'s shapes and `rootsh`'s terms that shrink. `hinf` and `dhinf`
+  reach `hurwitz` too; where they stop once it walks is not specified
+  here, and the implementation reports it.
+
+Found specifying this, a fix of its own, landed first as C444:
+- **abscissa of a moving matrix was refused by a recursion the
+  interpreter never takes to its end**: `abscissaq(p) | p[m] == 0 =
+  abscissaq(abscissat(p))` compiled down to a polynomial of no
+  coefficient, "a size must be at least 1, not 0", where only `[0]`
+  takes it there, which no characteristic polynomial is. With `f(p[j<=m])
+  = 1`, `f(p[j<=m]) | p[m] == 0 = f(t(p))` and `t(p[j<=m])[j<=m-1] =
+  p[j]`, `y_n = f([1; x_n])` is refused where the interpreter answers 1.
+  A call whose size falls below 1 in a guarded clause is NaN where it is
+  taken, as a clause the interpreter refuses wherever taken (C86).
+
+Specified in `test/compile/seqcells.ink`, its numbers by Python's
+fractions and doubles, none recorded: `heat`, the stencil at 3 and at n,
+and in float; `rim`, two cells of one call; `sens`, grad by a value at n
+and by a vector at 3; `idx`, the index's NaN, a constant past 1000, and
+an exact argument; `pair` and `quad`, hurwitz, schurcohn, rho and
+abscissa of a moving 2x2 and 4x4, x by 0.2 across every transition;
+`degen`, rho of a fourfold 1/3; `forms`, a base clause by cells, a
+window two deep, two sequences reading each other and a sequence with
+no base clause; `counted`, a parameter at the index, stepped by a host;
+`folded`, a clause behind a guard folding false; `fixed`, a limit by
+cells; and a file of nine refusals. `cli.cmake`'s part `spec_seqcells`,
+run by `cli_spec_seqcells`, compiles each model, strict, checks each
+instance to its comment's lines, these and no other, and pins the walk's
+name and calls, the stability headers' sizes and folded's lines,
+skipped while the stencil is refused as today and only then. A report
+that must hold a guard's line more, `pair`'s and `quad`'s above all,
+amends its pattern with the reason. Each instance is checked for as
+many steps as cross its transitions, 10 for pair and quad, 30 or 40
+for the others, `degen` 100: under the sanitizers a pass of the
+interpreter over all of them takes some 11.5 s, quad's 10 steps 5.8 of
+it, and a check some 6.4 passes, so the part some 75 s and with its
+compiles and builds under 100, where 100 steps of each were some 600.
+`compile_seqcells_values`,
+in `cli.cmake`'s part 3, holds the interpreter's values to fractions and
+to the eigenvalues' closed forms, and passes now. When built:
+`compile_iterates_refused` loses a, b and u, which compile, and
+iterates.ink's comment with it; `compile_charpoly_refused` loses s and x;
+`compile_series_refused`'s a and b and `compile_sums_refused`'s e, `t`
+at 2k and k+1 in a limit's terms, compile, walked at each iterate;
+`compile_hinf_refused`'s d and x move; `docs/compile.md` gains a row and
+its *Refused* list changes. No golden, expected header or check
+program moves, nor any `--compile` of `test/compile`'s files and models,
+by value or in float, which the implementation confirms.
+
+Cost, in lines of `compile.hpp`, about 150: the rule in `Call` and the
+reach of a sequence by cells, `Iterates` made general, 20; the walk's
+function, `Converge` walking to K, its bound, K's tests and the term
+answered, 35; the call, K passed and declared once, 10; terms by cells
+in `Iterate`, the whole as fallback, the size measured once, 40; the
+base at L, a guarded base, the window NaN below it and a sequence with
+no base clause, 20; a constant K in the interpreter's words, 8; a
+sequence by cells walked beside, 3; grad's parts and the three
+refusals, 12. The fix before it is its own. 21,630 lines at 5f75f5e,
+by `wc -l include/inkamath/*.hpp src/*`. Past 225 the implementation
+stops and reports.
+
+Built as specified, with the rulings above: `cli_spec_seqcells` passes as
+written but for one line of the spec, and its part is `cli.cmake`'s parts
+5 and 6, run by `cli_5` and `cli_6`, its skip gone. The refusal tests move as listed, and
+iterates.ink's and cli.cmake's comments with them; a, b and u leave
+iterates.ink's file, x and s stay in charpoly's, compiled.
+
+Departures and findings:
+- **sens's first line** was "against exact values until 0 and inexact
+  ones from there"; the interpreter's terms of g and v are exact at every
+  step, x inexact as it is, so its report is "against exact values", the
+  spec's line fixed in a commit of its own.
+- **A walk to its lowest base, K == L a constant, is that base's term**,
+  `Chained` at L, not a function: `abscissaq` of a polynomial of degree 0
+  reads `hurwitzt(q)_0`, whose general clause reads `hurwitzr(q)_(k-1)[2]`
+  of a 1x1 term, "row 2 is outside a 1x1 matrix", which the interpreter
+  never computes, as C444's recursion is never taken there.
+- **A sequence with no base clause is no function**: its general clause
+  at K, K's code bound to its index where the call is, as a term at a
+  constant index binds it, and NaN where K is not whole; refused "p has no
+  base clause to walk from" where it reaches its own term, which the
+  interpreter nests out of depth on.
+- **A parameter at the index** is told by the index reading parameters
+  alone, an instance's by its label (`plan.iters`, `dare.doublings`):
+  where the read would be written out it is compiled in as before, the
+  `Fix` that `Known` gave, and walked it is read from the struct; an index
+  reading a parameter and n, `q(x)_(K + n)`, is walked from the struct.
+- **The reach** looks a name up through the function's scope and its
+  parents, and a guard folds false where it reads no name and the
+  interpreter evaluates it false.
+- **A base clause past L in a term by cells** is the term at its index,
+  as at L, at `k_ == b`. A term by cells beside a guarded clause written
+  whole is refused, "a guarded term written whole beside its cells", as a
+  step's sequence is; a guarded base past L of one not by cells stays "a
+  guarded base clause in a limit's terms", as a limit's.
+- **Term's refusal past 1000 terms goes**, "r_1001 is 1001 terms from its
+  base, and a step writes out at most 1000": every such read walks now.
+- **hinf and dhinf stop at `hinfl`'s `hinfo(u, m)`**, "a matrix whose
+  size is not a constant": hinfo is by cells, its bound reading its
+  parameter m, and is written as a function of the header whose m is a
+  double, as `y_n = hinfo(x_n, 1)` alone is refused at 496e8ec too. Not
+  changed here; `compile_hinf_refused` holds the new words.
+- **The part is two of cli.cmake's**, 5 and 6, `cli_5` and `cli_6`, quad's
+  and degen's checks in 6, rather than moved into parts 1 to 4, which it
+  would take past their 240 s under the sanitizers: there, alone, the
+  part took 326 s, quad's check 114 s and stab4's compile 60, so
+  171 s and 155 s now. The spec's estimate counted the interpreter's
+  passes; the compiles are most of it.
+- **Whether a value walks is asked once**, a commit of its own before
+  this: `Invariant` read every value's text again with that of every
+  temporary before the loop it reached, so a walk's iterate of many
+  temporaries compiled in their square, stab4 in 11.4 s and fourfold in
+  6.2, 1.4 and 0.7 now; each value's answer is kept, and each temporary
+  before the loop is told once whether it walks, as one bound to an
+  argument walked beside may. No header moves. 16 lines of `compile.hpp`,
+  4 of comment.
+
+No golden, expected header or check program moves, nor any of the 736
+`--compile` runs of `test/compile`'s files and models, plain and in float,
+but seqcells.ink's own. In 180 lines of `compile.hpp`, 22 of comment,
+21,647 to 21,827 by `wc -l include/inkamath/*.hpp src/*`, 196 with the
+commit before: `Call`'s rule 23 and `Iterates` 15, against 20; `Converge`
+walking to K, its bound, test and answer, the window NaN below L, the call
+and the refusals' words, 50, against 35, 10, 12 and part of 20; `Iterate`'s
+terms by cells 24, `Chained`'s term by cells at an index 17 and `Cells` by
+the clauses that fit 6, against 40 and 3; `Walking`, the base at L, the
+constant K's refusals and the closed form, 48, against 8 and the rest of
+20; the walks' names 1; Term's refusal less 4.
+
 ## Next in line
 
 After phase 14's step 2, with the exact target deferred: the small fixes
@@ -14639,236 +14940,3 @@ From the review of a compiled derivative of a limit:
 - **A float part that closes (C442)**: scale a part's near-test to the
   noise of the value driving it, and allow a value step of 0 where a part
   steps.
-
-For 2.4.0, by the owner's decision, sequences with parameters compiled
-through a walking function:
-
-- **A sequence with parameters walked.** `--compile` writes `f(x)_K` out
-  term by term where K is a constant (*A sequence with parameters read at
-  a constant index, compiled*), and refuses it elsewhere: at an index that
-  is not a constant, "a sequence with parameters read at an index that is
-  not a constant", and by cells at any index, "a sequence with parameters
-  by cells, for now" (`Chained`, C185). So the prelude's `hurwitz`,
-  `schurcohn`, `rho` and `abscissa` of a moving matrix are refused, through
-  `hurwitzr(q[j<=m])_k[j<=m]`, and so is a user's stencil `u(u0, c)_k[i<=N]`
-  and any read at the step's index, `q(x_n)_n`, which the interpreter
-  answers. The owner's decision: such a read compiles to a function of the
-  header that walks k from the base clauses to K with a window of the
-  terms before, the compiled limit's machinery (`Converge`: bases,
-  windows, sequences walked beside) without its closing test; cells inside
-  each term written out; and a small constant index not by cells written
-  out as today, so that nothing that compiles today moves.
-
-  Decided:
-  - **Which reads walk.** A read `f(args)_K` of a sequence with
-    parameters, wherever the step, a limit's function or a walk's compiles
-    it, is
-    - walked beside, as *A sequence with parameters read at `lim`'s walking
-      index* has it, in a limit's or a walk's terms at its walking index
-      less a constant, f by cells now too;
-    - else written out as today, where K folds to a whole constant at most
-      1000 terms from the lowest base clause, and f is not by cells and
-      reaches none by cells: no sequence that f's clauses read, through
-      all the functions and sequences they call or read, is by cells, a
-      function by cells such as `charpoly` being no matter, and a clause
-      behind a guard that folds false, `| 1 > 2`, reading nothing;
-    - else walked: f by cells, at any index; f reaching one by cells, as
-      `rhou`, `abscissau` and `hurwitzt` reach `hurwitzr`; K not a
-      constant; or K past 1000 terms, which was refused, "r_1001 is 1001
-      terms from its base, and a step writes out at most 1000".
-
-    A read that compiles today reaches no sequence by cells, which was
-    refused, but through a clause a guard folding false leaves unread,
-    which the reach does not count; so none moves: `folded`'s `ff(x)_k |
-    1 > 2 = gf(x)_k[1]`, gf by cells, keeps ff_3 written out, its header
-    pinned. `eig`'s `eigu(A, i)_256`
-    reaches none, and stays written out. A sequence that reaches one by
-    cells is the threshold the owner asked to weigh for rho. Measured with
-    a copy of the prelude's chain, `hurwitzr` replaced by a function by
-    cells so that all of it writes out today, compiled at a moving matrix
-    and stepped by GCC 13 at -O2:
-    `rho` written out is 1.1 MB of header, 8.0 s to build and 7.3 µs a
-    step at 2x2, 2.4 MB, 16 s and 20 µs at 4x4, and 4.2 MB, 25 s and 38 µs
-    at 6x6, for each call; one term of `rhou` is 3.2, 7.1 and 20 KB, and
-    rho written out to one term 13, 31 and 66 KB, so walked it is some 16,
-    38 and 86 KB, a fiftieth to a seventieth. `eig`, written out today, is 1.7 MB and 14 s
-    at 2x2 and 5.8 MB and 52 s at 4x4.
-
-    Rejected: **no third case**, every constant index not by cells written
-    out: rho at the sizes above, a bisection of 256 terms that each call
-    `hurwitzt`'s walk. **A size threshold**, a constant past N walked:
-    below 128 it moves `iterates.ink`'s Kahan header, pinned term by term,
-    and from 128 to 255 it is tuned to the prelude's 256. **Every constant
-    index walked**: the header of every model `iterates.ink` compiles
-    moves, and a term read ahead, *Recursion from the tip*, has no walk,
-    its window being behind it. **By cells at a constant index written
-    out**, `Cells` at a fixed index: two forms of one term, where the walk
-    compiles its cells at `k_` anyway.
-  - **The walk's function**, `static inline double heat_walk0(const heat*
-    m_, double K_, ...)`, named once by its text as a limit's is
-    (`heat_lim0`): the index K as a double, then each argument as a limit's,
-    `arg_x` and `part_x`, a matrix's term into `out_`, a single value's
-    returned. Its term at the lowest base L is `t1_`, the window before it,
-    `t2_` and on, NaN, no clause applying there; then `for (long long k_ =
-    L + 1; k_ <= K_; ++k_)` its term by `Iterate`, a base clause past L at
-    `k_ == b`, the window moved on as a limit's, and a sequence read at k
-    less a constant walked beside with its own; the term at K answered.
-    Its arguments and what reads only them are computed before the loop,
-    as a limit's. Its comment says it walks K terms at each call.
-  - **The index**: K's code where the read is, a double. The walk is NaN
-    where K is NaN, not whole, below L, or more than 10,000,000 terms past
-    it, the interpreter's fill's bound, as the interpreter refuses each,
-    "q has no clause for index -3", "an index must be a whole number, not
-    0.5", "q_20000000 is 20000000 terms from its base, and a fill stops at
-    10000000"; past the bound by the few hundred terms the interpreter's
-    recursion reaches before it fills, it answers and the step is NaN,
-    accepted. A term the walk reaches that reads below L is NaN from its
-    window, where the interpreter refuses that K: `q(x)_k = q(x)_(k-2) + 1`
-    from 0 alone is NaN at odd K and answers at even, as the interpreter.
-    A constant K is checked while compiling, in the same words. A
-    sequence with no base clause is its general clause at K, a closed
-    form, and one whose clause reads its own term is refused, "p has no
-    base clause to walk from", where the interpreter nests out of depth.
-    Departure: an index read from an input or a term, `q(1)_(N_n)`, is
-    refused by the interpreter where that value is approximated, "an index
-    must be exact, and ~2 was approximated", which a step cannot tell; the
-    step answers there, and `--check` reports it. Rejected: refusing an
-    index that reads an input, which loses a K the host sets, the gain *A
-    sequence with parameters read at a constant index* granted a loop.
-  - **Walked again at each read**, by the owner's decision: a read at the
-    step's index walks n terms at step n, so a step's time grows with n,
-    where the interpreter remembers its terms. Rejected: the last walk
-    kept in the struct and continued where the next read is later, state
-    a step would carry and arguments compared bit for bit at each read,
-    for what the recurrence written as a sequence of the step,
-    `w_n = w_(n-1)/2 + 1`, does in one term.
-  - **A parameter at the index**: a walked read whose K reads a parameter
-    of the model reads it from the struct at each step, as the step reads
-    every parameter, so `_update` after the host sets it changes the walk
-    (`counted`); a read written out compiles it in, as today, and says so
-    in the header's first comment, `mpc`'s "cannot change: iters.".
-  - **Arguments that change as a limit walks stay refused**, on purpose:
-    `compile_series_refused`'s c and d, `t(sc(x)_(k-1))_k` and `t(k*x)_k`,
-    and `compile_sums_refused`'s c, `t(q*x_n)_q`. A read at the walking
-    index less a constant is walked beside, one walk for the limit, its
-    window carried from iterate to iterate; arguments that change as it
-    walks have no window to carry, and walking each iterate's read anew
-    is the quadratic walk *A sequence with parameters read at `lim`'s
-    walking index* rejected. Only reads that are not at the walking index
-    less a constant, `t(x)_(2*k)`, walk at each iterate.
-  - **Cells**: a clause by cells, base or general, is a term of its cells
-    as the interpreter's `EvaluateTerm` makes it, each cell the chain of
-    the clauses that may give it (`CellOf`), the term written whole its
-    fallback, the index `k_`. The size is measured once, every term's the
-    same; a term whose size changes or whose bound reads the index is
-    refused, "a walk of w, whose terms change size", as a limit's. A limit
-    of a sequence by cells takes the same terms: `lim hl([x_n; 1])`,
-    refused "j is not defined", compiles.
-  - **Guards**, of clauses and of cells, compiled in each term at run
-    time, as a limit's: `rhou`'s `| m > 64 and rhos(rhou(A)_(m-1))` reads
-    `k_` and `t1_`. A guarded base clause is a chain at its index.
-  - **One call for one term**: a read is declared once for its function,
-    its arguments' code and K's, as a limit's call is, so `u(a, c)_n[1]`
-    and `u(a, c)_n[4]` are one call; at another index, another. Two
-    sequences that read each other walk as one, the other beside: `mb`,
-    reading `ma` at its own index, walks `ma` beside it (`forms.c`); read
-    through `ma`, which reads `mb` one back, `mb` beside would read the
-    walk's own term at its index, refused in limread's words. Rejected:
-    one walk shared by reads of one sequence at several indices, a
-    function for each set of them; reads that are a walk's own terms share
-    its window already.
-  - **Under grad**, forward mode, as 2.3.0's limit: each moving argument's
-    part beside it, the term's part beside its value, the window's parts
-    walked with it, a call a pass. Reverse mode gives way to forward where
-    a walk's term carries a node, as a limit's (`Forward`). A comparison in
-    a term is differentiated as in a term written out, by the clause taken:
-    a walk is no limit, and C215 is a limit's. Refused, for now: a second
-    derivative, "a second derivative through a walk of q, for now", the
-    walk carrying outer parts as a limit would; and an index that reads a
-    moving name, "an index that moves with t, for now", which the
-    interpreter answers at an exact t where the index is flat, and refuses
-    where t is approximated or the index jumps. A tensor term, "a tensor
-    in a walk of tq, for now", as a limit's. Kept: some 12 lines on
-    `Converge`'s parts.
-  - **`--check` and `--float`**: a walk's terms are the interpreter's
-    operations in its order, so at double arguments each term is within 0
-    of the interpreter's; a call of constants, index included, folds to the
-    interpreter's exact term, rounded once (C443); at exact arguments and
-    an index that moves, the step rounds where the interpreter is exact,
-    `idx.e`. In float, within units of a float, a walk being its terms.
-  - **`rho` and `abscissa` bisect in doubles**, by the owner's decision:
-    C275's limit in the step. The interpreter reads their doubles as the
-    fractions they are and bisects exactly (C275); the step's counts read
-    a characteristic polynomial in doubles, as the interpreter's did before
-    C275 and as compiled `eig` and `smax` do already. On the spec's
-    matrices, eigenvalues simple, within 2.7e-15; where they repeat or
-    their scales part, far off, by Python's doubles in the prelude's order:
-    a fourfold 1/3 gives 0.333386, and `abscissa(-D(8))` gives 778 for -1,
-    D(n) C275's `(j == k)*~10^(j-1)`. `degen` pins the first, which
-    `--check` reports at its first step; the header's comment on the walk
-    says the step's tests are rounded. Rejected: exact tests in the step,
-    a rational arithmetic the header would carry for one function.
-  - **The prelude**: `hurwitz` walks `hurwitzt` with `hurwitzr` beside it;
-    `schurcohn` the same of its map; `rho` and `abscissa` walk `rhou` and
-    `abscissau`, each term calling `hurwitzt`'s walk; `eig` compiles
-    already, written out. `roots` stays refused at a moving argument,
-    `rootst`'s shapes and `rootsh`'s terms that shrink. `hinf` and `dhinf`
-    reach `hurwitz` too; where they stop once it walks is not specified
-    here, and the implementation reports it.
-
-  Found specifying this, a fix of its own, to land first:
-  - **abscissa of a moving matrix was refused by a recursion the
-    interpreter never takes to its end**: `abscissaq(p) | p[m] == 0 =
-    abscissaq(abscissat(p))` compiled down to a polynomial of no
-    coefficient, "a size must be at least 1, not 0", where only `[0]`
-    takes it there, which no characteristic polynomial is. With `f(p[j<=m])
-    = 1`, `f(p[j<=m]) | p[m] == 0 = f(t(p))` and `t(p[j<=m])[j<=m-1] =
-    p[j]`, `y_n = f([1; x_n])` is refused where the interpreter answers 1.
-    A call whose size falls below 1 in a guarded clause is NaN where it is
-    taken, as a clause the interpreter refuses wherever taken (C86).
-
-  Specified in `test/compile/seqcells.ink`, its numbers by Python's
-  fractions and doubles, none recorded: `heat`, the stencil at 3 and at n,
-  and in float; `rim`, two cells of one call; `sens`, grad by a value at n
-  and by a vector at 3; `idx`, the index's NaN, a constant past 1000, and
-  an exact argument; `pair` and `quad`, hurwitz, schurcohn, rho and
-  abscissa of a moving 2x2 and 4x4, x by 0.2 across every transition;
-  `degen`, rho of a fourfold 1/3; `forms`, a base clause by cells, a
-  window two deep, two sequences reading each other and a sequence with
-  no base clause; `counted`, a parameter at the index, stepped by a host;
-  `folded`, a clause behind a guard folding false; `fixed`, a limit by
-  cells; and a file of nine refusals. `cli.cmake`'s part `spec_seqcells`,
-  run by `cli_spec_seqcells`, compiles each model, strict, checks each
-  instance to its comment's lines, these and no other, and pins the walk's
-  name and calls, the stability headers' sizes and folded's lines,
-  skipped while the stencil is refused as today and only then. A report
-  that must hold a guard's line more, `pair`'s and `quad`'s above all,
-  amends its pattern with the reason. Each instance is checked for as
-  many steps as cross its transitions, 10 for pair and quad, 30 or 40
-  for the others, `degen` 100: under the sanitizers a pass of the
-  interpreter over all of them takes some 11.5 s, quad's 10 steps 5.8 of
-  it, and a check some 6.4 passes, so the part some 75 s and with its
-  compiles and builds under 100, where 100 steps of each were some 600.
-  `compile_seqcells_values`,
-  in `cli.cmake`'s part 3, holds the interpreter's values to fractions and
-  to the eigenvalues' closed forms, and passes now. When built:
-  `compile_iterates_refused` loses a, b and u, which compile, and
-  iterates.ink's comment with it; `compile_charpoly_refused` loses s and x;
-  `compile_series_refused`'s a and b and `compile_sums_refused`'s e, `t`
-  at 2k and k+1 in a limit's terms, compile, walked at each iterate;
-  `compile_hinf_refused`'s d and x move; `docs/compile.md` gains a row and
-  its *Refused* list changes. No golden, expected header or check
-  program moves, nor any `--compile` of `test/compile`'s files and models,
-  by value or in float, which the implementation confirms.
-
-  Cost, in lines of `compile.hpp`, about 150: the rule in `Call` and the
-  reach of a sequence by cells, `Iterates` made general, 20; the walk's
-  function, `Converge` walking to K, its bound, K's tests and the term
-  answered, 35; the call, K passed and declared once, 10; terms by cells
-  in `Iterate`, the whole as fallback, the size measured once, 40; the
-  base at L, a guarded base, the window NaN below it and a sequence with
-  no base clause, 20; a constant K in the interpreter's words, 8; a
-  sequence by cells walked beside, 3; grad's parts and the three
-  refusals, 12. The fix before it is its own. 21,630 lines at 5f75f5e,
-  by `wc -l include/inkamath/*.hpp src/*`. Past 225 the implementation
-  stops and reports.

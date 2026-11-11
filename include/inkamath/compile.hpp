@@ -729,26 +729,45 @@ private:
     // applies.
     // At an index, as Reference::EvalImp tries them: a base clause where it
     // is written, and the general one down to the lowest base.
+    // With 'index', at the code it gives, the index of one with no base clause.
     Code Chained(const std::string& name, const Reference<Value>& definition,
-                 std::optional<int> at = std::nullopt) {
+                 std::optional<int> at = std::nullopt, const Code* index = nullptr) {
         if (IsSequence(definition) != bool(at))
             throw Reason(name + (at ? " is not a sequence" : " is a sequence; index it"));
-        const auto cells = [](const Clause<Value>& c) { return c.parameters.cells(); };
-        if (std::any_of(definition.Clauses().begin(), definition.Clauses().end(), cells)) {
-            if (at) throw Reason("a sequence with parameters by cells, for now");
-            return Cells(name, definition);
-        }
-        std::vector<std::pair<std::string, Code>> guarded;
-        std::optional<Code>                       otherwise;
-        std::set<std::string>                     asked;
-        std::string                               before;
-        const Clause<Value>* const                lowest = definition.EndBase(true);
-        const Setting<bool>                       chosen(chosen_, false);
+        const Clause<Value>* const lowest = definition.EndBase(true);
         // Each clause sees its own index alone, as Reference::Selects binds it (C186).
         using Values                           = decltype(expansion_->values);
         const auto                     unbound = at ? expansion_->values : Values();
         std::optional<Setting<Values>> restore;
         if (at) restore.emplace(expansion_->values, unbound);
+        const auto bind = [&](const ParametersDefinition<Value>& p) {
+            if (at && p.general())
+                expansion_->values.insert_or_assign(p.index_name(),
+                                                    index ? *index : Literal(Value(Number(*at))));
+        };
+        const auto cells = [](const Clause<Value>& c) { return c.parameters.cells(); };
+        if (std::any_of(definition.Clauses().begin(), definition.Clauses().end(), cells)) {
+            if (!at) return Cells(name, definition);
+            // A term as Reference::EvaluateTerm makes it: its base's, else every term's.
+            const auto base = [&](const Clause<Value>& c) {
+                return !c.parameters.general() && c.parameters.index() == *at;
+            };
+            const bool based = std::ranges::any_of(definition.Clauses(), [&](const auto& c) {
+                return base(c) && (c.parameters.cells() ? !c.parameters.row_name().empty()
+                                                        : !c.parameters.guarded());
+            });
+            if (!based && lowest && *at < lowest->parameters.index())
+                throw Reason(name + " has no clause for index " + std::to_string(*at));
+            for (const Clause<Value>& clause : definition.Clauses()) bind(clause.parameters);
+            return Cells(name, definition, [&](const Clause<Value>& c) {
+                return base(c) || (!based && c.parameters.general());
+            });
+        }
+        std::vector<std::pair<std::string, Code>> guarded;
+        std::optional<Code>                       otherwise;
+        std::set<std::string>                     asked;
+        std::string                               before;
+        const Setting<bool>                       chosen(chosen_, false);
         for (const bool guard : {true, false}) {
             for (const Clause<Value>& clause : definition.Clauses()) {
                 const ParametersDefinition<Value>& p    = clause.parameters;
@@ -758,9 +777,7 @@ private:
                     continue;
                 const Setting<Frame> own(frame_, {});
                 if (at) expansion_->values = unbound;
-                if (at && p.general())
-                    expansion_->values.insert_or_assign(p.index_name(),
-                                                        Literal(Value(Number(*at))));
+                bind(p);
                 const std::optional<std::string> condition =
                     p.guarded() ? Condition(p.guard()) : std::optional<std::string>("");
                 if (p.guarded())
@@ -895,14 +912,36 @@ private:
         // At a limit's walking index less a constant, walked beside it, its
         // arguments computed before the walk.
         std::optional<int> at, lag;
-        if (call.subexpr() && limit_ && IsSequence(function) && !ByCells(function)) try {
+        if (call.subexpr() && limit_ && IsSequence(function)) try {
                 lag = Lag(call.subexpr(), name);
             } catch (const Reason&) {
             } catch (const Fix&) {
             }
-        if (call.subexpr() && !lag)
-            at = Whole(Known(call.subexpr(),
-                             "a sequence with parameters read at an index that is not a constant"));
+        // Else written out where its index is a whole constant near its base
+        // and no term by cells is reached, and otherwise walked to K
+        // (DESIGN.md, a sequence with parameters walked).
+        std::optional<Code> K;
+        if (call.subexpr() && !lag) {
+            const std::size_t stepped = steps_;
+            auto [index, reads]       = Reading(call.subexpr());
+            if (!Still(index) || steps_ != stepped)
+                throw Reason("an index that moves with " + grad_ + ", for now");
+            if (index.constant) at = Whole(index);
+            const Clause<Value>* const        lowest = function.EndBase(true);
+            std::set<const Reference<Value>*> seen;
+            std::set<std::string>             names;
+            Named(call.subexpr(), names);
+            const bool cells = ByCells(function) || Iterates(function, seen, true);
+            // Parameters alone, an instance's by its label, written out are
+            // compiled in; walked, read from the struct.
+            const auto parameter = [&](const std::string& n) {
+                return std::ranges::any_of(
+                    reads, [&](const std::string& r) { return r == n || r.ends_with("." + n); });
+            };
+            if (!cells && !at && !reads.empty() && std::ranges::all_of(names, parameter))
+                throw Fix{std::move(reads)};
+            if (cells || !at || (lowest && *at - lowest->parameters.index() > max_terms)) K = index;
+        }
         std::optional<Setting<std::vector<Temporary>*>> based;
         if (lag) based.emplace(temporaries_, limit_->based);
         ++calls_;
@@ -916,7 +955,7 @@ private:
             Code      value  = Emit(argument);
             bool      nan    = false;
             for (const Cell& c : value.cells) nan = nan || MayNan(c.text) || nans_.count(c.text);
-            if ((at || lag || calls_ != before) && !value.constant) value = SharedAll(value);
+            if ((at || lag || K || calls_ != before) && !value.constant) value = SharedAll(value);
             if (nan)
                 for (const Cell& c : nans.emplace_back(value).cells) nans_.insert(c.text);
             expansion.values.emplace(given, value);
@@ -940,12 +979,13 @@ private:
         Defaults(function, expansion);
         based.reset();
         std::optional<std::string> refused;
-        if (!lag && !outer && nans.empty())
+        if (!lag && !outer && nans.empty() && (at || !K))
             if (std::optional<Code> folded = Constant(function, call, expansion, at, refused))
                 return *folded;
         Code result;
         try {
             result = lag  ? Beside(name, function, expansion, *lag)
+                     : K  ? Walking(name, function, expansion, *K, at)
                      : at ? Term(name, function, expansion, *at)
                           : Memoized(name, function, expansion, outer);
         } catch (const Reason&) {
@@ -1155,10 +1195,6 @@ private:
         const Clause<Value>* lowest = function.EndBase(true);
         const long long      distance =
             lowest && k < computing ? static_cast<long long>(k) - lowest->parameters.index() : 0;
-        if (distance > max_terms)
-            throw Reason(name + "_" + std::to_string(k) + " is " + std::to_string(distance) +
-                         " terms from its base, and a step writes out at most " +
-                         std::to_string(max_terms));
         // Each term once for each depth it is tried at, not at each read: a
         // halving recursion reads each term with arguments of its own.
         const int stride = function.Stride();
@@ -1448,21 +1484,36 @@ private:
     // Whether a function of the prelude reads a sequence with parameters,
     // itself or through what it calls, which its function in the header
     // cannot hold: it is written where it is called, as of a matrix (C213).
-    bool Iterates(const Reference<Value>& function, std::set<const Reference<Value>*>& seen) {
+    // With 'cells', whether a function reaches a sequence by cells, through
+    // clauses but those behind a guard that folds false.
+    bool Iterates(const Reference<Value>& function, std::set<const Reference<Value>*>& seen,
+                  bool cells = false) {
         const auto reads = [&](const auto& self, const PExpression<Value>& e) -> bool {
             const auto* call = dynamic_cast<const FuncExpression<Value>*>(e.get());
-            if (call && call->m_e2()) return true;
-            const auto found =
-                call ? function.home->names.find(call->Name()) : function.home->names.end();
-            if (found != function.home->names.end() && seen.insert(found->second.get()).second &&
-                Iterates(*found->second, seen))
-                return true;
+            const Reference<Value>* found = nullptr;
+            for (const Scope<Value>* in = function.home; call && in && !found; in = in->parent)
+                if (const auto named = in->names.find(call->Name()); named != in->names.end())
+                    found = named->second.get();
+            if (call && (cells ? found && ByCells(*found) : bool(call->m_e2()))) return true;
+            if (found && seen.insert(found).second && Iterates(*found, seen, cells)) return true;
             return e && std::any_of(e->Children().begin(), e->Children().end(),
                                     [&](const PExpression<Value>& c) { return self(self, c); });
         };
+        const auto folds = [&](const Clause<Value>& c) {
+            std::set<std::string> names;
+            Named(c.parameters.guard(), names);
+            if (!cells || !c.parameters.guarded() || !names.empty()) return false;
+            EvaluationVisitor<Value> evaluator(definitions_);
+            try {
+                return !Holds(c.parameters.guard()->accept(evaluator));
+            } catch (const std::runtime_error&) {
+                return false;
+            }
+        };
         return std::any_of(
             function.Clauses().begin(), function.Clauses().end(), [&](const Clause<Value>& c) {
-                return reads(reads, c.expression) || reads(reads, c.parameters.guard());
+                return !folds(c) &&
+                       (reads(reads, c.expression) || reads(reads, c.parameters.guard()));
             });
     }
 
@@ -3563,20 +3614,27 @@ private:
     // A matrix defined by its cells, one cell at a time with its names bound to
     // the cell's place. They are constants, so the size is decided here, and a
     // guard reading only them; one reading a value that moves is tested where
-    // the cell is. Under grad it has a part where any cell has one.
-    Code Cells(const std::string& name, const Reference<Value>& definition) {
+    // the cell is. Under grad it has a part where any cell has one. A term of
+    // a sequence, from the clauses that fit.
+    using Fitting = std::function<bool(const Clause<Value>&)>;
+    Code Cells(
+        const std::string& name, const Reference<Value>& definition,
+        const Fitting& fits = [](const Clause<Value>&) { return true; }) {
         std::optional<Setting<Memo>> memo;
         if (memo_.first != temporaries_) memo.emplace(memo_, Memo{temporaries_, {}});
         std::optional<Code> whole;  // the matrix written whole, if it is
-        for (const Clause<Value>& clause : definition.Clauses())
-            if (!clause.parameters.cells()) whole = Emit(clause.expression);
-        const std::string           nan = Refused(whole);
-        const std::optional<Extent> extent =
-            Measured(name, definition, whole, [](const Clause<Value>&) { return true; });
+        for (const Clause<Value>& clause : definition.Clauses()) {
+            if (clause.parameters.cells() || !fits(clause)) continue;
+            if (clause.parameters.guarded() && IsSequence(definition))
+                throw Reason("a guarded term written whole beside its cells");
+            whole = Emit(clause.expression);
+        }
+        const std::string           nan    = Refused(whole);
+        const std::optional<Extent> extent = Measured(name, definition, whole, fits);
         if (!extent) throw Reason(name + " has no size");
         for (const Clause<Value>& clause : definition.Clauses()) {
             const ParametersDefinition<Value>& p = clause.parameters;
-            if (p.cells() && p.row_name().empty()) Named(p, *extent, name);
+            if (p.cells() && p.row_name().empty() && fits(clause)) Named(p, *extent, name);
         }
         Code                     code;
         Value                    exact(*extent);
@@ -3595,7 +3653,7 @@ private:
             const Code& given = cells.emplace_back(
                 CellOf(name, definition, static_cast<int>(c / (extent->rows * extent->cols)) + 1,
                        static_cast<int>(c / extent->cols % extent->rows) + 1,
-                       static_cast<int>(c % extent->cols) + 1, fallback));
+                       static_cast<int>(c % extent->cols) + 1, fallback, fits));
             code.cells.push_back(nan.empty()
                                      ? given.cells[0]
                                      : Cell("(" + nan + given.cells[0].text + ")", primary));
@@ -3640,15 +3698,14 @@ private:
     // A cell is the chain of the clauses that may give it, as a function's
     // (Chained), the fallback its end.
     Code CellOf(const std::string& name, const Reference<Value>& definition, int slice, int row,
-                int col, const Code& fallback) {
+                int col, const Code& fallback, const Fitting& fits) {
         std::vector<std::pair<std::string, Code>> guarded;
         std::optional<Code>                       otherwise;
         std::string                               ran, before;
         std::set<std::string>                     asked;
         const Setting<bool>                       chosen(chosen_, false);
         Walk(
-            definition, slice, row, col, [](const Clause<Value>&) { return true; },
-            [&](const Clause<Value>& clause) {
+            definition, slice, row, col, fits, [&](const Clause<Value>& clause) {
                 const Setting<Frame>               own(frame_, {});
                 const ParametersDefinition<Value>& p = clause.parameters;
                 const std::optional<std::string>   condition =
@@ -3758,20 +3815,23 @@ private:
     // arguments: a limit's, or an unbounded sum's partial sums. 'walk' sets
     // its bases and answers its term at k_; 'counted' says how many of its
     // bases the interpreter counts among its terms, a sum's first partial
-    // sum and none of a limit's.
+    // sum and none of a limit's. With 'index', a walk to it from its one
+    // base, which has no closing test (Walking).
     template <typename Terms>
     PExpression<Value> Converge(Expression<Value>* expression, const std::string& name,
                                 const std::string& what, const std::string& terms, int counted,
                                 const std::vector<std::string>&    names,
                                 const std::map<std::string, Code>& given, Expansion& inside,
-                                Terms walk) {
+                                Terms walk, const Code* index = nullptr) {
         // A limit's function fills arrays of rows and columns; under grad,
         // each moving argument's part beside it, and the limit's part beside
         // its value, walked as the interpreter's forward mode walks them.
-        bool constant = true, parted = false;
+        bool              constant = true, parted = false;
+        const std::string within = index ? what : "a limit";
         for (const auto& [parameter, code] : given) {
-            if (code.size.slices) throw Reason("a tensor in a limit, for now");
-            if (!code.outer.empty()) throw Reason("a second derivative through a limit, for now");
+            if (code.size.slices) throw Reason("a tensor in " + within + ", for now");
+            if (!code.outer.empty())
+                throw Reason("a second derivative through " + within + ", for now");
             if (!code.part.empty() && tape_) throw Forward();
             parted   = parted || !code.part.empty();
             constant = constant && code.constant && (code.part.empty() || code.part[0].constant);
@@ -3787,9 +3847,9 @@ private:
         std::map<int, Code>        bases;
         Code                       general;
         const auto                 shaped = [&](const Code& code) {
-            if (code.size.slices) throw Reason("a tensor in a limit, for now");
+            if (code.size.slices) throw Reason("a tensor in " + within + ", for now");
             if (walked.size.rows && code.size != walked.size)
-                throw Reason("a limit of " + name + ", whose terms change size");
+                throw Reason((index ? what : "a limit of " + name) + ", whose terms change size");
             walked.size = code.size;
             return code;
         };
@@ -3811,12 +3871,13 @@ private:
         nan_temporaries_ = std::move(outer_nans);
         const auto reads = std::exchange(read_parameters_, std::move(outer_reads));
         read_parameters_.insert(reads.begin(), reads.end());
-        if (parted && steps_ != stepped)
+        if (parted && steps_ != stepped && !index)
             throw Reason("grad cannot differentiate " + what + ", whose terms step with " + grad_ +
                          " at a comparison or a floor");
-        if (constant && reads.empty()) return parted ? Folded(expression) : Fold(expression);
+        if (constant && reads.empty() && !index)
+            return parted ? Folded(expression) : Fold(expression);
         const int highest = bases.empty() ? 0 : bases.rbegin()->first;
-        for (int lag = 1; lag <= walked.depth; ++lag)
+        for (int lag = 1; lag <= walked.depth && !index; ++lag)
             if (!bases.count(highest - lag + 1))
                 throw Reason("a limit whose terms read back past its base clauses");
 
@@ -3834,17 +3895,31 @@ private:
                 out += indent + to + Subscript(walked.size, c) + " = " + from(c) + ";\n";
             return out;
         };
+        const std::string L     = std::to_string(highest),
+                          bound = Double(static_cast<double>(highest) +
+                                         ReferenceStack<Value>::max_filled);
         std::string text;
-        text += "/* " + what + ", as the interpreter takes it: its " + terms + " from index " +
-                std::to_string(highest + 1 - counted) + " on, until\n * two agree within " +
-                tolerance + (scalar ? "" : " in every cell") +
-                " and so does what is left of the series, as the steps\n * shrink; NaN where "
-                "that takes more than " +
-                std::to_string(Convergence<Value>::max_terms) + " terms. */\n";
+        if (index)
+            text += "/* " + name + "_K, as the interpreter takes it: walked from " + name + "_" +
+                    L + ", each term from those\n * before, so " + (highest ? "K less " + L : "K") +
+                    " terms at each call; NaN where K "
+                    "is not a whole number from " +
+                    L + " to " + bound +
+                    ".\n * Its tests are rounded where the interpreter's "
+                    "may be exact. */\n";
+        else
+            text += "/* " + what + ", as the interpreter takes it: its " + terms + " from index " +
+                    std::to_string(highest + 1 - counted) + " on, until\n * two agree within " +
+                    tolerance + (scalar ? "" : " in every cell") +
+                    " and so does what is left of the series, as the steps\n * shrink; NaN where "
+                    "that takes more than " +
+                    std::to_string(Convergence<Value>::max_terms) + " terms. */\n";
         // Asked with ran_, a scalar's answers 1 where its walk runs out and 0
         // where not; a matrix's answers so whatever is asked.
         text += "static inline double " + function + "(const " + module_ + "* m_" +
-                (scalar ? ", int ran_" : "");
+                (index    ? ", double K_"
+                 : scalar ? ", int ran_"
+                          : "");
         std::string unused;
         for (const std::string& parameter : names)
             for (const std::string arg : {"arg_", "part_"}) {
@@ -3868,6 +3943,12 @@ private:
             for (int lag = 1; lag <= depth; ++lag) {
                 const auto  base  = bases.find(highest - lag + 1);
                 std::string value = scalar ? "0.0" : "{{0.0}}";
+                // Below a walk's base, NaN, as where no clause applies (C86).
+                if (index) {
+                    Code below = of(bases.begin()->second, p);
+                    for (Cell& cell : below.cells) cell = Atom("NAN");
+                    value = scalar ? "NAN" : "{" + Rows(below) + "}";
+                }
                 if (base != bases.end())
                     value = scalar ? of(base->second, p).cells[0].text
                                    : "{" + Rows(of(base->second, p)) + "}";
@@ -3947,121 +4028,143 @@ private:
                    "    }\n";
         };
         text += Temporaries(*walked.based, based + iterate + moved, "    ") + based;
-        const Code& last = bases.empty() ? general : bases.rbegin()->second;
-        if (!bases.empty() && std::ranges::any_of(tracks, [&](const std::string& p) {
-                const Code base = of(last, p);
-                return !base.constant || Value::Nan(*base.constant);
-            }))
-            text += nan("t1_", "    ", false);
-        for (const std::string& p : tracks) {
-            if (!scalar) text += "    double t_" + p + shape + ";\n";
-            text += "    double step_" + p + " = 0.0, before_" + p + " = 0.0, close_" + p +
-                    " = 0.0, closed_" + p + " = 0.0, kept_" + p + (scalar ? " = 0.0" : shape) +
-                    ";\n";
-        }
-        text += "    int    started_ = " + std::string(bases.empty() ? "0" : "1") +
-                ", stepped_ = 0, held_ = 0;\n";
-        text +=
-            "    for (long long k_ = " + first + "; k_ <= " +
-            std::to_string(highest - counted + static_cast<int>(Convergence<Value>::max_terms)) +
-            "; ++k_) {\n";
-        text += iterate;
-        text += nan("t_", "        ", true);
-        text += "        if (started_) {\n";
-        // A step within an ulp or two of the term may be an exact 0 rounded,
-        // and is taken for one (C353). Each against max(1, |its term|), as
-        // the interpreter measures it; and each part against its own.
-        const auto scale = [](const std::string& t) { return " / fmax(1.0, fabs(" + t + "))"; };
-        for (const std::string& p : tracks) {
-            const std::string t = "t_" + p, t1 = "t1_" + p, step = "step_" + p,
-                              close = "close_" + p, cell = t + "[i_][j_]",
-                              noise = floats ? ""
-                                             : " && d_ > 2 * DBL_EPSILON * fabs(" + cell + ")" +
-                                                   scale(cell);
-            if (scalar) {
-                text += "            " + step + " = fabs(" + t + " - " + t1 + ");\n";
-                if (!floats)
-                    text += "            if (" + step + " <= 2 * DBL_EPSILON * fabs(" + t + ")) " +
-                            step + " = 0.0;\n";
-                text += "            " + close + " = " + step + " == 0 ? 0.0 : " + step +
-                        " / fabs(" + t + ");\n";
-                text += "            " + step + " = " + step + scale(t) + ";\n";
-                continue;
-            }
-            text += "            " + step + " = 0.0;\n            " + close + " = 0.0;\n";
-            if (floats && p.empty()) text += "            int near_ = 1;\n";
-            text += "            for (int i_ = 0; i_ < " + std::to_string(walked.size.rows) +
-                    "; ++i_)\n";
-            text += "                for (int j_ = 0; j_ < " + std::to_string(walked.size.cols) +
-                    "; ++j_) {\n";
-            text += "                    const double d_ = fabs(" + cell + " - " + t1 +
-                    "[i_][j_])" + scale(cell) + ";\n";
-            text += "                    if (isnan(d_) || (d_ > " + step + noise + ")) " + step +
-                    " = d_;\n";
-            text += "                    const double r_ = d_ == 0 ? 0.0 : fabs(" + cell + " - " +
-                    t1 + "[i_][j_]) / fabs(" + cell + ");\n";
-            text += "                    if (isnan(r_) || (r_ > " + close +
-                    (floats ? "" : " && r_ > 2 * DBL_EPSILON") + ")) " + close + " = r_;\n";
-            if (floats)
-                text += "                    near_ &= d_ <= 2 * FLT_EPSILON * fabsf(" + cell + ")" +
-                        scale(cell) + " && isfinite(" + cell + ");\n";
-            text += "                }\n";
-        }
-        // A float closes on finite floats a unit or two apart (DESIGN.md, a float target),
-        // a part's too; a step of 0 is left to the rule below, which a pause does not pass (C279).
-        std::string near = "step_ > 0 && step_ <= 2 * FLT_EPSILON * fabsf(t_)" + scale("t_") +
-                           " && isfinite(t_) && stepped_";
-        if (parted)
-            near +=
-                " && step_p <= 2 * FLT_EPSILON * fabsf(t_p)" + scale("t_p") + " && isfinite(t_p)";
-        if (floats)
-            text += scalar && !parted
-                        ? "            if (" + near + ") return ran_ ? 0.0 : t_;\n"
-                        : "            if (" + (scalar ? near : "near_ && step_ > 0 && stepped_") +
-                              ") {\n" + answer("                ", "t_") + "            }\n";
-        // Within the tolerance of each cell's own size, the limit; absolute
-        // below 1, kept as the answer of a walk that never gets there. The
-        // limit where the value and its part both close, kept where both are near.
-        const auto settles = [&](const std::string& s, const std::string& b) {
-            return s + " <= " + tolerance + " && stepped_ &&\n                (!(" + b +
-                   " > 0) || (" + s + " / " + b + " < 1 &&\n                 " + s + " * (" + s +
-                   " / " + b + ") / (1 - " + s + " / " + b + ") <= " + tolerance + " &&\n" +
-                   "                 (" + s + " > 0 || " + b + " <= " + tolerance + ")))";
-        };
-        std::string closes = settles("close_", "closed_"), nears = settles("step_", "before_");
-        if (parted) {
-            closes += " &&\n                " + settles("close_p", "closed_p");
-            nears += " &&\n                " + settles("step_p", "before_p");
-        }
-        text += "            if (" + closes + ") {\n" + answer("                ", "t_");
-        text += "            }\n            if (!held_ && " + nears + ") {\n";
-        for (const std::string& p : tracks)
-            text += scalar ? "                kept_" + p + " = t_" + p + ";\n"
-                           : "                memcpy(kept_" + p + ", t_" + p + ", sizeof t_" + p +
-                                 ");\n";
-        text += "                held_ = 1;\n            }\n";
-        for (const std::string& p : tracks)
-            text += "            before_" + p + "  = step_" + p + ";\n            closed_" + p +
-                    "  = close_" + p + ";\n";
-        text += "            stepped_ = 1;\n        }\n";
-        text += "        started_ = 1;\n";
+        // The window moved on, t1_ now the term just walked.
+        std::string shift;
         for (const std::string& p : tracks)
             for (int lag = depth; lag > 1; --lag) {
                 const std::string to   = "t" + std::to_string(lag) + "_" + p,
                                   from = "t" + std::to_string(lag - 1) + "_" + p;
-                text += scalar ? "        " + to + " = " + from + ";\n"
-                               : "        memcpy(" + to + ", " + from + ", sizeof " + to + ");\n";
+                shift += scalar ? "        " + to + " = " + from + ";\n"
+                                : "        memcpy(" + to + ", " + from + ", sizeof " + to + ");\n";
             }
-        text += moved;
+        shift += moved;
         for (const std::string& p : tracks)
-            text += scalar ? "        t1_" + p + " = t_" + p + ";\n"
-                           : "        memcpy(t1_" + p + ", t_" + p + ", sizeof t_" + p + ");\n";
-        text += "    }\n";
-        text += kept("    ") + end("    ", "1.0") + "}\n\n";
-        auto [named, fresh] =
-            limit_names_.emplace(text, module_ + "_lim" + std::to_string(limits_.size()));
-        if (fresh)
-            limits_.push_back(text.replace(text.find(function), function.size(), named->second));
+            shift += scalar ? "        t1_" + p + " = t_" + p + ";\n"
+                            : "        memcpy(t1_" + p + ", t_" + p + ", sizeof t_" + p + ");\n";
+        if (index) {
+            const std::string outside = scalar ? (parted ? "        *part_ = NAN;\n" : "") +
+                                                     std::string("        return NAN;\n")
+                                               : end("        ", "0.0");
+            for (const std::string& p : tracks)
+                if (!scalar) text += "    double t_" + p + shape + ";\n";
+            text +=
+                "    if (!(K_ >= " + Double(highest) + " && K_ <= " + bound +
+                " && K_ == floor(K_))) {\n" + outside + "    }\n    for (long long k_ = " + first +
+                "; (double)k_ <= K_; ++k_) {\n" + iterate + shift + "    }\n" +
+                (scalar ? (parted ? "    *part_ = t1_p;\n" : "") + std::string("    return t1_;\n")
+                        : answer("    ", "t1_")) +
+                "}\n\n";
+        } else {
+            const Code& last = bases.empty() ? general : bases.rbegin()->second;
+            if (!bases.empty() && std::ranges::any_of(tracks, [&](const std::string& p) {
+                    const Code base = of(last, p);
+                    return !base.constant || Value::Nan(*base.constant);
+                }))
+                text += nan("t1_", "    ", false);
+            for (const std::string& p : tracks) {
+                if (!scalar) text += "    double t_" + p + shape + ";\n";
+                text += "    double step_" + p + " = 0.0, before_" + p + " = 0.0, close_" + p +
+                        " = 0.0, closed_" + p + " = 0.0, kept_" + p + (scalar ? " = 0.0" : shape) +
+                        ";\n";
+            }
+            text += "    int    started_ = " + std::string(bases.empty() ? "0" : "1") +
+                    ", stepped_ = 0, held_ = 0;\n";
+            text += "    for (long long k_ = " + first + "; k_ <= " +
+                    std::to_string(highest - counted +
+                                   static_cast<int>(Convergence<Value>::max_terms)) +
+                    "; ++k_) {\n";
+            text += iterate;
+            text += nan("t_", "        ", true);
+            text += "        if (started_) {\n";
+            // A step within an ulp or two of the term may be an exact 0 rounded,
+            // and is taken for one (C353). Each against max(1, |its term|), as
+            // the interpreter measures it; and each part against its own.
+            const auto scale = [](const std::string& t) { return " / fmax(1.0, fabs(" + t + "))"; };
+            for (const std::string& p : tracks) {
+                const std::string t = "t_" + p, t1 = "t1_" + p, step = "step_" + p,
+                                  close = "close_" + p, cell = t + "[i_][j_]",
+                                  noise = floats ? ""
+                                                 : " && d_ > 2 * DBL_EPSILON * fabs(" + cell + ")" +
+                                                       scale(cell);
+                if (scalar) {
+                    text += "            " + step + " = fabs(" + t + " - " + t1 + ");\n";
+                    if (!floats)
+                        text += "            if (" + step + " <= 2 * DBL_EPSILON * fabs(" + t +
+                                ")) " + step + " = 0.0;\n";
+                    text += "            " + close + " = " + step + " == 0 ? 0.0 : " + step +
+                            " / fabs(" + t + ");\n";
+                    text += "            " + step + " = " + step + scale(t) + ";\n";
+                    continue;
+                }
+                text += "            " + step + " = 0.0;\n            " + close + " = 0.0;\n";
+                if (floats && p.empty()) text += "            int near_ = 1;\n";
+                text += "            for (int i_ = 0; i_ < " + std::to_string(walked.size.rows) +
+                        "; ++i_)\n";
+                text += "                for (int j_ = 0; j_ < " +
+                        std::to_string(walked.size.cols) + "; ++j_) {\n";
+                text += "                    const double d_ = fabs(" + cell + " - " + t1 +
+                        "[i_][j_])" + scale(cell) + ";\n";
+                text += "                    if (isnan(d_) || (d_ > " + step + noise + ")) " +
+                        step + " = d_;\n";
+                text += "                    const double r_ = d_ == 0 ? 0.0 : fabs(" + cell +
+                        " - " + t1 + "[i_][j_]) / fabs(" + cell + ");\n";
+                text += "                    if (isnan(r_) || (r_ > " + close +
+                        (floats ? "" : " && r_ > 2 * DBL_EPSILON") + ")) " + close + " = r_;\n";
+                if (floats)
+                    text += "                    near_ &= d_ <= 2 * FLT_EPSILON * fabsf(" + cell +
+                            ")" + scale(cell) + " && isfinite(" + cell + ");\n";
+                text += "                }\n";
+            }
+            // A float closes on finite floats a unit or two apart (DESIGN.md, a float target),
+            // a part's too; a step of 0 is left to the rule below, which a pause does not pass
+            // (C279).
+            std::string near = "step_ > 0 && step_ <= 2 * FLT_EPSILON * fabsf(t_)" + scale("t_") +
+                               " && isfinite(t_) && stepped_";
+            if (parted)
+                near += " && step_p <= 2 * FLT_EPSILON * fabsf(t_p)" + scale("t_p") +
+                        " && isfinite(t_p)";
+            if (floats)
+                text += scalar && !parted
+                            ? "            if (" + near + ") return ran_ ? 0.0 : t_;\n"
+                            : "            if (" +
+                                  (scalar ? near : "near_ && step_ > 0 && stepped_") + ") {\n" +
+                                  answer("                ", "t_") + "            }\n";
+            // Within the tolerance of each cell's own size, the limit; absolute
+            // below 1, kept as the answer of a walk that never gets there. The
+            // limit where the value and its part both close, kept where both are near.
+            const auto settles = [&](const std::string& s, const std::string& b) {
+                return s + " <= " + tolerance + " && stepped_ &&\n                (!(" + b +
+                       " > 0) || (" + s + " / " + b + " < 1 &&\n                 " + s + " * (" +
+                       s + " / " + b + ") / (1 - " + s + " / " + b + ") <= " + tolerance + " &&\n" +
+                       "                 (" + s + " > 0 || " + b + " <= " + tolerance + ")))";
+            };
+            std::string closes = settles("close_", "closed_"), nears = settles("step_", "before_");
+            if (parted) {
+                closes += " &&\n                " + settles("close_p", "closed_p");
+                nears += " &&\n                " + settles("step_p", "before_p");
+            }
+            text += "            if (" + closes + ") {\n" + answer("                ", "t_");
+            text += "            }\n            if (!held_ && " + nears + ") {\n";
+            for (const std::string& p : tracks)
+                text += scalar ? "                kept_" + p + " = t_" + p + ";\n"
+                               : "                memcpy(kept_" + p + ", t_" + p + ", sizeof t_" +
+                                     p + ");\n";
+            text += "                held_ = 1;\n            }\n";
+            for (const std::string& p : tracks)
+                text += "            before_" + p + "  = step_" + p + ";\n            closed_" + p +
+                        "  = close_" + p + ";\n";
+            text += "            stepped_ = 1;\n        }\n";
+            text += "        started_ = 1;\n" + shift + "    }\n";
+            text += kept("    ") + end("    ", "1.0") + "}\n\n";
+        }
+        auto [named, fresh] = limit_names_.emplace(
+            text, module_ + (index ? "_walk" + std::to_string(walks_)
+                                   : "_lim" + std::to_string(limits_.size() - walks_)));
+        if (fresh) {
+            walks_ += index != nullptr;
+            limits_.emplace_back(named->second,
+                                 text.replace(text.find(function), function.size(), named->second));
+        }
         // NaN where its walk does not converge (C336).
         nan_functions_.insert(named->second);
 
@@ -4083,8 +4186,12 @@ private:
             if (!argument.part.empty()) arguments += pass(argument.part[0]);
             read.push_back(&argument);
         }
-        const std::string called = named->second + "(m_" + (scalar ? ", 0" : "") + arguments;
-        if (statuses_) {
+        const std::string called = named->second + "(m_" +
+                                   (index    ? ", " + index->cells[0].text
+                                    : scalar ? ", 0"
+                                             : "") +
+                                   arguments;
+        if (statuses_ && !index) {
             // A matrix's answer unread, in an array: C++ has no compound literal (C393).
             const std::string unread =
                 scalar && !parted ? "" : Declare("unread\x1f" + shape, [&](const std::string& t) {
@@ -4128,11 +4235,35 @@ private:
         const Setting<std::string>                text(index_text_, "(double)k_");
         std::vector<std::pair<std::string, Code>> guarded;
         std::optional<Code>                       otherwise;
+        // By cells, its bases at k_ == b, each as a term at its index, and
+        // every term's cells, of one size, which a bound reading k_ is not.
+        if (ByCells(sequence)) {
+            std::set<int> bases;
+            for (const Clause<Value>& clause : sequence.Clauses())
+                if (!clause.parameters.general() && clause.parameters.index() >= first)
+                    bases.insert(clause.parameters.index());
+            for (const int b : bases) {
+                const Setting<std::string> unindexed(index_, "");
+                guarded.emplace_back("k_ == " + std::to_string(b),
+                                     shaped(Chained(name, sequence, b)));
+            }
+            try {
+                otherwise = shaped(Cells(
+                    name, sequence, [](const Clause<Value>& c) { return c.parameters.general(); }));
+            } catch (const Reason& reason) {
+                if (reason.what() != std::string("a matrix whose size is not a constant")) throw;
+                throw Reason((name != limit_->name                 ? "a limit reading " + name
+                              : limit_->what.starts_with("a walk") ? limit_->what
+                                                                   : "a limit of " + name) +
+                             ", whose terms change size");
+            }
+        }
         for (const bool guard : {true, false})
             for (const Clause<Value>& clause : sequence.Clauses()) {
                 const ParametersDefinition<Value>& c    = clause.parameters;
                 const bool                         base = !c.general();
-                if (otherwise || (c.guarded() || base) != guard || (base && c.index() < first))
+                if (ByCells(sequence) || otherwise || (c.guarded() || base) != guard ||
+                    (base && c.index() < first))
                     continue;
                 if (base && c.guarded()) throw Reason("a guarded base clause in a limit's terms");
                 const Setting<std::string>       named(index_, base ? index_ : c.index_name());
@@ -4333,6 +4464,54 @@ private:
 
     static std::string Window(std::size_t b, std::size_t lag) {
         return "w" + std::to_string(b) + "_" + std::to_string(lag) + "_";
+    }
+
+    // 'f(x)_K' walked to K, where it is not written out: a function of the
+    // header that walks k from the lowest base clause to K as a limit's walks,
+    // without its closing test (DESIGN.md, a sequence with parameters walked).
+    // One with no base clause is its general clause at K, a closed form.
+    Code Walking(const std::string& name, const Reference<Value>& function, Expansion& expansion,
+                 Code K, std::optional<int> at) {
+        const Clause<Value>* const lowest = function.EndBase(true);
+        if (!lowest) {
+            if (closing_.contains(&function))
+                throw Reason(name + " has no base clause to walk from");
+            auto closing = closing_;
+            closing.insert(&function);
+            const Setting<decltype(closing_)> closed(closing_, closing);
+            K         = SharedAll(K);
+            Code term = Inside(expansion, [&] { return Chained(name, function, 0, &K); });
+            if (at) return term;
+            const std::string whole = Wrap(K.cells[0], sum);
+            for (Cell& cell : term.cells)
+                cell = Cell(whole + " == floor(" + whole + ") ? " + cell.text + " : NAN", 0);
+            term.constant.reset();
+            return term;
+        }
+        const int L = lowest->parameters.index(), max = ReferenceStack<Value>::max_filled;
+        if (at && *at < L) throw Reason(name + " has no clause for index " + std::to_string(*at));
+        if (at && *at - L > max)
+            throw Reason(name + "_" + std::to_string(*at) + " is " + std::to_string(*at - L) +
+                         " terms from its base, and a fill stops at " + std::to_string(max));
+        // Walked no further, its base: abscissa's of a polynomial of degree 0 (DESIGN.md).
+        if (at == L) return Inside(expansion, [&] { return Chained(name, function, L); });
+        const auto& names = function.Clauses().front().parameters.parameters_names();
+        Expansion   inside{{}, {}, expansion.scope, nullptr, {}, {}};
+        for (const std::string& parameter : names)
+            inside.values.emplace(parameter, Argument(parameter, expansion.values.at(parameter)));
+        inside.values.insert(expansion.values.begin(), expansion.values.end());  // the sizes
+        // Named as its clauses read it, not as the caller's key.
+        const std::string& own = function.Name();
+        Converge(
+            nullptr, own, "a walk of " + own, "", 0, names, expansion.values, inside,
+            [&](Walked& walked, std::map<int, Code>& bases, const auto& shaped) {
+                walked.first = L + 1;
+                bases[L]     = shaped(Chained(own, function, L));
+                temporaries_ = walked.iterated;
+                return Iterate(own, function, walked.first, shaped);
+            },
+            &K);
+        return code_;
     }
 
     // 't(x)_k' in a limit's terms, k its walking index less a constant: a
@@ -7664,8 +7843,7 @@ private:
             const std::size_t open = function.find('('), name = function.rfind(' ', open) + 1;
             helpers.emplace_back(function.substr(name, open - name), function);
         }
-        for (std::size_t i = 0; i < limits_.size(); ++i)
-            helpers.emplace_back(module_ + "_lim" + std::to_string(i), limits_[i]);
+        helpers.insert(helpers.end(), limits_.begin(), limits_.end());
         std::string kept, calls = out.substr(functions);
         for (auto helper = helpers.rbegin(); helper != helpers.rend(); ++helper) {
             if (!Writes(calls, helper->first)) continue;
@@ -7812,7 +7990,9 @@ private:
     std::string index_text_   = "(double)m_->index_";  // the index, as the step has it
     std::string                      module_;
     std::set<std::size_t>            inverses_;  // the sizes a helper is needed for
-    std::vector<std::string>         limits_;    // a function for each limit walked
+    std::vector<std::pair<std::string, std::string>> limits_;  // a function for each walk, by name
+    int                                              walks_ = 0;  // of those, the walks to an index
+    std::set<const Reference<Value>*>  closing_;   // closed forms being compiled at their index
     std::vector<std::string>           prelude_;   // and for each function of the prelude called
     std::map<std::string, std::string> functions_;  // their names and values
     std::vector<Hold>                  holds_;

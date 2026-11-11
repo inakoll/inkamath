@@ -89,7 +89,7 @@ set(timed "$<NOT:$<CONFIG:Debug>>")
 if(INKAMATH_SANITIZE)
     set(timed 0)
 endif()
-foreach(part 1 2 3 4)
+foreach(part 1 2 3 4 5 6)
     add_test(NAME cli_${part}
              COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=${part}
                      -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli_${part}
@@ -98,18 +98,6 @@ foreach(part 1 2 3 4)
                      -DTIMED=${timed}
                      -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
     set_tests_properties(cli_${part} PROPERTIES TIMEOUT ${cli_timeout})
-endforeach()
-# A sequence with parameters walked (DESIGN.md, next in line), specified
-# before it is built: cli.cmake's part spec_seqcells, skipped while a
-# sequence by cells is refused, as today.
-foreach(spec IN ITEMS seqcells)
-    add_test(NAME cli_spec_${spec}
-             COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=spec_${spec}
-                     -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli_spec_${spec}
-                     -DCASE_TIMEOUT=${cli_case_timeout} -DCC=${CMAKE_C_COMPILER}
-                     -DCC_ID=${CMAKE_C_COMPILER_ID} -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
-    set_tests_properties(cli_spec_${spec} PROPERTIES TIMEOUT ${cli_timeout}
-                         SKIP_REGULAR_EXPRESSION ", as today\n")
 endforeach()
 # bench's workloads, each a transcript bench/run.cmake measures, replayed so
 # that one gone stale fails here rather than at its next measure. The

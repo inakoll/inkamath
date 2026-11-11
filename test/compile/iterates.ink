@@ -232,15 +232,12 @@ lone = single(x_n = n + 1)
 
 # What stays refused, each named in 'inkamath --compile' of a file of
 #
-#     a_n = r(x_n)_n
-#     b_n = r(x_n)_1001
 #     c_n = q(x_n)_3
 #     d_n = z(x_n)_2
 #     e_n = p(x_n)_2
 #     f_n = w(x_n)_70
 #     g_n = r(x_n)_(1/2)
 #     h_n = lim nw(x_n)
-#     u_n = y(x_n)_0
 #     nw(a)_0 = a
 #     nw(a)_k = nw(a)_(k-1)/2 + r(a)_2
 #     p(x)_0 = x
@@ -251,22 +248,18 @@ lone = single(x_n = n + 1)
 #     r(x)_k = r(x)_(k-1)/2 + 1
 #     w(x)_0 = x
 #     w(x)_k = w(x/2)_(k-1)
-#     y(x)_0 = [x; 1]
-#     y(x)_k[j<=2] = x*j
 #     z(x)_0 = x
 #     z(x)_k = z(x)_k/2
 #
-# where the interpreter, given x_n = 2, answers a, b, f, h and u, refuses c
-# and g in the words the compiler takes, and runs out of depth for d and e:
+# where the interpreter, given x_n = 2, answers f and h, refuses c and g in
+# the words the compiler takes, and runs out of depth for d and e:
 #
-#     cannot compile a: a sequence with parameters read at an index that is not a constant
-#     cannot compile b: r_1001 is 1001 terms from its base, and a step writes out at most 1000
 #     cannot compile c: q has no clause for index -1
 #     cannot compile d: z is defined by itself
 #     cannot compile e: nested 64 deep, which a recursion its guards do not end would pass
 #     cannot compile f: nested 64 deep, which a recursion its guards do not end would pass
 #     cannot compile g: an index must be a whole number, not 0.5
-#     cannot compile u: a sequence with parameters by cells, for now
 #
 # on standard output, exiting 1. h compiles since a limit's function has
-# temporaries (DESIGN.md), as implicit.ink's 'inset'.
+# temporaries (DESIGN.md), as implicit.ink's 'inset'; r(x_n)_n, r(x_n)_1001
+# and y(x_n)_0, y by cells, walked (seqcells.ink), as they were refused.
