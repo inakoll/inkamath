@@ -272,7 +272,8 @@ if(PART STREQUAL "spec_seqcells")
     set(e13 ": within (0|[0-9.]+e-(1[4-9]|[2-9][0-9]|[1-9][0-9][0-9]))${about}")
     set(count 40)
     seqcells(heat heat "heat: 40 ${inexact}" "heat\\.a${within0}" "heat\\.b${within0}")
-    seqcells(sens sens "sens: 40 ${inexact}" "sens\\.g${e15}" "sens\\.v${within0}")
+    seqcells(sens sens "sens: 40 steps from 0, against exact values" "sens\\.g${e15}"
+             "sens\\.v${within0}")
     set(count 30)
     seqcells(rim rim "rim: 30 ${inexact}" "rim\\.e${within0}")
     seqcells(idx idx "idx: 30 ${inexact}" "idx\\.a${within0}" "idx\\.b${within0}"

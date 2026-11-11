@@ -52,9 +52,10 @@ rim = ends(x_n = ~(n/7))
 # and round them past, 5.6e-17 from them at most, at 37, by Python's
 # doubles in the stencil's order. v by the bump's 8 cells gives way to
 # forward mode, as a limit does, a pass a cell: row 4 of M^3, [1/64, 3/32,
-# 15/64, 5/16, 15/64, 3/32, 1/64, 0] at every n, each exact in a double.
+# 15/64, 5/16, 15/64, 3/32, 1/64, 0] at every n, each exact in a double. The
+# interpreter's terms of both are exact at every step, x inexact as it is:
 #
-#     sens: 40 steps from 0, against exact values until 0 and inexact ones from there
+#     sens: 40 steps from 0, against exact values
 #     sens.g: within <e>, under 1e-15
 #     sens.v: within 0
 parts(x_n) = {
