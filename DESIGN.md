@@ -14768,7 +14768,11 @@ through a walking function:
     `k_` and `t1_`. A guarded base clause is a chain at its index.
   - **One call for one term**: a read is declared once for its function,
     its arguments' code and K's, as a limit's call is, so `u(a, c)_n[1]`
-    and `u(a, c)_n[4]` are one call; at another index, another. Rejected:
+    and `u(a, c)_n[4]` are one call; at another index, another. Two
+    sequences that read each other walk as one, the other beside: `mb`,
+    reading `ma` at its own index, walks `ma` beside it (`forms.c`); read
+    through `ma`, which reads `mb` one back, `mb` beside would read the
+    walk's own term at its index, refused in limread's words. Rejected:
     one walk shared by reads of one sequence at several indices, a
     function for each set of them; reads that are a walk's own terms share
     its window already.
@@ -14825,23 +14829,26 @@ through a walking function:
   Specified in `test/compile/seqcells.ink`, its numbers by Python's
   fractions and doubles, none recorded: `heat`, the stencil at 3 and at n,
   and in float; `rim`, two cells of one call; `sens`, grad by a value at n
-  and by a vector at 3; `idx`, the index's NaN, a constant past 1000, and an
-  exact argument; `pair` and `quad`, hurwitz, schurcohn, rho and abscissa of
-  a moving 2x2 and 4x4, x by 0.2 across every transition; `degen`, rho of a
-  fourfold 1/3; `counted`, a parameter at the index, stepped by a host;
+  and by a vector at 3; `idx`, the index's NaN, a constant past 1000, and
+  an exact argument; `pair` and `quad`, hurwitz, schurcohn, rho and
+  abscissa of a moving 2x2 and 4x4, x by 0.2 across every transition;
+  `degen`, rho of a fourfold 1/3; `forms`, a base clause by cells, a
+  window two deep, two sequences reading each other and a sequence with
+  no base clause; `counted`, a parameter at the index, stepped by a host;
   `folded`, a clause behind a guard folding false; `fixed`, a limit by
   cells; and a file of nine refusals. `cli.cmake`'s part `spec_seqcells`,
   run by `cli_spec_seqcells`, compiles each model, strict, checks each
   instance to its comment's lines, these and no other, and pins the walk's
-  name and calls, the stability headers' sizes and folded's lines, skipped
-  while the stencil is refused as today and only then. A report that must
-  hold a guard's line more, `pair`'s and `quad`'s above all, amends its
-  pattern with the reason. Each instance is checked for as many steps as
-  cross its transitions, 10 for pair and quad, 30 or 40 for the others,
-  `degen` 100: under the sanitizers a pass of the interpreter over all of
-  them takes some 11.5 s, quad's 10 steps 5.8 of it, and a check some 6.4
-  passes, so the part some 75 s and with its compiles and builds under 100,
-  where 100 steps of each were some 600. `compile_seqcells_values`,
+  name and calls, the stability headers' sizes and folded's lines,
+  skipped while the stencil is refused as today and only then. A report
+  that must hold a guard's line more, `pair`'s and `quad`'s above all,
+  amends its pattern with the reason. Each instance is checked for as
+  many steps as cross its transitions, 10 for pair and quad, 30 or 40
+  for the others, `degen` 100: under the sanitizers a pass of the
+  interpreter over all of them takes some 11.5 s, quad's 10 steps 5.8 of
+  it, and a check some 6.4 passes, so the part some 75 s and with its
+  compiles and builds under 100, where 100 steps of each were some 600.
+  `compile_seqcells_values`,
   in `cli.cmake`'s part 3, holds the interpreter's values to fractions and
   to the eigenvalues' closed forms, and passes now. When built:
   `compile_iterates_refused` loses a, b and u, which compile, and

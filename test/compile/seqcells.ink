@@ -158,6 +158,38 @@ fourfold(x_n) = {
 }
 degen = fourfold(x_n = ~(1/3))
 
+# 'forms': the walk's other shapes, checked for 30 steps. bc's base clause
+# is by cells, as the prelude's rootsk's is, and its general clause whole:
+# bc_n is [2x - x/2^n; 2]. w2 reads two back from one base, so its window
+# is two deep and its term at odd n reads below the base, NaN where the
+# interpreter says 'w2 has no clause for index -1', and x + n/2 at even n.
+# mb reads ma at its own index and ma reads mb one back, ma walked beside
+# mb's walk: mb_n is 4x/3 + (1 - 4x/3)/4^n. cf has no base clause, its
+# general clause at n a closed form, x/2^n + n. Each in doubles in the
+# interpreter's order:
+#
+#     forms: 30 steps from 0, against exact values until 0 and inexact ones from there
+#     forms.a: within 0
+#     forms.b: within 0
+#     forms.c: within 0
+#     forms.d: within 0
+bc(v[j<=m])_0[r<=m] = r*v[r]
+bc(v)_k = bc(v)_(k-1)/2 + v
+w2(x)_0 = x
+w2(x)_k = w2(x)_(k-2) + 1
+ma(x)_0 = x
+ma(x)_k = mb(x)_(k-1)/2 + x
+mb(x)_0 = 1
+mb(x)_k = ma(x)_k - mb(x)_(k-1)/4
+cf(x)_k = x/2^k + k
+shapes(x_n) = {
+    a_n = bc([x_n; 1])_n
+    b_n = w2(x_n)_n
+    c_n = mb(x_n)_n
+    d_n = cf(x_n)_n
+}
+forms = shapes(x_n = ~(n/7))
+
 # 'counted', a model: a walked read whose index is a parameter of the
 # model reads it from the struct at each step, as the step reads every
 # parameter, so the host may change it, where a read written out compiles

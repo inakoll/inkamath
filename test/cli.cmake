@@ -106,7 +106,7 @@ if(PART STREQUAL "spec_seqcells")
         return()
     endif()
     foreach(model IN ITEMS stencil:heat ends:ends parts:parts walked:walked stab:stab
-                           stab4:stab4 fourfold:fourfold halving:halving 
+                           stab4:stab4 fourfold:fourfold halving:halving shapes:shapes
                            counted:counted folded:folded)
         string(REPLACE ":" ";" model "${model}")
         list(GET model 1 header)
@@ -277,6 +277,8 @@ if(PART STREQUAL "spec_seqcells")
     seqcells(rim rim "rim: 30 ${inexact}" "rim\\.e${within0}")
     seqcells(idx idx "idx: 30 ${inexact}" "idx\\.a${within0}" "idx\\.b${within0}"
              "idx\\.c${within0}" "idx\\.d${within0}" "idx\\.e${e15}")
+    seqcells(forms forms "forms: 30 ${inexact}" "forms\\.a${within0}" "forms\\.b${within0}"
+             "forms\\.c${within0}" "forms\\.d${within0}")
     seqcells(fixed fixed "fixed: 30 ${inexact}" "fixed\\.y${within0}")
     # These five lines and no other: guard lines the implementation must add
     # amend the pattern, with their reason.
@@ -3037,6 +3039,18 @@ use seqcells
 >> [seqcells.quad.h_6, seqcells.quad.s_4, seqcells.quad.s_5, seqcells.quad.s_7, seqcells.quad.s_8] == [0, 0, 1, 1, 0]
 ~1
 
+>> abs(seqcells.forms.a_5[1] - 315/224) + abs(seqcells.forms.a_5[2] - 2) < 10^-15
+~1
+
+>> abs(seqcells.forms.b_4 - (4/7 + 2)) < 10^-15
+~1
+
+>> abs(seqcells.forms.c_3 - 259/448) < 10^-15
+~1
+
+>> abs(seqcells.forms.d_6 - (6/7/64 + 6)) < 10^-15
+~1
+
 >> abs(seqcells.fixed.y_5[1] - 10/7) + abs(seqcells.fixed.y_5[2] - 4) < 10^-9
 ~1
 
@@ -3044,7 +3058,7 @@ use seqcells
 ~1
 ]])
 set(args --check seqvalues.ink)
-set(stdout "seqvalues.ink: 24 answers, each as recorded\n")
+set(stdout "seqvalues.ink: 28 answers, each as recorded\n")
 check(compile_seqcells_values)
 # a and b read t elsewhere than at the walking index less a constant; c and d
 # give it arguments that change as the walk does; e differentiates through it;
