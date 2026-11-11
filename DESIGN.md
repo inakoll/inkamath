@@ -14578,7 +14578,13 @@ Departures and findings:
   at K, K's code bound to its index where the call is, as a term at a
   constant index binds it, and NaN where K is not whole; refused "p has no
   base clause to walk from" where it reaches its own term, which the
-  interpreter nests out of depth on.
+  interpreter nests out of depth on. So is a recursion a guard ends,
+  `f(x)_k | k <= 0 = x` beside `f(x)_k = f(x)_(k-1)/2`, which the
+  interpreter answers: a guard is no base to walk from, and stays refused.
+- **A walk's refusals name a walk**, `Walked::walk` telling it from a
+  limit: "mb_(...): reads the walk of ma's term at its index", "a guarded
+  base clause in a walk's terms", where they said "lim ma" and "a
+  limit's".
 - **A parameter at the index** is told by the index reading parameters
   and not naming the step's index, through a function or a value of them
   as `floor(N/2)` and `M = N + 1` read them: where the read would be

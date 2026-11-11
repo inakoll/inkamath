@@ -3831,6 +3831,7 @@ private:
         }
         Walked walked{name, what, names, 0, {0, 0}, &lists_.emplace_back(), &lists_.emplace_back()};
         walked.parted                                = parted;
+        walked.walk                                  = index != nullptr;
         const std::size_t          stepped           = steps_;
         const int                  compared          = compared_;
         Walked* const              outer_limit       = std::exchange(limit_, &walked);
@@ -4227,7 +4228,7 @@ private:
             if (clause.parameters.general()) index_ = clause.parameters.index_name();
         if (index_.empty())
             throw Reason(name + " has no general clause" +
-                         (name == limit_->name ? ", so it has no limit" : ""));
+                         (name == limit_->name && !limit_->walk ? ", so it has no limit" : ""));
         const Setting<std::string>                text(index_text_, "(double)k_");
         std::vector<std::pair<std::string, Code>> guarded;
         std::optional<Code>                       otherwise;
@@ -4248,9 +4249,9 @@ private:
                     name, sequence, [](const Clause<Value>& c) { return c.parameters.general(); }));
             } catch (const Reason& reason) {
                 if (reason.what() != std::string("a matrix whose size is not a constant")) throw;
-                throw Reason((name != limit_->name                 ? "a limit reading " + name
-                              : limit_->what.starts_with("a walk") ? limit_->what
-                                                                   : "a limit of " + name) +
+                throw Reason((name != limit_->name ? limit_->Kind() + " reading " + name
+                              : limit_->walk       ? limit_->what
+                                                   : "a limit of " + name) +
                              ", whose terms change size");
             }
         }
@@ -4261,7 +4262,8 @@ private:
                 if (ByCells(sequence) || otherwise || (c.guarded() || base) != guard ||
                     (base && c.index() < first))
                     continue;
-                if (base && c.guarded()) throw Reason("a guarded base clause in a limit's terms");
+                if (base && c.guarded())
+                    throw Reason("a guarded base clause in " + limit_->Kind() + "'s terms");
                 const Setting<std::string>       named(index_, base ? index_ : c.index_name());
                 const Setting<Frame>             own(frame_, {});
                 const std::optional<std::string> condition =
@@ -4584,7 +4586,7 @@ private:
             beside.window.push_back(SharedAll(term));
         }
         if (beside.term && !beside.window.empty() && beside.term->size != beside.window[0].size)
-            throw Reason("a limit reading " + name + ", whose terms change size");
+            throw Reason(walked.Kind() + " reading " + name + ", whose terms change size");
         if (!lag) return *beside.term;
         const std::string window = Window(b, static_cast<std::size_t>(lag));
         Code              term   = Array(window, beside.window[0].size);
@@ -4611,8 +4613,8 @@ private:
     Code Earlier(const ParametersCall<Value>& call) {
         // A window is set before the loop, where the limit has no term to read.
         if (!limit_->windowing.empty())
-            throw Reason(limit_->windowing + "_(...): its terms before the walk read lim " +
-                         limit_->name + "'s own");
+            throw Reason(limit_->windowing + "_(...): its terms before the walk read " +
+                         limit_->Lim() + "'s own");
         const auto same = [&](const PExpression<Value>& argument, const std::string& parameter) {
             const Code code = Emit(argument), own = Array("arg_" + parameter, code.size);
             return std::equal(code.cells.begin(), code.cells.end(), own.cells.begin(),
@@ -4631,10 +4633,11 @@ private:
         for (auto beside = limit_->beside.rbegin(); lag == 0 && beside != limit_->beside.rend();
              ++beside)
             if (!beside->term)
-                throw Reason(beside->function->Name() + "_(...): reads lim " + limit_->name +
+                throw Reason(beside->function->Name() + "_(...): reads " + limit_->Lim() +
                              "'s term at its index");
         if (lag == 0) throw Reason(limit_->name + " is defined by itself");
-        if (!limit_->size.rows) throw Reason("a limit whose terms read back past its base clauses");
+        if (!limit_->size.rows)
+            throw Reason(limit_->Kind() + " whose terms read back past its base clauses");
         limit_->depth = std::max(limit_->depth, lag);
         return Back(lag);
     }
@@ -5290,7 +5293,8 @@ private:
     // carrying a node of a tape swept back (DESIGN.md, the compiler's adjoint
     // step), but for a matrix by single values.
     PExpression<Value> visit(GradExpression<Value>* expression) override {
-        if (limit_ && limit_->parted) throw Reason("a second derivative through a limit, for now");
+        if (limit_ && limit_->parted)
+            throw Reason("a second derivative through " + limit_->Kind() + ", for now");
         if (expression->Several() && expression != grouped_.first)
             Reasoned(EvaluationVisitor<Value>::Unread);
         std::vector<Code> points, parts;
@@ -8009,6 +8013,10 @@ private:
         int                      first = 0;  // the index its walk starts at
         std::string              windowing = {};  // the sequence whose window is being set
         bool                     parted    = false;  // its arguments' parts beside them, under grad
+        bool                     walk      = false;  // to an index, as Walking has it, not a limit
+        // As a refusal names it, 'lim s' or 'the walk of s', and what it is.
+        std::string Lim() const { return (walk ? "the walk of " : "lim ") + name; }
+        std::string Kind() const { return walk ? "a walk" : "a limit"; }
         struct Beside {
             const Reference<Value>* function;
             std::string             args;
