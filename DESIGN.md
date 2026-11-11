@@ -14738,6 +14738,15 @@ through a walking function:
     a step would carry and arguments compared bit for bit at each read,
     for what the recurrence written as a sequence of the step,
     `w_n = w_(n-1)/2 + 1`, does in one term.
+  - **Arguments that change as a limit walks stay refused**, on purpose:
+    `compile_series_refused`'s c and d, `t(sc(x)_(k-1))_k` and `t(k*x)_k`,
+    and `compile_sums_refused`'s c, `t(q*x_n)_q`. A read at the walking
+    index less a constant is walked beside, one walk for the limit, its
+    window carried from iterate to iterate; arguments that change as it
+    walks have no window to carry, and walking each iterate's read anew
+    is the quadratic walk *A sequence with parameters read at `lim`'s
+    walking index* rejected. Only reads that are not at the walking index
+    less a constant, `t(x)_(2*k)`, walk at each iterate.
   - **Cells**: a clause by cells, base or general, is a term of its cells
     as the interpreter's `EvaluateTerm` makes it, each cell the chain of
     the clauses that may give it (`CellOf`), the term written whole its
