@@ -940,7 +940,9 @@ private:
             };
             if (!cells && !at && !reads.empty() && std::ranges::all_of(names, parameter))
                 throw Fix{std::move(reads)};
-            if (cells || !at || (lowest && *at - lowest->parameters.index() > max_terms)) K = index;
+            if (cells || !at ||
+                (lowest && static_cast<long long>(*at) - lowest->parameters.index() > max_terms))
+                K = index;
         }
         std::optional<Setting<std::vector<Temporary>*>> based;
         if (lag) based.emplace(temporaries_, limit_->based);
@@ -4490,8 +4492,8 @@ private:
         }
         const int L = lowest->parameters.index(), max = ReferenceStack<Value>::max_filled;
         if (at && *at < L) throw Reason(name + " has no clause for index " + std::to_string(*at));
-        if (at && *at - L > max)
-            throw Reason(name + "_" + std::to_string(*at) + " is " + std::to_string(*at - L) +
+        if (const long long distance = at ? static_cast<long long>(*at) - L : 0; distance > max)
+            throw Reason(name + "_" + std::to_string(*at) + " is " + std::to_string(distance) +
                          " terms from its base, and a fill stops at " + std::to_string(max));
         // Walked no further, its base: abscissa's of a polynomial of degree 0 (DESIGN.md).
         if (at == L) return Inside(expansion, [&] { return Chained(name, function, L); });

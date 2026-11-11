@@ -3628,6 +3628,16 @@ if(NOT PART OR PART GREATER 4)
                       "cannot compile m: a tensor in a walk of tq, for now\n")
         set(exit 1)
         check(compile_seqcells_refused)
+        # Past the fill by more than an int holds, from a base below 0.
+        file(WRITE "${OUT}/seqcells_far.ink"
+             "a_n = v(x_n)_2147483647\nb_n = r(x_n)_2147483647\n"
+             "v(x)_(-1) = [x; 1]\nv(x)_k[j<=2] = v(x)_(k-1)[j]*x\nr(x)_(-1) = x\nr(x)_k = r(x)_(k-1)/2\n")
+        set(args --compile seqcells_far.ink)
+        string(CONCAT stdout
+               "cannot compile a: v_2147483647 is 2147483648 terms from its base, and a fill stops at 10000000\n"
+               "cannot compile b: r_2147483647 is 2147483648 terms from its base, and a fill stops at 10000000\n")
+        set(exit 1)
+        check(compile_seqcells_far)
 
     endif()
     if(NOT CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
