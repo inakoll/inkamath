@@ -3,6 +3,32 @@
 What changed for someone using inkamath, release by release. The reasons, and
 every defect by its number, are in [`DESIGN.md`](DESIGN.md).
 
+## 2.4.0 — 2026-11-11
+
+### Added
+
+- **Sequences with parameters by cells, and at an index that is not a
+  constant, compiled by a walk**: `--compile` writes such a read, and one
+  past 1000 terms or reaching a term by cells, as a function of the header
+  that walks the terms from the lowest base clause to the index at each
+  call, NaN where the interpreter has no term there: a stencil
+  `u(u0, c)_k[i<=8]` at the step's index, `q(x_n)_n`, and `hurwitz`,
+  `schurcohn`, `rho` and `abscissa` of a moving matrix. Its terms are the
+  interpreter's operations in its order, under `grad` by forward mode; an
+  index that is a parameter of the model is read at each step; and a limit
+  of a sequence by cells compiles too.
+  Compiled `rho` and `abscissa` bisect in doubles, where the interpreter
+  bisects exactly, so they may part where eigenvalues repeat.
+
+### Fixed
+
+2 defects, C443 and C444: a call of constants is folded as the interpreter
+answers it before its body is compiled, so `rho`, `schurcohn`, `hurwitz`,
+`abscissa`, `hinf` and `roots` of constants compile where they were
+refused; and a guarded recursion whose argument's size falls below 1 where
+the interpreter never takes it, as `abscissa`'s, is NaN there rather than
+refused.
+
 ## 2.3.0 — 2026-11-10
 
 ### Added
