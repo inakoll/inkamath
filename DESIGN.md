@@ -14669,15 +14669,18 @@ through a walking function:
       1000 terms from the lowest base clause, and f is not by cells and
       reaches none by cells: no sequence that f's clauses read, through
       all the functions and sequences they call or read, is by cells, a
-      function by cells such as `charpoly` being no matter;
+      function by cells such as `charpoly` being no matter, and a clause
+      behind a guard that folds false, `| 1 > 2`, reading nothing;
     - else walked: f by cells, at any index; f reaching one by cells, as
       `rhou`, `abscissau` and `hurwitzt` reach `hurwitzr`; K not a
       constant; or K past 1000 terms, which was refused, "r_1001 is 1001
       terms from its base, and a step writes out at most 1000".
 
     A read that compiles today reaches no sequence by cells, which was
-    refused, but through a clause a folded guard leaves unread, which the
-    implementation looks for; so none moves. `eig`'s `eigu(A, i)_256`
+    refused, but through a clause a guard folding false leaves unread,
+    which the reach does not count; so none moves: `folded`'s `ff(x)_k |
+    1 > 2 = gf(x)_k[1]`, gf by cells, keeps ff_3 written out, its header
+    pinned. `eig`'s `eigu(A, i)_256`
     reaches none, and stays written out. A sequence that reaches one by
     cells is the threshold the owner asked to weigh for rho. Measured with
     a copy of the prelude's chain, `hurwitzr` replaced by a function by
@@ -14820,11 +14823,12 @@ through a walking function:
   and by a vector at 3; `idx`, the index's NaN, a constant past 1000, and an
   exact argument; `pair` and `quad`, hurwitz, schurcohn, rho and abscissa of
   a moving 2x2 and 4x4, x by 0.2 across every transition; `degen`, rho of a
-  fourfold 1/3; `fixed`, a limit by cells; and a file of nine refusals.
-  `cli.cmake`'s part `spec_seqcells`, run by `cli_spec_seqcells`, compiles
-  each model, strict, checks each instance to its comment's lines, these and
-  no other, and pins the walk's name and calls and the stability headers'
-  sizes, skipped while the stencil is refused as today and only then. A
+  fourfold 1/3; `folded`, a clause behind a guard folding false; `fixed`, a
+  limit by cells; and a file of nine refusals. `cli.cmake`'s part
+  `spec_seqcells`, run by `cli_spec_seqcells`, compiles each model, strict,
+  checks each instance to its comment's lines, these and no other, and pins
+  the walk's name and calls, the stability headers' sizes and folded's
+  lines, skipped while the stencil is refused as today and only then. A
   report that must hold a guard's line more, `pair`'s and `quad`'s above
   all, amends its pattern with the reason. Each instance is checked for as
   many steps as cross its transitions, 10 for pair and quad, 30 or 40 for

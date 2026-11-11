@@ -106,7 +106,8 @@ if(PART STREQUAL "spec_seqcells")
         return()
     endif()
     foreach(model IN ITEMS stencil:heat ends:ends parts:parts walked:walked stab:stab
-                           stab4:stab4 fourfold:fourfold halving:halving)
+                           stab4:stab4 fourfold:fourfold halving:halving 
+                           folded:folded)
         string(REPLACE ":" ";" model "${model}")
         list(GET model 1 header)
         list(GET model 0 model)
@@ -144,6 +145,17 @@ if(PART STREQUAL "spec_seqcells")
             message(SEND_ERROR "compile_seqcells_${header}: ${header}.h is ${size} bytes, not under ${bytes}")
         endif()
     endforeach()
+    # A clause behind a guard that folds false reaches nothing: ff_3 written
+    # out as today, and no walk.
+    holds(compile_seqcells_folded folded.h [[    const double t0_ = m_->x[0] / 2.0;
+    const double t1_ = t0_ / 2.0;
+    m_->y[0] = t1_ / 2.0;
+]])
+    file(READ "${OUT}/folded.h" text)
+    string(FIND "${text}" "_walk" at)
+    if(NOT at EQUAL -1)
+        message(SEND_ERROR "compile_seqcells_folded: folded.h walks")
+    endif()
 
     # a's terms change size; b reads its own term at floor(k/2), c with other
     # arguments; d is a second derivative and e's index moves with t; f has

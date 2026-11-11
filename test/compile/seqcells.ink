@@ -158,6 +158,24 @@ fourfold(x_n) = {
 }
 degen = fourfold(x_n = ~(1/3))
 
+# 'folded': a clause behind a guard that folds false is read nowhere, so ff
+# does not reach gf by cells through it, and ff_3 is written out as today:
+# 'inkamath --compile seqcells.ink folded -o folded.h' holds
+#
+#     const double t0_ = m_->x[0] / 2.0;
+#     const double t1_ = t0_ / 2.0;
+#     m_->y[0] = t1_ / 2.0;
+#
+# and no walk.
+gf(x)_0 = [x; 1]
+gf(x)_k[j<=2] = gf(x)_(k-1)[j]/2
+ff(x)_0 = x
+ff(x)_k = ff(x)_(k-1)/2
+ff(x)_k | 1 > 2 = gf(x)_k[1]
+folded(x_n) = {
+    y_n = ff(x_n)_3
+}
+
 # 'fixed': a limit of a sequence by cells walks its cells as a step's term
 # by cells is written, where 'j is not defined' refused it. Its limit is
 # [2x; 4], each cell halving its distance to it; the walk stops by lim's
