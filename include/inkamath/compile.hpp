@@ -1414,8 +1414,12 @@ private:
     // Whether an iterate's value does not move as it walks, so is computed
     // before the loop (DESIGN.md, a limit's invariants hoisted); a call to a
     // function with a loop, which GCC and Clang leave in it, is shared so.
+    // Each value is asked once.
     bool Invariant(const std::string& value) {
-        return limit_ && temporaries_ == limit_->iterated && !Walks(value);
+        if (!limit_ || temporaries_ != limit_->iterated) return false;
+        const auto [known, fresh] = limit_->still.try_emplace(value, false);
+        if (fresh) known->second = !Walks(value);
+        return known->second;
     }
     Code Looping(Code code) { return Invariant(code.cells[0].text) ? Called(code) : code; }
 
@@ -4162,10 +4166,8 @@ private:
     }
 
     // Whether code read in a limit's terms changes as it walks.
-    bool Walks(std::string read) {
-        const Walked& walked = *limit_;
-        for (const Temporary* temporary : Kept(*walked.based, read))
-            for (const std::string& line : temporary->lines) read += line + ' ';
+    bool Walks(const std::string& read) {
+        Walked&               walked = *limit_;
         std::set<std::string> words, moving{"k_"};
         Words(read, words);
         for (int l = 1; l <= walked.depth; ++l) moving.insert("t" + std::to_string(l) + "_");
@@ -4174,7 +4176,18 @@ private:
             for (std::size_t l = 1; l <= walked.beside[b].window.size(); ++l)
                 moving.insert(Window(b, l));
         for (const std::string& name : std::set(moving)) moving.insert(name + "p");  // its parts
-        return std::ranges::any_of(words, [&](const std::string& w) { return moving.contains(w); });
+        // A temporary before the loop, as an argument walked beside, walks
+        // where what it reads does: each told once, what it reads before it.
+        const auto walks = [&](const std::string& w) {
+            return moving.contains(w) || walked.walking.contains(w);
+        };
+        for (; walked.told < walked.based->size(); ++walked.told) {
+            std::set<std::string> reads;
+            for (const std::string& line : (*walked.based)[walked.told].lines) Words(line, reads);
+            if (std::ranges::any_of(reads, walks))
+                walked.walking.insert((*walked.based)[walked.told].name);
+        }
+        return std::ranges::any_of(words, walks);
     }
 
     // 'A^(k+c)' in a limit's terms, k its walking index and A the same at
@@ -7828,6 +7841,9 @@ private:
             bool                    parted = false;  // its arguments' parts beside them
         };
         std::deque<Beside> beside = {};  // sequences with parameters, powers, factorials beside it
+        std::map<std::string, bool> still = {};  // whether each value read does not walk
+        std::set<std::string> walking = {};  // the temporaries before the loop that walk,
+        std::size_t           told    = 0;   // of the first 'told'
     };
     std::deque<std::vector<Temporary>> lists_;  // those, kept as a step's are
     static constexpr std::size_t       split_  = 16384;  // a part's bytes; see Split
