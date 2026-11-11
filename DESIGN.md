@@ -14575,10 +14575,11 @@ Departures and findings:
   base clause to walk from" where it reaches its own term, which the
   interpreter nests out of depth on.
 - **A parameter at the index** is told by the index reading parameters
-  alone, an instance's by its label (`plan.iters`, `dare.doublings`):
-  where the read would be written out it is compiled in as before, the
-  `Fix` that `Known` gave, and walked it is read from the struct; an index
-  reading a parameter and n, `q(x)_(K + n)`, is walked from the struct.
+  and not naming the step's index, through a function or a value of them
+  as `floor(N/2)` and `M = N + 1` read them: where the read would be
+  written out it is compiled in as before, the `Fix` that `Known` gave,
+  and walked it is read from the struct; an index reading a parameter and
+  n, `q(x)_(K + n)`, is walked from the struct.
 - **The reach** looks a name up through the function's scope and its
   parents, and a guard folds false where it reads no name and the
   interpreter evaluates it false.

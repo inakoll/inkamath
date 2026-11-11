@@ -929,16 +929,10 @@ private:
             if (index.constant) at = Whole(index);
             const Clause<Value>* const        lowest = function.EndBase(true);
             std::set<const Reference<Value>*> seen;
-            std::set<std::string>             names;
-            Named(call.subexpr(), names);
             const bool cells = ByCells(function) || Iterates(function, seen, true);
-            // Parameters alone, an instance's by its label, written out are
-            // compiled in; walked, read from the struct.
-            const auto parameter = [&](const std::string& n) {
-                return std::ranges::any_of(
-                    reads, [&](const std::string& r) { return r == n || r.ends_with("." + n); });
-            };
-            if (!cells && !at && !reads.empty() && std::ranges::all_of(names, parameter))
+            // Parameters without the index, written out, are compiled in as
+            // before; walked, read from the struct.
+            if (!cells && !at && !reads.empty() && !Mentions(*call.subexpr(), index_))
                 throw Fix{std::move(reads)};
             if (cells || !at ||
                 (lowest && static_cast<long long>(*at) - lowest->parameters.index() > max_terms))

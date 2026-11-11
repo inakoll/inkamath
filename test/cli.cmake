@@ -3602,6 +3602,23 @@ if(NOT PART OR PART GREATER 4)
         if(NOT at EQUAL -1)
             message(SEND_ERROR "compile_seqcells_counted: counted.h compiles K in")
         endif()
+        # An index of parameters alone, through a function or a value of them,
+        # is compiled in where the read is written out, as before; one reading
+        # n too is walked, N read from the struct.
+        file(WRITE "${OUT}/keyed.ink" "q(x)_0 = x\nq(x)_k = q(x)_(k-1)/2 + 1\n"
+             "fixedk(N = 4, x_n) = {\n    M = N + 1\n    a_n = q(x_n)_(floor(N/2))\n"
+             "    b_n = q(x_n)_M\n}\nmovedk(N = 4, x_n) = {\n    c_n = q(x_n)_(N + n)\n}\n")
+        foreach(model IN ITEMS fixedk movedk)
+            set(args --compile keyed.ink ${model} -o ${model}.h)
+            check(compile_seqcells_${model})
+        endforeach()
+        holds(compile_seqcells_fixedk fixedk.h "cannot change: N.")
+        holds(compile_seqcells_movedk movedk.h "movedk_walk0(m_, m_->N + (double)m_->index_, ")
+        file(READ "${OUT}/fixedk.h" text)
+        string(FIND "${text}" "_walk" at)
+        if(NOT at EQUAL -1)
+            message(SEND_ERROR "compile_seqcells_fixedk: fixedk.h walks")
+        endif()
 
         # a's terms change size; b reads its own term at floor(k/2), c with other
         # arguments; d is a second derivative and e's index moves with t; f has
