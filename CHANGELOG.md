@@ -19,6 +19,7 @@ every defect by its number, are in [`DESIGN.md`](DESIGN.md).
   of a sequence by cells compiles too.
   Compiled `rho` and `abscissa` bisect in doubles, where the interpreter
   bisects exactly, so they may part where eigenvalues repeat.
+  `hinf` and `dhinf` of a moving system stay refused (C445).
 
 ### Fixed
 

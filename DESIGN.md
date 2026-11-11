@@ -14622,15 +14622,16 @@ Departures and findings:
 
 No golden, expected header or check program moves, nor any of the 736
 `--compile` runs of `test/compile`'s files and models, plain and in float,
-but seqcells.ink's own. In 180 lines of `compile.hpp`, 22 of comment,
-21,647 to 21,827 by `wc -l include/inkamath/*.hpp src/*`, 196 with the
-commit before: `Call`'s rule 23 and `Iterates` 15, against 20; `Converge`
-walking to K, its bound, test and answer, the window NaN below L, the call
-and the refusals' words, 50, against 35, 10, 12 and part of 20; `Iterate`'s
-terms by cells 24, `Chained`'s term by cells at an index 17 and `Cells` by
-the clauses that fit 6, against 40 and 3; `Walking`, the base at L, the
+but seqcells.ink's own. In 185 lines of `compile.hpp`, 23 of comment,
+21,647 to 21,832 by `wc -l include/inkamath/*.hpp src/*`, 201 with the
+commit before, after the review's rulings, about: `Call`'s rule 20 and
+`Iterates` 15, against 20; `Converge` walking to K, its bound, test and
+answer, the window NaN below L, the call, the walk's flag and the
+refusals' words, 61, against 35, 10, 12 and part of 20; `Iterate`'s terms
+by cells 26, `Chained`'s term by cells at an index 17 and `Cells` by the
+clauses that fit 2, against 40 and 3; `Walking`, the base at L, the
 constant K's refusals and the closed form, 48, against 8 and the rest of
-20; the walks' names 1; Term's refusal less 4.
+20; the walks' names 1; Term's and `CompileTerms`' dead refusals less 5.
 
 ## Next in line
 
