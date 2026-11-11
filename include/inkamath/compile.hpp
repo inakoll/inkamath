@@ -926,6 +926,7 @@ private:
             auto [index, reads]       = Reading(call.subexpr());
             if (!Still(index) || steps_ != stepped)
                 throw Reason("an index that moves with " + grad_ + ", for now");
+            if (!index.Scalar()) throw Reason("a matrix is not a single value");
             if (index.constant) at = Whole(index);
             const Clause<Value>* const        lowest = function.EndBase(true);
             std::set<const Reference<Value>*> seen;

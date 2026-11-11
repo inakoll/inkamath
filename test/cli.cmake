@@ -3655,6 +3655,14 @@ if(NOT PART OR PART GREATER 4)
                "cannot compile b: r_2147483647 is 2147483648 terms from its base, and a fill stops at 10000000\n")
         set(exit 1)
         check(compile_seqcells_far)
+        # A matrix at the index, walked or a closed form, as the interpreter says.
+        file(WRITE "${OUT}/seqcells_matrix.ink" "a_n = q(x_n)_([n; 1])\nb_n = p(x_n)_([n; 1])\n"
+             "q(x)_0 = x\nq(x)_k = q(x)_(k-1)/2 + 1\np(x)_k = x*k\n")
+        set(args --compile seqcells_matrix.ink)
+        string(CONCAT stdout "cannot compile a: a matrix is not a single value\n"
+                      "cannot compile b: a matrix is not a single value\n")
+        set(exit 1)
+        check(compile_seqcells_matrix)
 
     endif()
     if(NOT CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
