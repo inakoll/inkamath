@@ -178,7 +178,8 @@ if(PART STREQUAL "spec_seqcells")
     # each line given found, and no other, its program exiting with exits. A
     # list splits at ';', which a line's estimate holds, so it is read as ','.
     function(seqcells instance program first)
-        execute_process(COMMAND "${EXE}" --check "${story}" ${instance} ${float} -o ${program}.c
+        execute_process(COMMAND "${EXE}" --check "${story}" ${instance} ${float} --steps ${count}
+                                -o ${program}.c
                         WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
                         ERROR_VARIABLE errors OUTPUT_VARIABLE errors TIMEOUT ${CASE_TIMEOUT})
         if(NOT failed)
@@ -198,10 +199,10 @@ if(PART STREQUAL "spec_seqcells")
         string(REPLACE "\n" ";" lines "${lines}")
         list(REMOVE_ITEM lines "")
         list(POP_FRONT lines got)
-        list(LENGTH lines count)
+        list(LENGTH lines given)
         list(LENGTH ARGN want)
         set(bad "")
-        if(NOT code EQUAL exits OR NOT "${got}" MATCHES "^${first}$" OR NOT count EQUAL want)
+        if(NOT code EQUAL exits OR NOT "${got}" MATCHES "^${first}$" OR NOT given EQUAL want)
             set(bad 1)
         endif()
         foreach(pattern IN LISTS ARGN)
@@ -223,35 +224,45 @@ if(PART STREQUAL "spec_seqcells")
     endfunction()
     set(float "")
     set(exits 0)
-    set(steps "100 steps from 0, against exact values until 0 and inexact ones from there")
+    # Each instance checked for as many steps as cross its transitions: the
+    # part's time is the interpreter's, some 6.4 passes a check, and a pass
+    # of quad's 4x4 bisections takes 0.6 s a step under the sanitizers.
+    set(inexact "steps from 0, against exact values until 0 and inexact ones from there")
     set(about "(, the interpreter's terms about [0-9.e+-]+ from the exact ones)?")
     set(within0 ": within 0${about}")
     # Under 1e-15 and under 1e-13, as %.2g prints them.
     set(e15 ": within (0|[0-9.]+e-(1[6-9]|[2-9][0-9]|[1-9][0-9][0-9]))${about}")
     set(e13 ": within (0|[0-9.]+e-(1[4-9]|[2-9][0-9]|[1-9][0-9][0-9]))${about}")
-    seqcells(heat heat "heat: ${steps}" "heat\\.a${within0}" "heat\\.b${within0}")
-    seqcells(rim rim "rim: ${steps}" "rim\\.e${within0}")
-    seqcells(sens sens "sens: ${steps}" "sens\\.g${e15}" "sens\\.v${within0}")
-    seqcells(idx idx "idx: ${steps}" "idx\\.a${within0}" "idx\\.b${within0}" "idx\\.c${within0}"
-             "idx\\.d${within0}" "idx\\.e${e15}")
+    set(count 40)
+    seqcells(heat heat "heat: 40 ${inexact}" "heat\\.a${within0}" "heat\\.b${within0}")
+    seqcells(sens sens "sens: 40 ${inexact}" "sens\\.g${e15}" "sens\\.v${within0}")
+    set(count 30)
+    seqcells(rim rim "rim: 30 ${inexact}" "rim\\.e${within0}")
+    seqcells(idx idx "idx: 30 ${inexact}" "idx\\.a${within0}" "idx\\.b${within0}"
+             "idx\\.c${within0}" "idx\\.d${within0}" "idx\\.e${e15}")
+    seqcells(fixed fixed "fixed: 30 ${inexact}" "fixed\\.y${within0}")
+    # These five lines and no other: guard lines the implementation must add
+    # amend the pattern, with their reason.
+    set(count 10)
     foreach(instance IN ITEMS pair quad)
-        seqcells(${instance} ${instance} "${instance}: ${steps}" "${instance}\\.G${within0}"
-                 "${instance}\\.a${e13}" "${instance}\\.h${within0}" "${instance}\\.r${e13}"
-                 "${instance}\\.s${within0}")
+        seqcells(${instance} ${instance} "${instance}: 10 ${inexact}"
+                 "${instance}\\.G${within0}" "${instance}\\.a${e13}" "${instance}\\.h${within0}"
+                 "${instance}\\.r${e13}" "${instance}\\.s${within0}")
     endforeach()
-    seqcells(fixed fixed "fixed: ${steps}" "fixed\\.y${within0}")
     # C275's limit in the step: rho of a fourfold 1/3 bisected in doubles,
     # 0.333386 where the interpreter's is 1/3's double, from the first step.
+    set(count 100)
     set(exits 1)
     set(gives "where the interpreter gives ~0\\.33333333333333331")
     set(one "(, the interpreter's term about [0-9.e+-]+ from the exact one)?")
-    seqcells(degen degen "degen: ${steps}" "degen\\.r: 0\\.33338[0-9]+ at 0, ${gives}${one}")
+    seqcells(degen degen "degen: 100 ${inexact}" "degen\\.r: 0\\.33338[0-9]+ at 0, ${gives}${one}")
     set(exits 0)
     # In float, the stencil's floats under a hundred units of the
     # interpreter's doubles.
+    set(count 40)
     set(float --float)
     set(units ": within [0-9.e+-]+, ([0-9](\\.[0-9])?|[1-9][0-9]) units of a float${about}")
-    seqcells(heat floated "heat: 100 steps from 0 in float, against exact values until 0 and inexact ones from there"
+    seqcells(heat floated "heat: 40 steps from 0 in float, against exact values until 0 and inexact ones from there"
              "heat\\.a${units}" "heat\\.b${units}")
     return()
 endif()
@@ -2947,46 +2958,46 @@ use seqcells
 >> frac seqcells.idx.e_3
 43/24
 
->> abs(seqcells.pair.r_10 - 1.36113914953808546422) < 10^-14
+>> abs(seqcells.pair.r_0 - 1.62838821814150114735) < 10^-14
 ~1
 
->> abs(seqcells.pair.a_10 + 1.0088608504619146423) < 10^-14
+>> abs(seqcells.pair.a_0 + 1.0716117818584989192) < 10^-14
 ~1
 
->> abs(seqcells.pair.r_30 - 0.65513357416636801517) < 10^-14
+>> abs(seqcells.pair.r_3 - 0.55226805085936302664) < 10^-14
 ~1
 
->> abs(seqcells.pair.a_30 + 0.5850000000000000199) < 10^-14
+>> abs(seqcells.pair.a_3 + 0.4499999999999999833) < 10^-14
 ~1
 
->> abs(seqcells.pair.r_95 - 1.65140006983239379240) < 10^-14
+>> abs(seqcells.pair.r_8 - 1.05118980208143185527) < 10^-14
 ~1
 
->> abs(seqcells.pair.a_95 - 1.65140006983239379240) < 10^-14
+>> abs(seqcells.pair.a_8 - 1.04999999999999993338) < 10^-14
 ~1
 
->> [seqcells.pair.h_49, seqcells.pair.h_50, seqcells.pair.s_16, seqcells.pair.s_17, seqcells.pair.s_82, seqcells.pair.s_83] == [1, 0, 0, 1, 1, 0]
+>> [seqcells.pair.h_4, seqcells.pair.h_5, seqcells.pair.s_1, seqcells.pair.s_2, seqcells.pair.s_7, seqcells.pair.s_8] == [1, 0, 0, 1, 1, 0]
 ~1
 
->> abs(seqcells.quad.r_10 - 1.36113914953808546422) < 10^-14
+>> abs(seqcells.quad.r_1 - 1.21106014163899665394) < 10^-14
 ~1
 
->> abs(seqcells.quad.a_10 - 0.72833333333333335109) < 10^-14
+>> abs(seqcells.quad.a_1 - 0.68333333333333331112) < 10^-14
 ~1
 
->> abs(seqcells.quad.r_30 - 1.12249721603218241963) < 10^-14
+>> abs(seqcells.quad.r_5 - 0.96609178307929590299) < 10^-14
 ~1
 
->> abs(seqcells.quad.a_30 - 0.52833333333333333999) < 10^-14
+>> abs(seqcells.quad.a_5 - 0.28333333333333333055) < 10^-14
 ~1
 
->> abs(seqcells.quad.r_50 - 0.99666109251507020649) < 10^-14
+>> abs(seqcells.quad.r_9 - 1.62838821814150114735) < 10^-14
 ~1
 
->> abs(seqcells.quad.a_50 - 0.32833333333333333322) < 10^-14
+>> abs(seqcells.quad.a_9 - 1.62838821814150114735) < 10^-14
 ~1
 
->> [seqcells.quad.h_70, seqcells.quad.s_49, seqcells.quad.s_50, seqcells.quad.s_82, seqcells.quad.s_83] == [0, 0, 1, 1, 0]
+>> [seqcells.quad.h_6, seqcells.quad.s_4, seqcells.quad.s_5, seqcells.quad.s_7, seqcells.quad.s_8] == [0, 0, 1, 1, 0]
 ~1
 
 >> abs(seqcells.fixed.y_5[1] - 10/7) + abs(seqcells.fixed.y_5[2] - 4) < 10^-9

@@ -14808,14 +14808,22 @@ through a walking function:
   Specified in `test/compile/seqcells.ink`, its numbers by Python's
   fractions and doubles, none recorded: `heat`, the stencil at 3 and at n,
   and in float; `rim`, two cells of one call; `sens`, grad by a value at n
-  and by a vector at 3; `idx`, the index's NaN, a constant past 1000, and
-  an exact argument; `pair` and `quad`, hurwitz, schurcohn, rho and
-  abscissa of a moving 2x2 and 4x4; `degen`, rho of a fourfold 1/3;
-  `fixed`, a limit by cells; and a file of nine refusals. `cli.cmake`'s
-  part `spec_seqcells`, run by `cli_spec_seqcells`, compiles each model,
-  strict, checks each instance to its comment's lines and pins the walk's
-  name and calls and the stability headers' sizes, skipped while the
-  stencil is refused as today and only then; `compile_seqcells_values`,
+  and by a vector at 3; `idx`, the index's NaN, a constant past 1000, and an
+  exact argument; `pair` and `quad`, hurwitz, schurcohn, rho and abscissa of
+  a moving 2x2 and 4x4, x by 0.2 across every transition; `degen`, rho of a
+  fourfold 1/3; `fixed`, a limit by cells; and a file of nine refusals.
+  `cli.cmake`'s part `spec_seqcells`, run by `cli_spec_seqcells`, compiles
+  each model, strict, checks each instance to its comment's lines, these and
+  no other, and pins the walk's name and calls and the stability headers'
+  sizes, skipped while the stencil is refused as today and only then. A
+  report that must hold a guard's line more, `pair`'s and `quad`'s above
+  all, amends its pattern with the reason. Each instance is checked for as
+  many steps as cross its transitions, 10 for pair and quad, 30 or 40 for
+  the others, `degen` 100: under the sanitizers a pass of the interpreter
+  over all of them takes some 11.5 s, quad's 10 steps 5.8 of it, and a check
+  some 6.4 passes, so the part some 75 s and with its compiles and builds
+  under 100, where 100 steps of each were some 600.
+  `compile_seqcells_values`,
   in `cli.cmake`'s part 3, holds the interpreter's values to fractions and
   to the eigenvalues' closed forms, and passes now. When built:
   `compile_iterates_refused` loses a, b and u, which compile, and
@@ -14835,6 +14843,6 @@ through a walking function:
   base at L, a guarded base, the window NaN below it and a sequence with
   no base clause, 20; a constant K in the interpreter's words, 8; a
   sequence by cells walked beside, 3; grad's parts and the three
-  refusals, 12. The fix first, some 3. 21,630 lines at 5f75f5e, by `wc -l
-  include/inkamath/*.hpp src/*`. Past 225 the implementation stops and
-  reports.
+  refusals, 12. The fix before it is its own. 21,630 lines at 5f75f5e,
+  by `wc -l include/inkamath/*.hpp src/*`. Past 225 the implementation
+  stops and reports.

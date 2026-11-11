@@ -13,14 +13,15 @@
 # the stencil's matrix. The bump's cells are p*(i - 1)*(8 - i)/16, their
 # sum 7p/2, which every term keeps; at n = 7, where x is 1, a is
 # [13/64; 45/128; 69/128; 21/32; 21/32; 69/128; 45/128; 13/64]. The step's
-# doubles are the interpreter's, in its order:
+# doubles are the interpreter's, in its order, checked for 40 steps,
+# 'inkamath --check seqcells.ink heat --steps 40':
 #
-#     heat: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     heat: 40 steps from 0, against exact values until 0 and inexact ones from there
 #     heat.a: within 0
 #     heat.b: within 0
 #
-# and 'inkamath --check seqcells.ink heat --float' within a hundred units
-# of a float, Python's floats in the stencil's order 4.3 at most. Its
+# and with --float within a hundred units of a float, Python's floats in
+# the stencil's order 2.8 at most. Its
 # header, 'inkamath --compile seqcells.ink stencil -o heat.h', defines one
 # walk, heat_walk0, which a reads at 3 and b at the index.
 bump(p)[i<=8] = p*(i - 1)*(8 - i)/16
@@ -34,9 +35,10 @@ heat = stencil(x_n = ~(n/7))
 
 # 'rim': two cells of one term read at a moving index are one call of the
 # walk, which ends.h calls once. At n = 5, x = 5/7, e is
-# 0.6222098214285714, (M^5 u0)[1] + (M^5 u0)[4].
+# 0.6222098214285714, (M^5 u0)[1] + (M^5 u0)[4]. Checked for 30 steps, as
+# are idx and fixed; sens for 40.
 #
-#     rim: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     rim: 30 steps from 0, against exact values until 0 and inexact ones from there
 #     rim.e: within 0
 ends(x_n) = {
     e_n = u(bump(x_n), 1/4)_n[1] + u(bump(x_n), 1/4)_n[4]
@@ -52,7 +54,7 @@ rim = ends(x_n = ~(n/7))
 # forward mode, as a limit does, a pass a cell: row 4 of M^3, [1/64, 3/32,
 # 15/64, 5/16, 15/64, 3/32, 1/64, 0] at every n, each exact in a double.
 #
-#     sens: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     sens: 40 steps from 0, against exact values until 0 and inexact ones from there
 #     sens.g: within <e>, under 1e-15
 #     sens.v: within 0
 parts(x_n) = {
@@ -67,9 +69,9 @@ sens = parts(x_n = ~(n/7))
 # it says 'an index must be a whole number, not 0.5'; d, a constant past the
 # 1000 terms a step writes out, is walked where it was refused; and e, of a
 # constant, walks in doubles where the interpreter's terms are exact
-# fractions, 2.2e-16 from them at most, near 2, by Python's fractions:
+# fractions, 2.2e-16 from them at most, at n = 2, by Python's fractions:
 #
-#     idx: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     idx: 30 steps from 0, against exact values until 0 and inexact ones from there
 #     idx.a: within 0
 #     idx.b: within 0
 #     idx.c: within 0
@@ -86,37 +88,39 @@ walked(x_n) = {
 }
 idx = walked(x_n = ~(n/8))
 
-# 'pair' and 'quad': the prelude's stability tests at a moving matrix. G is
-# [2x, 1/2; -1/4, x], its eigenvalues (3x +- (x^2 - 1/2)^(1/2))/2, a
+# 'pair' and 'quad': the prelude's stability tests at a moving matrix,
+# checked for 10 steps, 'inkamath --check seqcells.ink pair --steps 10'. G
+# is [2x, 1/2; -1/4, x], its eigenvalues (3x +- (x^2 - 1/2)^(1/2))/2, a
 # complex pair of modulus (2x^2 + 1/8)^(1/2) and real part 3x/2 where
 # x^2 < 1/2; H, the 4x4's lower block, [-x, 1; -1, 2/3], a complex pair of
-# modulus (1 - 2x/3)^(1/2) and real part 1/3 - x/2 throughout. With x from
-# -0.99 to 0.99 by 0.02, never 0 nor +-2^(-1/2): h is 1 where x < 0, and 0 for
-# the 4x4 at every x, H's real part above 0 below x = 2/3 and G's from 0;
-# s is 1 where |x| < (7/16)^(1/2), n from 17 to 82, and for the 4x4 from
-# 50 to 82. hurwitz and schurcohn are
-# taken in doubles by the interpreter as by the step, in the same order. rho
-# and abscissa read the doubles as the fractions they are and bisect
-# exactly (DESIGN.md, C275), and the step bisects in doubles: Python's
-# doubles, in the prelude's order, are 1.1e-15 and 2.7e-15 from the exact
-# bisection at most for the 2x2, at n = 13 and 14, and 1.6e-15 for the 4x4,
-# at 86:
+# modulus (1 - 2x/3)^(1/2) and real part 1/3 - x/2 throughout. x is
+# (2n - 9)/10, -0.9 to 0.9 by 0.2, so that each transition is crossed: G's
+# pair turns real between 0.7 and 0.9 either side; h is 1 where x < 0, n
+# from 0 to 4, and 0 for the 4x4 at every x, H's real part above 0 below
+# x = 2/3 and G's from 0; s is 1 where |x| < (7/16)^(1/2), n from 2 to 7,
+# and for the 4x4, where H's modulus is below 1 too, from 5 to 7. hurwitz
+# and schurcohn are taken in doubles by the interpreter as by the step, in
+# the same order. rho and abscissa read the doubles as the fractions they
+# are and bisect exactly (DESIGN.md, C275), and the step bisects in
+# doubles: Python's doubles, in the prelude's order, are 6.7e-16 from the
+# exact bisection at most for the 2x2 and 4.4e-16 for the 4x4, at n = 9:
 #
-#     pair: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     pair: 10 steps from 0, against exact values until 0 and inexact ones from there
 #     pair.G: within 0
 #     pair.a: within <e>, under 1e-13
 #     pair.h: within 0
 #     pair.r: within <e>, under 1e-13
 #     pair.s: within 0
 #
-# and quad's alike. rhou's and abscissau's 256 terms, which reach hurwitzr
-# by cells, are walked, not written out: 'inkamath --compile seqcells.ink
-# stab -o stab.h' is under 200,000 bytes and stab4's under 400,000, where
-# written out they would be some 2.2 and 4.7 MB. abscissa compiles once
-# abscissaq's recursion, which no polynomial whose first coefficient is 1
-# takes to its end, is NaN there rather than refused (DESIGN.md, the
-# entry's prelude). Their values, by the eigenvalues' closed forms, are held
-# to the interpreter's by cli.cmake's compile_seqcells_values.
+# and quad's alike, these five lines and no other. rhou's and abscissau's
+# 256 terms, which reach hurwitzr by cells, are walked, not written out:
+# 'inkamath --compile seqcells.ink stab -o stab.h' is under 200,000 bytes
+# and stab4's under 400,000, where written out they would be some 2.2 and
+# 4.7 MB. abscissa compiles once abscissaq's recursion, which no
+# polynomial whose first coefficient is 1 takes to its end, is NaN there
+# rather than refused (DESIGN.md, the entry's prelude). Their values, by
+# the eigenvalues' closed forms, are held to the interpreter's by
+# cli.cmake's compile_seqcells_values.
 stab(x_n) = {
     G_n = [2*x_n, 1/2; -1/4, x_n]
     h_n = hurwitz(charpoly(G_n))
@@ -124,7 +128,7 @@ stab(x_n) = {
     r_n = rho(G_n)
     a_n = abscissa(G_n)
 }
-pair = stab(x_n = ~((2*n - 99)/100))
+pair = stab(x_n = ~((2*n - 9)/10))
 stab4(x_n) = {
     G_n = [2*x_n, 1/2, 0, 1/8; -1/4, x_n, 1/8, 0; 0, 0, -x_n, 1; 0, 0, -1, 2/3]
     h_n = hurwitz(charpoly(G_n))
@@ -132,7 +136,7 @@ stab4(x_n) = {
     r_n = rho(G_n)
     a_n = abscissa(G_n)
 }
-quad = stab4(x_n = ~((2*n - 99)/100))
+quad = stab4(x_n = ~((2*n - 9)/10))
 
 # 'degen': C275's limit in the step, by the owner's decision. The step's
 # rho and abscissa bisect in doubles, as compiled eig and smax do, their
@@ -159,7 +163,7 @@ degen = fourfold(x_n = ~(1/3))
 # [2x; 4], each cell halving its distance to it; the walk stops by lim's
 # rule in doubles as the interpreter's does:
 #
-#     fixed: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     fixed: 30 steps from 0, against exact values until 0 and inexact ones from there
 #     fixed.y: within 0
 hl(v)_0 = v
 hl(v)_k[j<=2] = hl(v)_(k-1)[j]/2 + j*v[j]
