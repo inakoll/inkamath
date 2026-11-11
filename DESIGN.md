@@ -14476,6 +14476,11 @@ Decided:
   interpreter's exact term, rounded once (C443); at exact arguments and
   an index that moves, the step rounds where the interpreter is exact,
   `idx.e`. In float, within units of a float, a walk being its terms.
+  Under grad by a single value within 0 too; by a vector, units in the
+  last place apart, the walk taking forward mode where the interpreter
+  takes the term in reverse: with `ss(v)_0 = 0` and `ss(v)_k =
+  ss(v)_(k-1)*v[2] + v[1]*v[2]`, `grad_(w = [x_n; x_n/3]) ss(w)_n` is
+  within 2.2e-16 of the interpreter's, relative.
 - **`rho` and `abscissa` bisect in doubles**, by the owner's decision:
   C275's limit in the step. The interpreter reads their doubles as the
   fractions they are and bisects exactly (C275); the step's counts read
