@@ -107,7 +107,7 @@ if(PART STREQUAL "spec_seqcells")
     endif()
     foreach(model IN ITEMS stencil:heat ends:ends parts:parts walked:walked stab:stab
                            stab4:stab4 fourfold:fourfold halving:halving 
-                           folded:folded)
+                           counted:counted folded:folded)
         string(REPLACE ":" ";" model "${model}")
         list(GET model 1 header)
         list(GET model 0 model)
@@ -156,6 +156,14 @@ if(PART STREQUAL "spec_seqcells")
     if(NOT at EQUAL -1)
         message(SEND_ERROR "compile_seqcells_folded: folded.h walks")
     endif()
+    # A walked read at a parameter K reads it from the struct, which the host
+    # may change, where a read written out compiles it in.
+    holds(compile_seqcells_counted counted.h "counted_walk0(m_, m_->K, ")
+    file(READ "${OUT}/counted.h" text)
+    string(FIND "${text}" "cannot change" at)
+    if(NOT at EQUAL -1)
+        message(SEND_ERROR "compile_seqcells_counted: counted.h compiles K in")
+    endif()
 
     # a's terms change size; b reads its own term at floor(k/2), c with other
     # arguments; d is a second derivative and e's index moves with t; f has
@@ -185,6 +193,23 @@ if(PART STREQUAL "spec_seqcells")
 
     if(NOT CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
         return()
+    endif()
+    # counted stepped by a host at x = 1: (M^3 bump(1))[4], then K set to 5.
+    file(WRITE "${OUT}/counted_host.c" "#include <stdio.h>\n#include \"counted.h\"\n"
+         "int main(void) {\n    counted m;\n    counted_init(&m);\n    counted_step(&m, 1.0);\n"
+         "    printf(\"%.17g\\n\", m.a[0]);\n    m.K = 5.0;\n    counted_update(&m);\n"
+         "    counted_step(&m, 1.0);\n    printf(\"%.17g\\n\", m.a[0]);\n    return 0;\n}\n")
+    execute_process(COMMAND "${CC}" -std=c11 -O2 counted_host.c -o counted_host -lm
+                    WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
+                    ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
+    if(failed)
+        message(SEND_ERROR "compile_seqcells_counted: its host not built\n${errors}")
+    else()
+        execute_process(COMMAND "${OUT}/counted_host" WORKING_DIRECTORY "${OUT}"
+                        OUTPUT_VARIABLE got RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
+        if(NOT code EQUAL 0 OR NOT "${got}" STREQUAL "0.65625\n0.6005859375\n")
+            message(SEND_ERROR "compile_seqcells_counted: exit ${code}, the host printed\n${got}")
+        endif()
     endif()
     # An instance's report: its first line matching the first pattern, then
     # each line given found, and no other, its program exiting with exits. A

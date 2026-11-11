@@ -158,6 +158,18 @@ fourfold(x_n) = {
 }
 degen = fourfold(x_n = ~(1/3))
 
+# 'counted', a model: a walked read whose index is a parameter of the
+# model reads it from the struct at each step, as the step reads every
+# parameter, so the host may change it, where a read written out compiles
+# it in, as iterates.ink's mpc does its iters. 'inkamath --compile
+# seqcells.ink counted -o counted.h' calls its walk at m_->K, and stepped by
+# a host at x = 1, a is
+# (M^K bump(1))[4]: 21/32 at the default K = 3, and 0.6005859375 once the
+# host sets K to 5 and calls counted_update.
+counted(K = 3, x_n) = {
+    a_n = u(bump(x_n), 1/4)_K[4]
+}
+
 # 'folded': a clause behind a guard that folds false is read nowhere, so ff
 # does not reach gf by cells through it, and ff_3 is written out as today:
 # 'inkamath --compile seqcells.ink folded -o folded.h' holds

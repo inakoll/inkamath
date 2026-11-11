@@ -14741,6 +14741,11 @@ through a walking function:
     a step would carry and arguments compared bit for bit at each read,
     for what the recurrence written as a sequence of the step,
     `w_n = w_(n-1)/2 + 1`, does in one term.
+  - **A parameter at the index**: a walked read whose K reads a parameter
+    of the model reads it from the struct at each step, as the step reads
+    every parameter, so `_update` after the host sets it changes the walk
+    (`counted`); a read written out compiles it in, as today, and says so
+    in the header's first comment, `mpc`'s "cannot change: iters.".
   - **Arguments that change as a limit walks stay refused**, on purpose:
     `compile_series_refused`'s c and d, `t(sc(x)_(k-1))_k` and `t(k*x)_k`,
     and `compile_sums_refused`'s c, `t(q*x_n)_q`. A read at the walking
@@ -14823,20 +14828,20 @@ through a walking function:
   and by a vector at 3; `idx`, the index's NaN, a constant past 1000, and an
   exact argument; `pair` and `quad`, hurwitz, schurcohn, rho and abscissa of
   a moving 2x2 and 4x4, x by 0.2 across every transition; `degen`, rho of a
-  fourfold 1/3; `folded`, a clause behind a guard folding false; `fixed`, a
-  limit by cells; and a file of nine refusals. `cli.cmake`'s part
-  `spec_seqcells`, run by `cli_spec_seqcells`, compiles each model, strict,
-  checks each instance to its comment's lines, these and no other, and pins
-  the walk's name and calls, the stability headers' sizes and folded's
-  lines, skipped while the stencil is refused as today and only then. A
-  report that must hold a guard's line more, `pair`'s and `quad`'s above
-  all, amends its pattern with the reason. Each instance is checked for as
-  many steps as cross its transitions, 10 for pair and quad, 30 or 40 for
-  the others, `degen` 100: under the sanitizers a pass of the interpreter
-  over all of them takes some 11.5 s, quad's 10 steps 5.8 of it, and a check
-  some 6.4 passes, so the part some 75 s and with its compiles and builds
-  under 100, where 100 steps of each were some 600.
-  `compile_seqcells_values`,
+  fourfold 1/3; `counted`, a parameter at the index, stepped by a host;
+  `folded`, a clause behind a guard folding false; `fixed`, a limit by
+  cells; and a file of nine refusals. `cli.cmake`'s part `spec_seqcells`,
+  run by `cli_spec_seqcells`, compiles each model, strict, checks each
+  instance to its comment's lines, these and no other, and pins the walk's
+  name and calls, the stability headers' sizes and folded's lines, skipped
+  while the stencil is refused as today and only then. A report that must
+  hold a guard's line more, `pair`'s and `quad`'s above all, amends its
+  pattern with the reason. Each instance is checked for as many steps as
+  cross its transitions, 10 for pair and quad, 30 or 40 for the others,
+  `degen` 100: under the sanitizers a pass of the interpreter over all of
+  them takes some 11.5 s, quad's 10 steps 5.8 of it, and a check some 6.4
+  passes, so the part some 75 s and with its compiles and builds under 100,
+  where 100 steps of each were some 600. `compile_seqcells_values`,
   in `cli.cmake`'s part 3, holds the interpreter's values to fractions and
   to the eigenvalues' closed forms, and passes now. When built:
   `compile_iterates_refused` loses a, b and u, which compile, and
