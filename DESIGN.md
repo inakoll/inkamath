@@ -14584,9 +14584,7 @@ Departures and findings:
   parents, and a guard folds false where it reads no name and the
   interpreter evaluates it false.
 - **A base clause past L in a term by cells** is the term at its index,
-  as at L, at `k_ == b`. A term by cells beside a guarded clause written
-  whole is refused, "a guarded term written whole beside its cells", as a
-  step's sequence is; a guarded base past L of one not by cells stays "a
+  as at L, at `k_ == b`; a guarded base past L of one not by cells stays "a
   guarded base clause in a limit's terms", as a limit's.
 - **Term's refusal past 1000 terms goes**, "r_1001 is 1001 terms from its
   base, and a step writes out at most 1000": every such read walks now.

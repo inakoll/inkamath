@@ -3557,7 +3557,6 @@ private:
             for (const Clause<Value>& clause : definition.Clauses()) {
                 const ParametersDefinition<Value>& p = clause.parameters;
                 if (!p.general() || p.cells()) continue;
-                if (p.guarded()) throw Reason("a guarded term written whole beside its cells");
                 const std::string outer = std::exchange(index_, p.index_name());
                 whole                   = Emit(clause.expression);
                 index_                  = outer;
@@ -3620,12 +3619,8 @@ private:
         std::optional<Setting<Memo>> memo;
         if (memo_.first != temporaries_) memo.emplace(memo_, Memo{temporaries_, {}});
         std::optional<Code> whole;  // the matrix written whole, if it is
-        for (const Clause<Value>& clause : definition.Clauses()) {
-            if (clause.parameters.cells() || !fits(clause)) continue;
-            if (clause.parameters.guarded() && IsSequence(definition))
-                throw Reason("a guarded term written whole beside its cells");
-            whole = Emit(clause.expression);
-        }
+        for (const Clause<Value>& clause : definition.Clauses())
+            if (!clause.parameters.cells() && fits(clause)) whole = Emit(clause.expression);
         const std::string           nan    = Refused(whole);
         const std::optional<Extent> extent = Measured(name, definition, whole, fits);
         if (!extent) throw Reason(name + " has no size");
