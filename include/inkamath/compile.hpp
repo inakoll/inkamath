@@ -3696,7 +3696,8 @@ private:
 
     std::size_t Size(const PExpression<Value>& expression) {
         const int size = Whole(Known(expression, "a matrix whose size is not a constant"));
-        if (size < 1) throw Reason("a size must be at least 1, not " + std::to_string(size));
+        // The interpreter's refusal wherever taken: NaN in a guarded clause (C444).
+        if (size < 1) throw Undefined("a size must be at least 1, not " + std::to_string(size));
         return static_cast<std::size_t>(size);
     }
 

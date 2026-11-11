@@ -2001,6 +2001,12 @@ set(args --compile c443r.ink)
 set(stdout "cannot compile r: eig needs a matrix whose eigenvalues are all real\ncannot compile s: rho needs finite cells, not ~inf\n")
 set(exit 1)
 check(compile_c443_refused)
+# C444: a guarded recursion whose argument's size falls below 1 where no
+# input takes it, abscissaq's, is NaN there, not refused.
+file(WRITE "${OUT}/c444.ink" "f(p[j<=m]) = 1\nf(p[j<=m]) | p[m] == 0 = f(t(p))\nt(p[j<=m])[j<=m-1] = p[j]\ny_n = f([1; n - 3])\n")
+set(args --check c444.ink -o c444.c)
+check(check_c444)
+reports(check_c444 c444 "c444.ink: 100 steps from 0, against exact values\ny: within 0\n")
 
 # check_not_transcript reads the models.ink part 1 writes.
 file(WRITE "${OUT}/models.ink" "gain(k = 2, x_n) = { y_n = k*x_n + z_n }\n")
