@@ -1794,7 +1794,7 @@ file(WRITE "${OUT}/models.ink" "gain(k = 2, x_n) = { y_n = k*x_n + z_n }\n")
 
 # Nor do hinf and dhinf, their hurwitz walked: hinfl's hinfo(u, m), by cells
 # and its bound reading m, is a function of the header whose m is a double,
-# as hinfo(x_n, 1) alone is refused; grad refuses them where A moves
+# as hinfo(x_n, 1) alone is refused (C445); grad refuses them where A moves
 # (DESIGN.md, the H-infinity norm). Of a 1x1 matrix, dhinf's sizes went unbound, "n is not defined",
 # and hinf's sequence with parameters was "in a limit's terms", where there is
 # none (C213).
