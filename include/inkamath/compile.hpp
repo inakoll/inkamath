@@ -2933,6 +2933,7 @@ private:
     PExpression<Value> visit(CompareExpression<Value>* expression) override {
         const Code       left = Emit(expression->m_e1()), right = Emit(expression->m_e2());
         const Comparison op = expression->Op();
+        compared_ += !(left.constant && right.constant);
         if (!(left.Scalar() && right.Scalar()) && op != Comparison::Equal &&
             op != Comparison::NotEqual)
             throw Reason("a comparison needs single values, not a " +
@@ -3831,6 +3832,7 @@ private:
         Walked walked{name, what, names, 0, {0, 0}, &lists_.emplace_back(), &lists_.emplace_back()};
         walked.parted                                = parted;
         const std::size_t          stepped           = steps_;
+        const int                  compared          = compared_;
         Walked* const              outer_limit       = std::exchange(limit_, &walked);
         auto* const                outer_temporaries = std::exchange(temporaries_, walked.based);
         // Its names are its own: a step's t1_ is not its term before (C308).
@@ -3896,9 +3898,11 @@ private:
                     L + ", each term from those\n * before, so " + (highest ? "K less " + L : "K") +
                     " terms at each call; NaN where K "
                     "is not a whole number from " +
-                    L + " to " + bound +
-                    ".\n * Its tests are rounded where the interpreter's "
-                    "may be exact. */\n";
+                    L + " to " + bound + "." +
+                    (compared_ == compared
+                         ? ""
+                         : "\n * Its tests are rounded where the interpreter's may be exact.") +
+                    " */\n";
         else
             text += "/* " + what + ", as the interpreter takes it: its " + terms + " from index " +
                     std::to_string(highest + 1 - counted) + " on, until\n * two agree within " +
@@ -7984,6 +7988,7 @@ private:
     std::set<std::size_t>            inverses_;  // the sizes a helper is needed for
     std::vector<std::pair<std::string, std::string>> limits_;  // a function for each walk, by name
     int                                              walks_ = 0;  // of those, the walks to an index
+    int compared_ = 0;  // the comparisons compiled that do not fold, as a walk's tests
     std::set<const Reference<Value>*>  closing_;   // closed forms being compiled at their index
     std::vector<std::string>           prelude_;   // and for each function of the prelude called
     std::map<std::string, std::string> functions_;  // their names and values
