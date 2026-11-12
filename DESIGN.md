@@ -15109,8 +15109,12 @@ external review of 2026-10-12), by the owner's tank:
     objective over 8 steps.
   - **The step split** never cuts a nest, one temporary's lines; an array
     or a table a later part reads is carried in the struct, as a looped
-    product is (increment 1). An array is a local of the step: forward's
-    64x64 is 32 KB of stack.
+    product is (increment 1). An array is a local of the step, 8 bytes a
+    cell in double, as a looped product's: forward's 64x64 is 32 KB of
+    stack, and flattened's at 256x256 512 KB, half MSVC's default 1 MB, its
+    tables being static (below); one array of about 362x362 fills it, past
+    which a host raises its stack, `/STACK` or a thread's own. No scratch
+    in the struct for it: speculative at the tank's 64x64.
   - **Value numbering** shares within a body by `Shared` and `Declare`, as
     a cell written out does; across cells there is nothing to share, the
     body being every cell. `Invariant` is a limit's, and a limit gives way.
@@ -15190,8 +15194,11 @@ external review of 2026-10-12), by the owner's tank:
   `spec_cellloops` about 75 s and `spec_cellloops_tank` about 50, with
   2.4.0's threefold miss inside 240 for the second only: past it, the
   first splits as seqcells' did. When built: the parts join `cli.cmake`'s
-  regular cases, their skips gone; `docs/compile.md` gains a row and its
-  *Refused* list a line; no golden, expected header, check program or
+  regular cases, their skips gone; `docs/compile.md` gains a row, "A
+  definition by cells of more than 1000 cells, a sum or a product of more
+  than 1000 terms | a loop nest, its body compiled once, each array a
+  local of the step, so that one of about 362x362 doubles fills MSVC's
+  default 1 MB stack", and its *Refused* list a line; no golden, expected header, check program or
   `--compile` of `test/compile`'s files and models moves but
   cellloops.ink's own, which the implementation confirms by the probe
   above.
