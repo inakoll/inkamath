@@ -344,7 +344,7 @@ if(PART MATCHES "^spec_cellloops(_tank)?$")
 ]=] [=[    double t#_ = -0.0;
     for (int k1_ = 0; k1_ < 7; ++k1_) {
         double t#_ = -0.0;
-        for (int k2_ = 0; k2_ < 143; ++k2_) t#_ = t#_ + m_->y[0][k2_][0];
+        for (int k2_ = 0; k2_ < 143; ++k2_) t#_ = t#_ + (double)(k1_ + 1) * m_->y[0][k2_][0];
         t#_ = t#_ + t#_;
     }
 ]=])
@@ -3204,7 +3204,7 @@ use cellloops
 >> [cellloops.ends.s_0, cellloops.ends.t_0, cellloops.ends.t_1, cellloops.ends.t_2] == [750, 1501/4, 751/2, 1503/4]
 1
 
->> [cellloops.ends.w_0, cellloops.ends.w_1, cellloops.ends.w_2, cellloops.ends.v_0, cellloops.ends.v_1, cellloops.ends.v_2] == [378, 1505/4, 749/2, 1503/4, 1505/4, 1503/4]
+>> [cellloops.ends.w_0, cellloops.ends.w_1, cellloops.ends.w_2, cellloops.ends.v_0, cellloops.ends.v_1, cellloops.ends.v_2] == [1512, 1505, 1498, 1503/4, 1505/4, 1503/4]
 1
 
 >> [cellloops.gate.q_0, cellloops.gate.q_4, cellloops.pulled.d_3] == [192, 192, 3/4]

@@ -94,11 +94,11 @@ rods = clamped(y_n = Z(n))
 # 'ends' and 'endsx': the threshold. x, of 1000 cells, and s, a sum of
 # 1000 terms, are written out as today; t, of 1001, loops, its index
 # through the table [0, 1, ..., 999, 0]; and w, 7 sums of 143, 1001 terms
-# in all, loops as a nest, the inner sum a loop in the outer's body; v, 2
-# sums of 501, would loop, but its place i + j - 1 reads both, so it gives
-# way and is written out as today. At E, quarters, s_n is 750, t_n 1501/4,
-# 751/2 and 1503/4 at n = 0 to 2, w_n 378, 1505/4 and 749/2, and v_n
-# 1503/4, 1505/4 and 1503/4. At Ez, ninths in doubles, each within 0:
+# in all, loops as a nest, the inner sum, reading i, a loop in the outer's
+# body; v, 2 sums of 501, would loop, but its place i + j - 1 reads both,
+# so it gives way and is written out as today. At E, quarters, s_n is
+# 750, t_n 1501/4, 751/2 and 1503/4 at n = 0 to 2, w_n 1512, 1505 and
+# 1498, and v_n 1503/4, 1505/4 and 1503/4. At Ez, ninths in doubles, each within 0:
 #
 #     endsx: 6 steps from 0, against exact values until 0 and inexact ones from there
 #     endsx.x: within 0
@@ -110,7 +110,7 @@ edge(y_n[i<=1000]) = {
     x_n[i<=1000] = y_n[max(i - 1, 1)] + y_n[min(i + 1, 1000)]
     s_n = sum_(i=1)^1000 x_n[i]
     t_n = sum_(k=1)^1001 y_n[mod(k - 1, 1000) + 1]
-    w_n = sum_(i=1)^7 sum_(j=1)^143 y_n[j]
+    w_n = sum_(i=1)^7 sum_(j=1)^143 i*y_n[j]
     v_n = sum_(i=1)^2 sum_(j=1)^501 y_n[i + j - 1]
 }
 ends = edge(y_n = E(n))
