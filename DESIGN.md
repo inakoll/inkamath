@@ -15201,3 +15201,10 @@ external review of 2026-10-12), by the owner's tank:
   where five of six gdb samples of forward written out fell; kept once
   for each argument, it would speed every header written out by cells
   without moving one.
+
+- **A guard reading a place, in a loop**: a Dirichlet boundary,
+  `u[i<=N] | i == 1 = 0`, gives way and is written out (*Definitions by
+  cells as loops*, above). Two ways, from its spec's review: the chain a
+  ternary chosen per cell, each clause's reads checked only at the places
+  where it is taken; or the edges peeled, the nest over the interior and
+  the boundary's cells written out.
