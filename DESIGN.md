@@ -15228,7 +15228,7 @@ external review of 2026-10-12), by the owner's tank:
   compiles in 1.5 s and at 64x64 in 3 to 5, a check at 32x32 takes 3 s
   and at 64x64 9 s: `spec_cellloops` about 40 s, its thirteen compiles,
   edgeout's 10 written out, and their strict builds; `spec_cellloops_checks`
-  about 40, thirteen checks; `spec_cellloops_tank` about 50. Each stays
+  about 40, twelve checks; `spec_cellloops_tank` about 50. Each stays
   under 80 s with half again for a miss, and under 240 with 2.4.0's
   threefold. When built: the parts join `cli.cmake`'s
   regular cases, their skips gone; `docs/compile.md` gains a row, "A
