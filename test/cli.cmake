@@ -427,14 +427,14 @@ if(PART MATCHES "^spec_cellloops(_checks|_tank)?$")
          "    g_n = max_(k=1)^1001 k*x_n\n    h_n = sum_(k=1)^1001 lim r(x_n/k)\n"
          "    r(x)_0 = x\n    r(x)_k = r(x)_(k-1)/2 + 1\n}\n")
     set(args --compile cellloops_refused.ink refused)
-    string(CONCAT stdout "cannot compile a: a sum of more than 1000 terms under grad, for now\n"
-                  "cannot compile b: a sum of more than 1000 terms whose loop reads a place of both i and j, for now\n"
-                  "cannot compile c: a sum of more than 1000 terms whose loop reads k as more than a place or an operand, for now\n"
-                  "cannot compile d: a sum of more than 1000 terms whose loop reads k as more than a place or an operand, for now\n"
+    string(CONCAT stdout "cannot compile a: a sum or a product of more than 1000 terms under grad, for now\n"
+                  "cannot compile b: a sum or a product of more than 1000 terms whose term reads y_n at a place that is no sum of whole multiples of i and j and a constant, for now\n"
+                  "cannot compile c: a sum or a product of more than 1000 terms whose term reads k in an exponent, for now\n"
+                  "cannot compile d: a sum or a product of more than 1000 terms whose term reads k in an index of x, for now\n"
                   "cannot compile e: row 1601 is outside a 1600x1 matrix\n"
-                  "cannot compile f: a sum of more than 1000 terms whose loop has a sum whose bounds read i, for now\n"
+                  "cannot compile f: a sum or a product of more than 1000 terms whose inner sum's bounds read i, for now\n"
                   "cannot compile g: the maximum has more than 1000 terms\n"
-                  "cannot compile h: a sum of more than 1000 terms whose loop reads a limit or a walk, for now\n")
+                  "cannot compile h: a sum or a product of more than 1000 terms whose term reads a limit, for now\n")
     set(exit 1)
     check(compile_cellloops_refused)
     set(exit 0)

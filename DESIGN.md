@@ -15004,12 +15004,12 @@ external review of 2026-10-12), by the owner's tank:
     sizes and outputs are unchanged, so the owner's preference holds: every
     header that compiles today is byte for byte the same.
   - **Not under grad**: inside a grad's body, forward or reverse mode,
-    nothing loops: cells are written out as today and a sum past 1000 is
-    refused, "a sum of more than 1000 terms under grad, for now", until the
-    sweep runs through loops (increment 5, 2.6.0). So `sensitivity`'s
-    step is today's, byte for byte, its init's two defaults a loop each
-    (below). A value looped
-    outside a grad and read inside is an array of atoms, with no part.
+    nothing loops: cells are written out as today and a sum or a product
+    past 1000 terms is refused, "a sum or a product of more than 1000 terms
+    under grad, for now", until the sweep runs through loops (increment 5,
+    2.6.0). So `sensitivity`'s step is today's, byte for byte, its init's
+    two defaults a loop each (below). A value looped outside a grad and
+    read inside is an array of atoms, with no part.
   - **The places**: in the nest's body a place is the loop's index,
     `i1_`, and a value that reads only places and constants is *placed*:
     its exact value at each value of the places it reads is known while
@@ -15103,13 +15103,17 @@ external review of 2026-10-12), by the owner's tank:
     or a walk in its body, or an inner sum whose bounds read its index,
     throws a reason of its own (`Unlooped`) and leaves nothing behind, its
     temporaries dropped; the definition is then written out as today, and
-    a sum past 1000 terms, which cannot be, is refused with the loop's
-    reason: "a sum of more than 1000 terms whose loop reads k as more than
-    a place or an operand, for now", "... reads a place of both i and j,
-    for now", "... has a sum whose bounds read i, for now", "... reads a
-    limit or a walk, for now"; a read outside a matrix in the
-    interpreter's words, "row 1601 is outside a 1600x1 matrix", which it
-    gives wherever that term is taken. Any other reason the attempt meets
+    a sum or a product past 1000 terms, which cannot be, is refused with
+    the loop's reason, naming what the user wrote, as a refusal does: "a
+    sum or a product of more than 1000 terms whose term reads k in an
+    exponent, for now", "... in a comparison", "... in a guard", "... in
+    a call of max", "... in an index of x", "... in a size"; "... whose
+    term reads y_n at a place that is no sum of whole multiples of i and j
+    and a constant, for now"; "... whose inner sum's bounds read i, for
+    now"; "... whose term reads a limit, for now", or a walk; and a read
+    outside a matrix in the interpreter's words, "row 1601 is outside a
+    1600x1 matrix", which it gives wherever that term is taken. Any other
+    reason the attempt meets
     is the definition's own, as written out.
   - **`--float`**: arrays, accumulators and tables of values are `float`,
     from `-0.0f`, each table cell the literal written out; within units of

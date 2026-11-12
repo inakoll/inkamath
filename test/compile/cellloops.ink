@@ -206,11 +206,11 @@ tankflat = flattened(u_n = V64(n), p_n = V64(n - 1))
 #
 # with y_n of 1600 cells:
 #
-#     cannot compile a: a sum of more than 1000 terms under grad, for now
-#     cannot compile b: a sum of more than 1000 terms whose loop reads a place of both i and j, for now
-#     cannot compile c: a sum of more than 1000 terms whose loop reads k as more than a place or an operand, for now
-#     cannot compile d: a sum of more than 1000 terms whose loop reads k as more than a place or an operand, for now
+#     cannot compile a: a sum or a product of more than 1000 terms under grad, for now
+#     cannot compile b: a sum or a product of more than 1000 terms whose term reads y_n at a place that is no sum of whole multiples of i and j and a constant, for now
+#     cannot compile c: a sum or a product of more than 1000 terms whose term reads k in an exponent, for now
+#     cannot compile d: a sum or a product of more than 1000 terms whose term reads k in an index of x, for now
 #     cannot compile e: row 1601 is outside a 1600x1 matrix
-#     cannot compile f: a sum of more than 1000 terms whose loop has a sum whose bounds read i, for now
+#     cannot compile f: a sum or a product of more than 1000 terms whose inner sum's bounds read i, for now
 #     cannot compile g: the maximum has more than 1000 terms
-#     cannot compile h: a sum of more than 1000 terms whose loop reads a limit or a walk, for now
+#     cannot compile h: a sum or a product of more than 1000 terms whose term reads a limit, for now
