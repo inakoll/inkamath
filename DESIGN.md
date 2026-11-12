@@ -14972,8 +14972,9 @@ external review of 2026-10-12), by the owner's tank:
   | `sensitivity`, grad by the speeds | 27.6 s | 4,861,305 | 75,952 |
   | `flattened`, misfit in one sum of 4096 | refused, "a sum or a product of more than 1000 terms" | | |
 
-  At 1e99065, 25.0 s for forward's 1,005,197 bytes, 29.4 s for nested's
-  2,108,075, flattened refused after 25.8 s. The time is quadratic in the
+  At 1e99065, measured, 25.0 s for forward's 1,005,197 bytes and 8,512
+  lines, beside the owner's 14,507, 29.4 s for nested's 2,108,075 and
+  41,353, flattened refused after 25.8 s. The time is quadratic in the
   cells: 0.08 s at 16x16, 1.4 s at 32x32; sampled by gdb, it goes to
   reading one cell of a 4096-cell argument, which scans every cell of it
   for NaN and copies its `Code` (`visit(CellExpression)`), once for each
