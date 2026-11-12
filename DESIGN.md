@@ -14987,7 +14987,11 @@ external review of 2026-10-12), by the owner's tank:
     those of the sums written in its body with constant bounds, number more
     than 1000, each of those sums a loop of its own, in the outer's body
     where it reads the outer's index and before the nest where it does not
-    (`Declare`, below). At 1000 and below
+    (`Declare`, below). The count is the number of terms writing the sum
+    out would produce: its own terms times the sum of the counts of the
+    constant-bound sums written side by side in its body, so `sum_(i=1)^10
+    (sum_(j=1)^60 a + sum_(k=1)^50 b)` counts 10*(60 + 50), 1100, and a
+    term with no sum in it counts 1. At 1000 and below
     both are written out as today, and a sum in a cell's body, or in a
     function a body calls, decides by its own count. 1000 is `max_terms`,
     past which a sum was refused, so no sum that compiles today loops.
