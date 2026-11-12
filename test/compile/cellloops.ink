@@ -196,7 +196,7 @@ tankflat = flattened(u_n = V64(n), p_n = V64(n - 1))
 #     a_n = grad_(t = x_n) sum_(k=1)^1001 t/k
 #     b_n = sum_(i=1)^1001 sum_(j=1)^2 y_n[mod(i*j, 1600) + 1]
 #     c_n = sum_(k=1)^1001 x_n^k
-#     d_n = sum_(k=1)^1001 x_(n - k)
+#     d_n = sum_(k=1)^1001 max(x_n, k)
 #     e_n = sum_(k=1)^1001 y_n[k + 600]
 #     f_n = sum_(i=1)^1001 sum_(j=1)^i x_n/j
 #     g_n = max_(k=1)^1001 k*x_n
@@ -209,7 +209,7 @@ tankflat = flattened(u_n = V64(n), p_n = V64(n - 1))
 #     cannot compile a: a sum or a product of more than 1000 terms under grad, for now
 #     cannot compile b: a sum or a product of more than 1000 terms whose term reads y_n at a place that is no sum of whole multiples of i and j and a constant, for now
 #     cannot compile c: a sum or a product of more than 1000 terms whose term reads k in an exponent, for now
-#     cannot compile d: a sum or a product of more than 1000 terms whose term reads k in an index of x, for now
+#     cannot compile d: a sum or a product of more than 1000 terms whose term reads k in a call of max, for now
 #     cannot compile e: row 1601 is outside a 1600x1 matrix
 #     cannot compile f: a sum or a product of more than 1000 terms whose inner sum's bounds read i, for now
 #     cannot compile g: the maximum has more than 1000 terms
