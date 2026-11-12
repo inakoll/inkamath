@@ -15119,7 +15119,9 @@ external review of 2026-10-12), by the owner's tank:
     reason the attempt meets
     is the definition's own, as written out.
   - **`--float`**: arrays, accumulators and tables of values are `float`,
-    from `-0.0f`, each table cell the literal written out; within units of
+    from `-0.0f`, each table cell the literal written out, and a placed
+    operand cast, `(float)(k1_ + 1)`, which -Wdouble-promotion holds clean;
+    within units of
     a float as written out, bit for bit with it. One sum of 1024 floats
     drifts where 32 of 32 do not: Python's floats in the step's order give
     1.7, 2.2 and 96 units at most for wave's field, seen's and flat's

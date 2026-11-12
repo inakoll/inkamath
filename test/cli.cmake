@@ -295,7 +295,7 @@ if(PART MATCHES "^spec_cellloops(_checks|_tank)?$")
         strict(compile_cellloops_${model} ${model}.h)
     endforeach()
     file(MAKE_DIRECTORY "${OUT}/float")
-    foreach(model IN ITEMS forward32 nested32 flattened32)
+    foreach(model IN ITEMS forward32 nested32 flattened32 edge)
         set(args --compile ${story} ${model} --float -o float/${model}.h)
         check(compile_cellloops_float)
         strict(compile_cellloops_float float/${model}.h -Wdouble-promotion)
@@ -355,6 +355,9 @@ if(PART MATCHES "^spec_cellloops(_checks|_tank)?$")
     smaller(compile_cellloops_flattened flattened32.h 18000)
     like(compile_cellloops_float float/forward32.h "    float t#_[32][32];\n")
     like(compile_cellloops_float float/nested32.h "    float t#_ = -0.0f;\n")
+    # A placed operand in float, cast, which -Wdouble-promotion holds clean.
+    like(compile_cellloops_float float/edge.h
+         "for (int k2_ = 0; k2_ < 143; ++k2_) t#_ = t#_ + (float)(k1_ + 1) * m_->y[0][k2_][0];\n")
 
     # A model's own sequence by cells, the clamps two tables, and a sum over
     # its looped term.
