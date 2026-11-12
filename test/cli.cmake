@@ -188,14 +188,14 @@ if(PART MATCHES "^spec_cellloops(_tank)?$")
     set(inexact "steps from 0, against exact values until 0 and inexact ones from there")
     set(about "(, the interpreter's terms about [0-9.e+-]+ from the exact ones)?")
     set(within0 ": within 0${about}")
-    # A table of 'count' ints, each 'expression' at k from 0, clamped to
-    # 'low' and 'high'.
-    function(table out count expression low high)
+    # A header's table of 'count' ints at file scope, each 'expression' at k
+    # from 0, clamped to 'low' and 'high'.
+    function(table out module count expression low high)
         set(cells "")
         math(EXPR last "${count} - 1")
         foreach(k RANGE ${last})
             string(REPLACE "k" "${k}" cell "${expression}")
-        math(EXPR cell "${cell}")
+            math(EXPR cell "${cell}")
             if(cell LESS low)
                 set(cell ${low})
             elseif(cell GREATER high)
@@ -204,7 +204,7 @@ if(PART MATCHES "^spec_cellloops(_tank)?$")
             list(APPEND cells "${cell}")
         endforeach()
         list(JOIN cells ", " cells)
-        set(${out} "const int t#_[${count}] = {${cells}};" PARENT_SCOPE)
+        set(${out} "\nstatic const int ${module}_table#_[${count}] = {${cells}};\n" PARENT_SCOPE)
     endfunction()
     # How many times a header holds a text.
     function(count out file text)
@@ -270,18 +270,18 @@ if(PART MATCHES "^spec_cellloops(_tank)?$")
     # The step's cells, one loop nest its body once; the periodic wraps two
     # tables, each read at both places; c's default one loop in init; the
     # term copied by increment 3's loop. Written out, 250,819 bytes.
-    table(lt 32 "(k + 31) % 32" 0 31)
-    table(rt 32 "(k + 1) % 32" 0 31)
-    like(compile_cellloops_forward forward32.h "    ${lt}\n" "    ${rt}\n"
+    table(lt forward32 32 "(k + 31) % 32" 0 31)
+    table(rt forward32 32 "(k + 1) % 32" 0 31)
+    like(compile_cellloops_forward forward32.h "${lt}" "${rt}"
          [=[    double t#_[32][32];
     for (int i1_ = 0; i1_ < 32; ++i1_)
-        for (int j1_ = 0; j1_ < 32; ++j1_) t#_[i1_][j1_] = 2.0 * m_->u[0][i1_][j1_] + (0.0 - m_->p[0][i1_][j1_]) + m_->c[i1_][j1_] * m_->c[i1_][j1_] * (m_->u[0][t#_[i1_]][j1_] + m_->u[0][t#_[i1_]][j1_] + m_->u[0][i1_][t#_[j1_]] + m_->u[0][i1_][t#_[j1_]] + (0.0 - 4.0 * m_->u[0][i1_][j1_]));
+        for (int j1_ = 0; j1_ < 32; ++j1_) t#_[i1_][j1_] = 2.0 * m_->u[0][i1_][j1_] + (0.0 - m_->p[0][i1_][j1_]) + m_->c[i1_][j1_] * m_->c[i1_][j1_] * (m_->u[0][forward32_table#_[i1_]][j1_] + m_->u[0][forward32_table#_[i1_]][j1_] + m_->u[0][i1_][forward32_table#_[j1_]] + m_->u[0][i1_][forward32_table#_[j1_]] + (0.0 - 4.0 * m_->u[0][i1_][j1_]));
 ]=] [=[    for (int i_ = 0; i_ < 32; ++i_)
         for (int j_ = 0; j_ < 32; ++j_) m_->c[i_][j_] = 0.25;
 ]=] [=[    for (int i_ = 0; i_ < 32; ++i_)
         for (int j_ = 0; j_ < 32; ++j_) m_->field[0][i_][j_] = t#_[i_][j_];
 ]=])
-    count(tables forward32.h "const int t")
+    count(tables forward32.h "static const int forward32_table")
     count(nests forward32.h "for (int i1_ = 0;")
     if(NOT tables EQUAL 2 OR NOT nests EQUAL 1)
         message(SEND_ERROR "compile_cellloops_forward: forward32.h declares ${tables} tables and ${nests} nests of cells, not 2 and 1")
@@ -304,17 +304,17 @@ if(PART MATCHES "^spec_cellloops(_tank)?$")
     smaller(compile_cellloops_nested nested32.h 10000)
     # flatmisfit's sum, its row and column two tables of 1024, each read for
     # v and for y; refused today.
-    table(rows 1024 "k / 32" 0 31)
-    table(cols 1024 "k % 32" 0 31)
-    like(compile_cellloops_flattened flattened32.h "    ${rows}\n" "    ${cols}\n"
+    table(rows flattened32 1024 "k / 32" 0 31)
+    table(cols flattened32 1024 "k % 32" 0 31)
+    like(compile_cellloops_flattened flattened32.h "${rows}" "${cols}"
          [=[    double t#_ = -0.0;
     for (int k1_ = 0; k1_ < 1024; ++k1_) {
-        const double t#_ = t#_[t#_[k1_]][t#_[k1_]] + (0.0 - m_->y[t#_[k1_]][t#_[k1_]]);
+        const double t#_ = t#_[flattened32_table#_[k1_]][flattened32_table#_[k1_]] + (0.0 - m_->y[flattened32_table#_[k1_]][flattened32_table#_[k1_]]);
         t#_ = t#_ + t#_ * t#_ / 2.0;
     }
     m_->objective[0] = t#_;
 ]=])
-    count(tables flattened32.h "const int t")
+    count(tables flattened32.h "static const int flattened32_table")
     if(NOT tables EQUAL 4)
         message(SEND_ERROR "compile_cellloops_flattened: flattened32.h declares ${tables} tables, not 4")
     endif()
@@ -324,23 +324,23 @@ if(PART MATCHES "^spec_cellloops(_tank)?$")
 
     # A model's own sequence by cells, the clamps two tables, and a sum over
     # its looped term.
-    table(below 1024 "k - 1" 0 1023)
-    table(above 1024 "k + 1" 0 1023)
-    like(compile_cellloops_clamped clamped.h "    ${below}\n" "    ${above}\n"
+    table(below clamped 1024 "k - 1" 0 1023)
+    table(above clamped 1024 "k + 1" 0 1023)
+    like(compile_cellloops_clamped clamped.h "${below}" "${above}"
          [=[    double t#_[1024][1];
-    for (int i1_ = 0; i1_ < 1024; ++i1_) t#_[i1_][0] = m_->y[0][i1_][0] + (m_->y[0][t#_[i1_]][0] + (0.0 - 2.0 * m_->y[0][i1_][0]) + m_->y[0][t#_[i1_]][0]) / 4.0;
+    for (int i1_ = 0; i1_ < 1024; ++i1_) t#_[i1_][0] = m_->y[0][i1_][0] + (m_->y[0][clamped_table#_[i1_]][0] + (0.0 - 2.0 * m_->y[0][i1_][0]) + m_->y[0][clamped_table#_[i1_]][0]) / 4.0;
 ]=] [=[    double t#_ = -0.0;
     for (int k1_ = 0; k1_ < 1024; ++k1_) t#_ = t#_ + m_->x[0][k1_][0];
 ]=])
     # The threshold: x and s, of 1000, written out as today; t and w, of
     # 1001, loops; v, of 1002, written out, its place reading both i and j.
-    table(wrap 1001 "k % 1000" 0 999)
+    table(wrap edge 1001 "k % 1000" 0 999)
     holds(compile_cellloops_edge edge.h
           "    m_->x[0][999][0] = m_->y[0][998][0] + m_->y[0][999][0];\n"
           "    m_->s[0] = m_->x[0][0][0] + m_->x[0][1][0] + m_->x[0][2][0] + "
           " + m_->y[0][499][0] + m_->y[0][500][0] + (m_->y[0][1][0] + m_->y[0][2][0] + ")
-    like(compile_cellloops_edge edge.h "    ${wrap}\n"
-         [=[    for (int k1_ = 0; k1_ < 1001; ++k1_) t#_ = t#_ + m_->y[0][t#_[k1_]][0];
+    like(compile_cellloops_edge edge.h "${wrap}"
+         [=[    for (int k1_ = 0; k1_ < 1001; ++k1_) t#_ = t#_ + m_->y[0][edge_table#_[k1_]][0];
 ]=] [=[    double t#_ = -0.0;
     for (int k1_ = 0; k1_ < 7; ++k1_) {
         double t#_ = -0.0;

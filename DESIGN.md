@@ -15023,11 +15023,18 @@ external review of 2026-10-12), by the owner's tank:
   - **A cell read at a placed place** is whole and within the matrix at
     every one of its values, checked while compiling, so the step tests no
     range and writes no NaN for one: where it is not, the loop gives way,
-    below. It is written as the place's index plus a constant, `i1_ - 1`,
-    where it is that at every value, and otherwise as a table of the ints
-    declared before the nest, `const int t3_[32] = {31, 0, 1, ...};`, read
-    `m_->u[0][t3_[i1_]][j1_]`; a table is a temporary like any, one for
-    equal contents, so lt's serves both i and j. The matrix is read in
+    below. Where its values are affine in the loop's index, a times it
+    plus c at every value, it is written in C, `i1_ - 1`, `2 * i1_ + 1`;
+    otherwise, mod, floor, max and min and any call, as a table of its
+    ints at file scope, outside the step, `static const int
+    forward32_table0_[32] = {31, 0, 1, ...};`, read
+    `m_->u[0][forward32_table0_[i1_]][j1_]`, named by the header's module
+    as its helpers are, so that no temporary of a step shadows it, and one
+    for equal contents, so lt's serves both i and j. Being no temporary, a
+    table is never declared again at each step nor carried by the split;
+    the split's objection to a `static` line in a step (*Constant operands
+    as static const arrays*, increment 1) does not reach a line outside
+    it. The matrix is read in
     place where its cells are one array's (`Viewed`), a term's, a
     parameter's, a looped definition's, and otherwise is made an array
     (`Materialised`), its cells written once in its initializer as a
@@ -15036,8 +15043,8 @@ external review of 2026-10-12), by the owner's tank:
   - **Per-cell folding, kept**: written out, each cell folds what reads
     only its places, exactly, rounded once. A placed operand of `+`, `-`,
     `*` or `/` beside a value that moves is written as `(double)(i1_ + c)`
-    where its values are the place's plus c, else as a table of the
-    doubles each cell written out would hold, so `x + i/10` adds 0.3 at i
+    where its values are affine in the index, else as a static table of
+    the doubles each cell written out would hold, so `x + i/10` adds 0.3 at i
     = 3 as written out, not `3*0.1`, 0.30000000000000004. A placed term of
     a sum folds the sum exactly, as written out; a placed cell is a
     constant cell. A place read anywhere else, a power's exponent, a
@@ -15127,9 +15134,12 @@ external review of 2026-10-12), by the owner's tank:
     edges differ from the interior in text.
   - **A range test in the step, NaN out of range**: every place is known
     while compiling, where the interpreter refuses.
-  - **Index arithmetic in C**, `(i1_ + 31) % 32`, `k1_ / 64`: forms to
-    recognise among the values, some 20 lines, for flattened's two tables
-    of 4096, 31 KB of its header; a table is exact by construction.
+  - **Remainders and quotients in C**, `(i1_ + 31) % 32`, `k1_ / 64`:
+    forms to recognise among the values beyond the affine, some 20 lines,
+    for flattened's two tables of 4096, 31 KB of its header; a table is
+    exact by construction.
+  - **A table as a step's temporary**, `const int t3_[32]` before the
+    nest: written again at each step, and carried by the split.
   - **Places computed in doubles at run time**: `x + i/10` an ulp from the
     interpreter's exact fold; and **tables wherever a place is read**: a
     table read takes the compiler's path for what moves, `pow` for a power.
