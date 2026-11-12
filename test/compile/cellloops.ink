@@ -153,7 +153,7 @@ pulled = pull(x_n = ~(n/7))
 # 976.5610650510386 in one sum; their headers are under 8,000, 10,000 and 45,000 bytes, where
 # forward was 1,006,007 and nested 2,106,456, and flattened was refused, "a
 # sum or a product of more than 1000 terms". sensitivity stays unrolled,
-# its header as today's.
+# its step as today's, its defaults set by loops in init.
 left(i) = mod(i-2,64)+1
 right(i) = mod(i,64)+1
 step(u,p,c)[i<=64,j<=64] = 2*u[i,j]-p[i,j]+c[i,j]^2*(u[left(i),j]+u[right(i),j]+u[i,left(j)]+u[i,right(j)]-4*u[i,j])

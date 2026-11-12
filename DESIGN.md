@@ -15000,7 +15000,8 @@ external review of 2026-10-12), by the owner's tank:
     nothing loops: cells are written out as today and a sum past 1000 is
     refused, "a sum of more than 1000 terms under grad, for now", until the
     sweep runs through loops (increment 5, 2.6.0). So `sensitivity`'s
-    header is today's, byte for byte. A value looped
+    step is today's, byte for byte, its init's two defaults a loop each
+    (below). A value looped
     outside a grad and read inside is an array of atoms, with no part.
   - **The places**: in the nest's body a place is the loop's index,
     `i1_`, and a value that reads only places and constants is *placed*:
@@ -15152,7 +15153,7 @@ external review of 2026-10-12), by the owner's tank:
   same load: `forward` under 8,000 bytes and some 120 lines, `nested`
   under 10,000, `flattened` under 45,000, two tables of 4096 being 31 KB
   of it, each compiled in under 2 s where they took 25 to 31 s or were
-  refused; `sensitivity` as today, byte for byte, 27.6 s.
+  refused; `sensitivity`'s step as today, byte for byte, 27.6 s.
 
   Specified in `test/compile/cellloops.ink`, its numbers by Python's
   fractions, doubles and floats rounded as C's, none recorded: the tank at
