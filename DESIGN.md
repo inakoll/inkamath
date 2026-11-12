@@ -15090,7 +15090,10 @@ external review of 2026-10-12), by the owner's tank:
     1.6e-12 at 32x32 and 1.8e-11 at 64x64, by Python's doubles, as the
     interpreter's do. A reduction, `max_`, `argmin_`, stays written out
     and refused past 1000 as today, "the maximum has more than 1000
-    terms".
+    terms". So does a sum or a product whose terms are matrices: no array
+    accumulates in this increment, so it gives way, written out at 1000
+    terms and below and refused past them, "a sum or a product of more
+    than 1000 terms whose terms are 2x1 matrices, for now".
   - **A sum over a looped definition** reads its array in place:
     `misfit(step(u, p, c), y)` sums `t5_[k1_][k2_]`; and a definition by
     cells reading a looped one reads it in place, one written out made an
@@ -15197,7 +15200,7 @@ external review of 2026-10-12), by the owner's tank:
   indices and one whose place is not, giving way; `act`,
   a guard reading what moves; `guarded` and `pull`, written out, a guard
   reading its place and a definition under grad; the owner's tank at full
-  size; and a file of eight refusals. `cli.cmake`'s part `spec_cellloops`,
+  size; and a file of nine refusals. `cli.cmake`'s part `spec_cellloops`,
   run by `cli_spec_cellloops`, compiles each model, strict, and the 32x32
   tank in float; pins the nests, tables and sums' lines from the rule
   above, '#' for a temporary's number, their counts and the headers'

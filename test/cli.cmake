@@ -418,7 +418,8 @@ if(PART MATCHES "^spec_cellloops(_checks|_tank)?$")
     # b's place reads both of its loops, not affinely; c reads k in an
     # exponent and d in a call of what moves, each compiling written out at
     # a few terms, so that its words are the loop's alone; e reads past y;
-    # f's inner bound reads i; g is a reduction, as today; h reads a limit.
+    # f's inner bound reads i; g is a reduction, as today; h reads a limit;
+    # m's terms are matrices, which no accumulator holds yet.
     file(WRITE "${OUT}/cellloops_refused.ink"
          "refused(x_n, y_n[i<=1600]) = {\n"
          "    a_n = grad_(t = x_n) sum_(k=1)^1001 t/k\n"
@@ -426,6 +427,7 @@ if(PART MATCHES "^spec_cellloops(_checks|_tank)?$")
          "    c_n = sum_(k=1)^1001 x_n^k\n    d_n = sum_(k=1)^1001 max(x_n, k)\n"
          "    e_n = sum_(k=1)^1001 y_n[k + 600]\n    f_n = sum_(i=1)^1001 sum_(j=1)^i x_n/j\n"
          "    g_n = max_(k=1)^1001 k*x_n\n    h_n = sum_(k=1)^1001 lim r(x_n/k)\n"
+         "    m_n = sum_(k=1)^1001 x_n*[1; 2]/k\n"
          "    r(x)_0 = x\n    r(x)_k = r(x)_(k-1)/2 + 1\n}\n")
     set(args --compile cellloops_refused.ink refused)
     string(CONCAT stdout "cannot compile a: a sum or a product of more than 1000 terms under grad, for now\n"
@@ -435,7 +437,8 @@ if(PART MATCHES "^spec_cellloops(_checks|_tank)?$")
                   "cannot compile e: row 1601 is outside a 1600x1 matrix\n"
                   "cannot compile f: a sum or a product of more than 1000 terms whose inner sum's bounds read i, for now\n"
                   "cannot compile g: the maximum has more than 1000 terms\n"
-                  "cannot compile h: a sum or a product of more than 1000 terms whose term reads a limit, for now\n")
+                  "cannot compile h: a sum or a product of more than 1000 terms whose term reads a limit, for now\n"
+                  "cannot compile m: a sum or a product of more than 1000 terms whose terms are 2x1 matrices, for now\n")
     set(exit 1)
     check(compile_cellloops_refused)
     set(exit 0)

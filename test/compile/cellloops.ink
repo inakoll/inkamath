@@ -201,6 +201,7 @@ tankflat = flattened(u_n = V64(n), p_n = V64(n - 1))
 #     f_n = sum_(i=1)^1001 sum_(j=1)^i x_n/j
 #     g_n = max_(k=1)^1001 k*x_n
 #     h_n = sum_(k=1)^1001 lim r(x_n/k)
+#     m_n = sum_(k=1)^1001 x_n*[1; 2]/k
 #     r(x)_0 = x
 #     r(x)_k = r(x)_(k-1)/2 + 1
 #
@@ -214,3 +215,4 @@ tankflat = flattened(u_n = V64(n), p_n = V64(n - 1))
 #     cannot compile f: a sum or a product of more than 1000 terms whose inner sum's bounds read i, for now
 #     cannot compile g: the maximum has more than 1000 terms
 #     cannot compile h: a sum or a product of more than 1000 terms whose term reads a limit, for now
+#     cannot compile m: a sum or a product of more than 1000 terms whose terms are 2x1 matrices, for now
