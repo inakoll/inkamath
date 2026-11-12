@@ -163,6 +163,265 @@ function(seqcells instance program first)
     endif()
 endfunction()
 
+# Specified, not yet built (DESIGN.md, next in line): definitions by cells
+# as loops. Each model of compile/cellloops.ink compiled, strict, the 32x32
+# tank in float too; its loops, index tables and sums held to the rule's
+# lines, a temporary's number written '#'; the headers' sizes; an instance
+# of each checked to the lines its comment gives; and what stays refused in
+# its words. The full tank's checks are a part of their own,
+# spec_cellloops_tank. Skipped while a sum of more than 1000 terms is
+# refused as today, and only then.
+if(PART MATCHES "^spec_cellloops(_tank)?$")
+    file(MAKE_DIRECTORY "${OUT}")
+    file(WRITE "${OUT}/probe.ink" "y_n = sum_(k=1)^1001 x_n/k\n")
+    execute_process(COMMAND "${EXE}" --compile probe.ink -o probe.h
+                    WORKING_DIRECTORY "${OUT}" OUTPUT_VARIABLE out ERROR_VARIABLE err
+                    RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
+    if("${out}${code}" STREQUAL "1" AND
+       "${err}" STREQUAL "inkamath: cannot compile y: a sum or a product of more than 1000 terms\n")
+        message("compile_cellloops: a sum of more than 1000 terms refused, as today")
+        return()
+    endif()
+    set(story "${CMAKE_CURRENT_LIST_DIR}/compile/cellloops.ink")
+    set(float "")
+    set(exits 0)
+    set(inexact "steps from 0, against exact values until 0 and inexact ones from there")
+    set(about "(, the interpreter's terms about [0-9.e+-]+ from the exact ones)?")
+    set(within0 ": within 0${about}")
+    # A table of 'count' ints, each 'expression' at k from 0, clamped to
+    # 'low' and 'high'.
+    function(table out count expression low high)
+        set(cells "")
+        math(EXPR last "${count} - 1")
+        foreach(k RANGE ${last})
+            string(REPLACE "k" "${k}" cell "${expression}")
+        math(EXPR cell "${cell}")
+            if(cell LESS low)
+                set(cell ${low})
+            elseif(cell GREATER high)
+                set(cell ${high})
+            endif()
+            list(APPEND cells "${cell}")
+        endforeach()
+        list(JOIN cells ", " cells)
+        set(${out} "const int t#_[${count}] = {${cells}};" PARENT_SCOPE)
+    endfunction()
+    # How many times a header holds a text.
+    function(count out file text)
+        file(READ "${OUT}/${file}" header)
+        set(n 0)
+        string(FIND "${header}" "${text}" at)
+        while(NOT at EQUAL -1)
+            math(EXPR n "${n} + 1")
+            string(LENGTH "${text}" length)
+            math(EXPR at "${at} + ${length}")
+            string(SUBSTRING "${header}" ${at} -1 header)
+            string(FIND "${header}" "${text}" at)
+        endwhile()
+        set(${out} ${n} PARENT_SCOPE)
+    endfunction()
+
+    if(PART STREQUAL "spec_cellloops_tank")
+        # The owner's tank at 64x64: forward was 1,006,007 bytes, nested
+        # 2,106,456, and flattened refused.
+        foreach(model IN ITEMS forward:8000 nested:10000 flattened:45000)
+            string(REPLACE ":" ";" model "${model}")
+            list(GET model 1 bytes)
+            list(GET model 0 model)
+            set(args --compile ${story} ${model} -o ${model}.h)
+            check(compile_cellloops_${model})
+            strict(compile_cellloops_${model} ${model}.h)
+            smaller(compile_cellloops_${model} ${model}.h ${bytes})
+        endforeach()
+        if(NOT CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
+            return()
+        endif()
+        set(count 4)
+        seqcells(tank tank "tank: 4 ${inexact}" "tank\\.field${within0}")
+        seqcells(tanked tanked "tanked: 4 ${inexact}" "tanked\\.objective${within0}")
+        seqcells(tankflat tankflat "tankflat: 4 ${inexact}" "tankflat\\.objective${within0}")
+        # The 32x32 tank in float, here to share the parts' time: 8 steps,
+        # Python's floats give 1.7, 2.2 and 96 units at most.
+        set(count 8)
+        set(float --float)
+        set(units "units of a float${about}")
+        set(infloat "8 steps from 0 in float, against exact values until 0 and inexact ones from there")
+        seqcells(wave wavef "wave: ${infloat}"
+                 "wave\\.field: within [0-9.e+-]+, [0-9](\\.[0-9])? ${units}")
+        seqcells(seen seenf "seen: ${infloat}"
+                 "seen\\.objective: within [0-9.e+-]+, [0-9](\\.[0-9])? ${units}")
+        seqcells(flat flatf "flat: ${infloat}"
+                 "flat\\.objective: within [0-9.e+-]+, ([0-9](\\.[0-9])?|[1-9][0-9]|1[0-9][0-9]) ${units}")
+        return()
+    endif()
+
+    foreach(model IN ITEMS forward32 nested32 flattened32 clamped edge act guarded pull)
+        set(args --compile ${story} ${model} -o ${model}.h)
+        check(compile_cellloops_${model})
+        strict(compile_cellloops_${model} ${model}.h)
+    endforeach()
+    file(MAKE_DIRECTORY "${OUT}/float")
+    foreach(model IN ITEMS forward32 nested32 flattened32)
+        set(args --compile ${story} ${model} --float -o float/${model}.h)
+        check(compile_cellloops_float)
+        strict(compile_cellloops_float float/${model}.h -Wdouble-promotion)
+    endforeach()
+
+    # The step's cells, one loop nest its body once; the periodic wraps two
+    # tables, each read at both places; c's default one loop in init; the
+    # term copied by increment 3's loop. Written out, 250,819 bytes.
+    table(lt 32 "(k + 31) % 32" 0 31)
+    table(rt 32 "(k + 1) % 32" 0 31)
+    like(compile_cellloops_forward forward32.h "    ${lt}\n" "    ${rt}\n"
+         [=[    double t#_[32][32];
+    for (int i1_ = 0; i1_ < 32; ++i1_)
+        for (int j1_ = 0; j1_ < 32; ++j1_) t#_[i1_][j1_] = 2.0 * m_->u[0][i1_][j1_] + (0.0 - m_->p[0][i1_][j1_]) + m_->c[i1_][j1_] * m_->c[i1_][j1_] * (m_->u[0][t#_[i1_]][j1_] + m_->u[0][t#_[i1_]][j1_] + m_->u[0][i1_][t#_[j1_]] + m_->u[0][i1_][t#_[j1_]] + (0.0 - 4.0 * m_->u[0][i1_][j1_]));
+]=] [=[    for (int i_ = 0; i_ < 32; ++i_)
+        for (int j_ = 0; j_ < 32; ++j_) m_->c[i_][j_] = 0.25;
+]=] [=[    for (int i_ = 0; i_ < 32; ++i_)
+        for (int j_ = 0; j_ < 32; ++j_) m_->field[0][i_][j_] = t#_[i_][j_];
+]=])
+    count(tables forward32.h "const int t")
+    count(nests forward32.h "for (int i1_ = 0;")
+    if(NOT tables EQUAL 2 OR NOT nests EQUAL 1)
+        message(SEND_ERROR "compile_cellloops_forward: forward32.h declares ${tables} tables and ${nests} nests of cells, not 2 and 1")
+    endif()
+    smaller(compile_cellloops_forward forward32.h 8000)
+    # misfit's two sums, one loop in the other's, each from -0.0, so that its
+    # first term is the sum's exactly, as the interpreter's sum begins.
+    # Written out, 520,087 bytes.
+    like(compile_cellloops_nested nested32.h [=[    double t#_ = -0.0;
+    for (int k1_ = 0; k1_ < 32; ++k1_) {
+        double t#_ = -0.0;
+        for (int k2_ = 0; k2_ < 32; ++k2_) {
+            const double t#_ = t#_[k1_][k2_] + (0.0 - m_->y[k1_][k2_]);
+            t#_ = t#_ + t#_ * t#_ / 2.0;
+        }
+        t#_ = t#_ + t#_;
+    }
+    m_->objective[0] = t#_;
+]=])
+    smaller(compile_cellloops_nested nested32.h 10000)
+    # flatmisfit's sum, its row and column two tables of 1024, each read for
+    # v and for y; refused today.
+    table(rows 1024 "k / 32" 0 31)
+    table(cols 1024 "k % 32" 0 31)
+    like(compile_cellloops_flattened flattened32.h "    ${rows}\n" "    ${cols}\n"
+         [=[    double t#_ = -0.0;
+    for (int k1_ = 0; k1_ < 1024; ++k1_) {
+        const double t#_ = t#_[t#_[k1_]][t#_[k1_]] + (0.0 - m_->y[t#_[k1_]][t#_[k1_]]);
+        t#_ = t#_ + t#_ * t#_ / 2.0;
+    }
+    m_->objective[0] = t#_;
+]=])
+    count(tables flattened32.h "const int t")
+    if(NOT tables EQUAL 4)
+        message(SEND_ERROR "compile_cellloops_flattened: flattened32.h declares ${tables} tables, not 4")
+    endif()
+    smaller(compile_cellloops_flattened flattened32.h 18000)
+    like(compile_cellloops_float float/forward32.h "    float t#_[32][32];\n")
+    like(compile_cellloops_float float/nested32.h "    float t#_ = -0.0f;\n")
+
+    # A model's own sequence by cells, the clamps two tables, and a sum over
+    # its looped term.
+    table(below 1024 "k - 1" 0 1023)
+    table(above 1024 "k + 1" 0 1023)
+    like(compile_cellloops_clamped clamped.h "    ${below}\n" "    ${above}\n"
+         [=[    double t#_[1024][1];
+    for (int i1_ = 0; i1_ < 1024; ++i1_) t#_[i1_][0] = m_->y[0][i1_][0] + (m_->y[0][t#_[i1_]][0] + (0.0 - 2.0 * m_->y[0][i1_][0]) + m_->y[0][t#_[i1_]][0]) / 4.0;
+]=] [=[    double t#_ = -0.0;
+    for (int k1_ = 0; k1_ < 1024; ++k1_) t#_ = t#_ + m_->x[0][k1_][0];
+]=])
+    # The threshold: x and s, of 1000, written out as today; t and w, of
+    # 1001, loops; v, of 1002, written out, its place reading both i and j.
+    table(wrap 1001 "k % 1000" 0 999)
+    holds(compile_cellloops_edge edge.h
+          "    m_->x[0][999][0] = m_->y[0][998][0] + m_->y[0][999][0];\n"
+          "    m_->s[0] = m_->x[0][0][0] + m_->x[0][1][0] + m_->x[0][2][0] + "
+          " + m_->y[0][499][0] + m_->y[0][500][0] + (m_->y[0][1][0] + m_->y[0][2][0] + ")
+    like(compile_cellloops_edge edge.h "    ${wrap}\n"
+         [=[    for (int k1_ = 0; k1_ < 1001; ++k1_) t#_ = t#_ + m_->y[0][t#_[k1_]][0];
+]=] [=[    double t#_ = -0.0;
+    for (int k1_ = 0; k1_ < 7; ++k1_) {
+        double t#_ = -0.0;
+        for (int k2_ = 0; k2_ < 143; ++k2_) t#_ = t#_ + m_->y[0][k2_][0];
+        t#_ = t#_ + t#_;
+    }
+]=])
+    count(nests edge.h "for (int k1_ = 0;")
+    count(cells edge.h "i1_")
+    if(NOT nests EQUAL 2 OR NOT cells EQUAL 0)
+        message(SEND_ERROR "compile_cellloops_edge: edge.h holds ${nests} sums and ${cells} reads of a cell's loop, not 2 and 0")
+    endif()
+    # A guard reading what moves, once in the body.
+    like(compile_cellloops_act act.h [=[    double t#_[1024][1];
+    for (int i1_ = 0; i1_ < 1024; ++i1_) t#_[i1_][0] = m_->y[0][i1_][0] > 0.5 ? m_->y[0][i1_][0] : 0.0;
+]=])
+    # A guard reading its place, and a definition under grad, written out.
+    holds(compile_cellloops_guarded guarded.h "    m_->g[0][1023][0] = m_->y[0][1022][0];\n")
+    foreach(header IN ITEMS guarded pull)
+        count(cells ${header}.h "i1_")
+        count(sums ${header}.h "k1_")
+        if(NOT cells EQUAL 0 OR NOT sums EQUAL 0)
+            message(SEND_ERROR "compile_cellloops_${header}: ${header}.h holds a loop's index")
+        endif()
+    endforeach()
+
+    # b's place reads both of its loops; c reads k as an exponent and d as a
+    # sequence's index; e reads past y; f's inner bound reads i; g is a
+    # reduction, as today; h reads a limit.
+    file(WRITE "${OUT}/cellloops_refused.ink"
+         "refused(x_n, y_n[i<=1600]) = {\n"
+         "    a_n = grad_(t = x_n) sum_(k=1)^1001 t/k\n"
+         "    b_n = sum_(i=1)^1001 sum_(j=1)^2 y_n[i + j]\n"
+         "    c_n = sum_(k=1)^1001 x_n^k\n    d_n = sum_(k=1)^1001 x_(n - k)\n"
+         "    e_n = sum_(k=1)^1001 y_n[k + 600]\n    f_n = sum_(i=1)^1001 sum_(j=1)^i x_n/j\n"
+         "    g_n = max_(k=1)^1001 k*x_n\n    h_n = sum_(k=1)^1001 lim r(x_n/k)\n"
+         "    r(x)_0 = x\n    r(x)_k = r(x)_(k-1)/2 + 1\n}\n")
+    set(args --compile cellloops_refused.ink refused)
+    string(CONCAT stdout "cannot compile a: a sum of more than 1000 terms under grad, for now\n"
+                  "cannot compile b: a sum of more than 1000 terms whose loop reads a place of both i and j, for now\n"
+                  "cannot compile c: a sum of more than 1000 terms whose loop reads k as more than a place or an operand, for now\n"
+                  "cannot compile d: a sum of more than 1000 terms whose loop reads k as more than a place or an operand, for now\n"
+                  "cannot compile e: row 1601 is outside a 1600x1 matrix\n"
+                  "cannot compile f: a sum of more than 1000 terms whose loop has a sum whose bounds read i, for now\n"
+                  "cannot compile g: the maximum has more than 1000 terms\n"
+                  "cannot compile h: a sum of more than 1000 terms whose loop reads a limit or a walk, for now\n")
+    set(exit 1)
+    check(compile_cellloops_refused)
+    set(exit 0)
+    set(stdout "")
+
+    if(NOT CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
+        return()
+    endif()
+    set(count 6)
+    seqcells(exact exact "exact: 6 steps from 0, against exact values" "exact\\.objective${within0}")
+    seqcells(held held "held: 6 steps from 0, against exact values" "held\\.field${within0}")
+    seqcells(wave wave "wave: 6 ${inexact}" "wave\\.field${within0}")
+    foreach(instance IN ITEMS seen flat)
+        seqcells(${instance} ${instance} "${instance}: 6 ${inexact}"
+                 "${instance}\\.objective${within0}")
+    endforeach()
+    seqcells(rod rod "rod: 6 steps from 0, against exact values" "rod\\.x${within0}"
+             "rod\\.s${within0}")
+    seqcells(rods rods "rods: 6 ${inexact}" "rods\\.x${within0}" "rods\\.s${within0}")
+    foreach(instance IN ITEMS ends endsx)
+        set(first "6 steps from 0, against exact values")
+        if(instance STREQUAL "endsx")
+            set(first "6 ${inexact}")
+        endif()
+        seqcells(${instance} ${instance} "${instance}: ${first}" "${instance}\\.x${within0}"
+                 "${instance}\\.s${within0}" "${instance}\\.t${within0}"
+                 "${instance}\\.v${within0}" "${instance}\\.w${within0}")
+    endforeach()
+    seqcells(gate gate "gate: 6 steps from 0, against exact values" "gate\\.r${within0}"
+             "gate\\.q${within0}")
+    seqcells(gatex gatex "gatex: 6 ${inexact}" "gatex\\.r${within0}" "gatex\\.q${within0}")
+    seqcells(pulled pulled "pulled: 6 steps from 0, against exact values" "pulled\\.d${within0}")
+    return()
+endif()
+
 # The cases run as six tests under the sanitizers, the first four of about
 # equal time: PART 1 up to charpoly's refusal, 2 from it, 3 from eig's, 4
 # from the frequency response's, 5 and 6 compile/seqcells.ink's walks, and
@@ -2905,6 +3164,55 @@ use seqcells
 set(args --check seqvalues.ink)
 set(stdout "seqvalues.ink: 28 answers, each as recorded\n")
 check(compile_seqcells_values)
+
+# Definitions by cells as loops (DESIGN.md, next in line): the values of
+# compile/cellloops.ink's instances, by Python's fractions, and by its
+# doubles in the interpreter's order, the objective summed by rows and in
+# one sum 1.6e-12 apart; which --check then holds the loops to, once built.
+file(COPY "${CMAKE_CURRENT_LIST_DIR}/compile/cellloops.ink" DESTINATION "${OUT}")
+file(WRITE "${OUT}/cellvalues.ink" [=[
+>> use cellloops
+use cellloops
+
+>> [cellloops.exact.objective_0, cellloops.exact.objective_3]
+[217, 217]
+
+>> [cellloops.held.field_0[1, 1], cellloops.held.field_1[1, 1], cellloops.held.field_2[1, 1], cellloops.held.field_3[1, 1]] == [5/8, 11/16, 13/16, 7/8]
+1
+
+>> [cellloops.held.field_0[32, 32], cellloops.held.field_1[32, 32], cellloops.held.field_2[32, 32], cellloops.held.field_3[32, 32]] == [-3/4, 5/16, 7/16, 1/2]
+1
+
+>> cellloops.seen.objective_0 == ~241.35873724489798
+~1
+
+>> cellloops.flat.objective_0 == ~241.35873724489957
+~1
+
+>> cellloops.tanked.objective_0 == ~976.5610650510209
+~1
+
+>> cellloops.tankflat.objective_0 == ~976.5610650510386
+~1
+
+>> [cellloops.rod.s_0, cellloops.rod.s_5] == [384, 384]
+1
+
+>> [cellloops.rod.x_0[1], cellloops.rod.x_1[1], cellloops.rod.x_2[1], cellloops.rod.x_0[1024], cellloops.rod.x_1[1024], cellloops.rod.x_2[1024]] == [5/16, 9/16, 9/16, 3/16, 3/16, 7/16]
+1
+
+>> [cellloops.ends.s_0, cellloops.ends.t_0, cellloops.ends.t_1, cellloops.ends.t_2] == [750, 1501/4, 751/2, 1503/4]
+1
+
+>> [cellloops.ends.w_0, cellloops.ends.w_1, cellloops.ends.w_2, cellloops.ends.v_0, cellloops.ends.v_1, cellloops.ends.v_2] == [378, 1505/4, 749/2, 1503/4, 1505/4, 1503/4]
+1
+
+>> [cellloops.gate.q_0, cellloops.gate.q_4, cellloops.pulled.d_3] == [192, 192, 3/4]
+1
+]=])
+set(args --check cellvalues.ink)
+set(stdout "cellvalues.ink: 13 answers, each as recorded\n")
+check(compile_cellloops_values)
 # a and b read t elsewhere than at the walking index less a constant, which
 # compile, t walked at each iterate; c and d give it arguments that change as
 # the walk does; e differentiates through it;
