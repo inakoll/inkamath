@@ -15176,19 +15176,22 @@ external review of 2026-10-12), by the owner's tank:
     w[k]*x[i + k - 1]` in a cell's body is unrolled there by its own count,
     k a constant and each weight folded, as written out today.
 
-  Cost, in lines of `compile.hpp`, about 260: the rule, the nest's count
+  Cost, in lines of `compile.hpp`, about 325: the rule, the nest's count
   through the sums in its body, not under grad and the same chain at every
   cell, 25; the places, their marks and values, the emission again at each
-  value and placed arguments bound, 45; a cell read at a placed place, its
-  check, offset or table and the matrix in place or made an array, 35;
-  placed operands of `+`, `-`, `*`, `/` and a placed sum folded, 20;
-  `Cells` and `TermCells` looped, the nest's lines and its `Code`, 50;
-  `Declare` routing a temporary into a loop's body, 15; sums as loops
-  from -0.0 and nests of them, 35; giving way, its reasons and the words
-  past 1000, 20; init's loop for a constant default, 10; float, 5. 21,832
-  lines at 1e99065, by `wc -l include/inkamath/*.hpp src/*`. Past 390 the
-  implementation stops and reports. DESIGN's estimate was about 300,
-  fusion included.
+  value and combination of values, placed arguments bound, 55; a cell read
+  at a placed place, its check, affine places in C of one index or several
+  and the matrix in place or made an array, 50; tables at file scope,
+  named by the module, one for equal contents, 15; placed operands of
+  `+`, `-`, `*`, `/`, a subtrahend negated, cast in float, and a placed
+  sum folded, 25; `Cells` and `TermCells` looped, the nest's lines and
+  its `Code`, 50; `Declare` routing a temporary into a loop's body or
+  before it, an inner sum hoisted, 20; sums as loops from -0.0 and nests
+  of them, 35; giving way, its reasons by what the user wrote, a sum of
+  matrices, and the words past 1000, 35; init's loop for a constant
+  default, 10; float, 5. 21,832 lines at 1e99065, by `wc -l
+  include/inkamath/*.hpp src/*`. Past 490 the implementation stops and
+  reports. DESIGN's estimate was about 300, fusion included.
 
   Targets, not promises, for the tank at 64x64 after it, GCC 13 at the
   same load: `forward` under 8,000 bytes and some 120 lines, `nested`
