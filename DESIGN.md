@@ -15048,7 +15048,11 @@ external review of 2026-10-12), by the owner's tank:
     `*` or `/` beside a value that moves is written as `(double)(i1_ + c)`
     where its values are affine in the index, else as a static table of
     the doubles each cell written out would hold, so `x + i/10` adds 0.3 at i
-    = 3 as written out, not `3*0.1`, 0.30000000000000004. A placed term of
+    = 3 as written out, not `3*0.1`, 0.30000000000000004. A placed
+    subtrahend is added negated, `y + (double)(-i1_)`, as written out
+    writes `y + 0.0` where it is 0 and `y - 1.0` past, so that -0.0 in y
+    gives +0.0 there as it does, where `y - (double)i1_` would keep -0.0.
+    A placed term of
     a sum folds the sum exactly, as written out; a placed cell is a
     constant cell. A place read anywhere else, a power's exponent, a
     comparison, a guard, a function of what moves, a sequence's index, a

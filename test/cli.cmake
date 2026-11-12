@@ -283,8 +283,9 @@ if(PART MATCHES "^spec_cellloops(_checks|_tank)?$")
                      "${instance}\\.w${within0}")
         endforeach()
         seqcells(gate gate "gate: 6 steps from 0, against exact values" "gate\\.r${within0}"
-                 "gate\\.q${within0}")
-        seqcells(gatex gatex "gatex: 6 ${inexact}" "gatex\\.r${within0}" "gatex\\.q${within0}")
+                 "gate\\.q${within0}" "gate\\.d${within0}")
+        seqcells(gatex gatex "gatex: 6 ${inexact}" "gatex\\.r${within0}" "gatex\\.q${within0}"
+                 "gatex\\.d${within0}")
         seqcells(pulled pulled "pulled: 6 steps from 0, against exact values" "pulled\\.d${within0}")
         return()
     endif()
@@ -404,10 +405,11 @@ if(PART MATCHES "^spec_cellloops(_checks|_tank)?$")
     if(NOT cells EQUAL 0 OR NOT sums EQUAL 2)
         message(SEND_ERROR "compile_cellloops_edgeout: edgeout.h holds ${cells} reads of a cell's loop and ${sums} sums, not 0 and 2")
     endif()
-    # A guard reading what moves, once in the body.
+    # A guard reading what moves, once in the body; a placed subtrahend
+    # added negated, as written out.
     like(compile_cellloops_act act.h [=[    double t#_[1024][1];
     for (int i1_ = 0; i1_ < 1024; ++i1_) t#_[i1_][0] = m_->y[0][i1_][0] > 0.5 ? m_->y[0][i1_][0] : 0.0;
-]=])
+]=] "for (int i1_ = 0; i1_ < 1024; ++i1_) t#_[i1_][0] = m_->y[0][i1_][0] + (double)(-i1_);\n")
     # A guard reading its place, and a definition under grad, written out.
     holds(compile_cellloops_guarded guarded.h "    m_->g[0][1023][0] = m_->y[0][1022][0];\n")
     foreach(header IN ITEMS guarded pull)
@@ -3240,9 +3242,12 @@ use cellloops
 
 >> [cellloops.gate.q_0, cellloops.gate.q_4, cellloops.pulled.d_3] == [192, 192, 3/4]
 1
+
+>> [cellloops.gate.d_0[1], cellloops.gate.d_0[1024]] == [1/4, -1023]
+1
 ]=])
 set(args --check cellvalues.ink)
-set(stdout "cellvalues.ink: 14 answers, each as recorded\n")
+set(stdout "cellvalues.ink: 15 answers, each as recorded\n")
 check(compile_cellloops_values)
 # a and b read t elsewhere than at the walking index less a constant, which
 # compile, t walked at each iterate; c and d give it arguments that change as

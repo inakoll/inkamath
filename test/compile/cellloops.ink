@@ -129,16 +129,23 @@ edgeout(y_n[i<=1000]) = {
 outs = edgeout(y_n = E(n))
 
 # 'gate' and 'gatex': a guard reading what moves, the same chain at every
-# cell, compiled once in the loop's body, as each cell writes it out:
+# cell, compiled once in the loop's body, as each cell writes it out,
 #
 #     for (int i1_ = 0; i1_ < 1024; ++i1_) t#_[i1_][0] = m_->y[0][i1_][0] > 0.5 ? m_->y[0][i1_][0] : 0.0;
 #
-# At W, q_n is 192 at every n; at Z, within 0.
+# and d's placed subtrahend i - 1 is added negated, as written out:
+#
+#     for (int i1_ = 0; i1_ < 1024; ++i1_) t#_[i1_][0] = m_->y[0][i1_][0] + (double)(-i1_);
+#
+# so that at i = 1 the cell is y + 0.0, today's 'm_->y[0][0][0] + 0.0',
+# and -0.0 in y gives +0.0, where 'y - 0.0' would keep -0.0. At W, q_n is
+# 192 at every n, d_0[1] is 1/4 and d_0[1024] -1023; at Z, within 0.
 relu(z)[i] | z[i] > 1/2 = z[i]
 relu(z)[i] = 0
 act(y_n[i<=1024]) = {
     r_n = relu(y_n)
     q_n = sum_(i=1)^1024 r_n[i]
+    d_n[i<=1024] = y_n[i] - (i - 1)
 }
 gate = act(y_n = W(n))
 gatex = act(y_n = Z(n))
