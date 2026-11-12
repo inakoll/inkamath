@@ -87,6 +87,82 @@ function(reports name program report)
     endif()
 endfunction()
 
+# A header's lines, '#' standing for a temporary's number where the rule
+# does not fix it.
+function(pattern out line)
+    string(REPLACE "\\" "\\\\" line "${line}")
+    foreach(c "^" "$" "." "|" "?" "*" "+" "(" ")" "[" "]")
+        string(REPLACE "${c}" "\\${c}" line "${line}")
+    endforeach()
+    string(REPLACE "#" "[0-9]+" line "${line}")
+    set(${out} "${line}" PARENT_SCOPE)
+endfunction()
+function(like name file)
+    file(READ "${OUT}/${file}" text)
+    math(EXPR last "${ARGC} - 1")
+    foreach(i RANGE 2 ${last})
+        pattern(line "${ARGV${i}}")
+        if(NOT text MATCHES "${line}")
+            message(SEND_ERROR "${name}: ${file} does not hold\n${ARGV${i}}")
+        endif()
+    endforeach()
+endfunction()
+function(smaller name file bytes)
+    file(SIZE "${OUT}/${file}" size)
+    if(NOT size LESS ${bytes})
+        message(SEND_ERROR "${name}: ${file} is ${size} bytes, not under ${bytes}")
+    endif()
+endfunction()
+# An instance of the file 'story' checked for 'count' steps: its report's
+# first line matching the first pattern, then each line given found, and no
+# other, its program exiting with 'exits'. A list splits at ';', which a
+# line's estimate holds, so it is read as ','.
+function(seqcells instance program first)
+    execute_process(COMMAND "${EXE}" --check "${story}" ${instance} ${float} --steps ${count}
+                            -o ${program}.c
+                    WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
+                    ERROR_VARIABLE errors OUTPUT_VARIABLE errors TIMEOUT ${CASE_TIMEOUT})
+    if(NOT failed)
+        # Uncontracted, as test/CMakeLists.txt builds a check (C97).
+        execute_process(COMMAND "${CC}" -std=c11 -O2 -ffp-contract=off ${program}.c
+                                -o ${program} -lm
+                        WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
+                        ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
+    endif()
+    if(failed)
+        message(SEND_ERROR "check_${program}: ${program}.c not built\n${errors}")
+        return()
+    endif()
+    execute_process(COMMAND "${OUT}/${program}" WORKING_DIRECTORY "${OUT}"
+                    OUTPUT_VARIABLE report RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
+    string(REPLACE ";" "," lines "${report}")
+    string(REPLACE "\n" ";" lines "${lines}")
+    list(REMOVE_ITEM lines "")
+    list(POP_FRONT lines got)
+    list(LENGTH lines given)
+    list(LENGTH ARGN want)
+    set(bad "")
+    if(NOT code EQUAL exits OR NOT "${got}" MATCHES "^${first}$" OR NOT given EQUAL want)
+        set(bad 1)
+    endif()
+    foreach(pattern IN LISTS ARGN)
+        set(found "")
+        foreach(line IN LISTS lines)
+            if(line MATCHES "^${pattern}$")
+                set(found 1)
+            endif()
+        endforeach()
+        if(NOT found)
+            set(bad 1)
+        endif()
+    endforeach()
+    if(bad)
+        string(REPLACE ";" "\n" patterns "${ARGN}")
+        message(SEND_ERROR "check_${program}: exit ${code}\n${report}--- where\n"
+                           "${first}\n${patterns}")
+    endif()
+endfunction()
+
 # The cases run as six tests under the sanitizers, the first four of about
 # equal time: PART 1 up to charpoly's refusal, 2 from it, 3 from eig's, 4
 # from the frequency response's, 5 and 6 compile/seqcells.ink's walks, and
@@ -2201,30 +2277,6 @@ check(compile_cellguards_refused)
 set(loops ${CMAKE_CURRENT_LIST_DIR}/compile/loops.ink)
 set(transformer ${CMAKE_CURRENT_LIST_DIR}/compile/transformer.ink)
 file(MAKE_DIRECTORY "${OUT}/float")
-function(pattern out line)
-    string(REPLACE "\\" "\\\\" line "${line}")
-    foreach(c "^" "$" "." "|" "?" "*" "+" "(" ")" "[" "]")
-        string(REPLACE "${c}" "\\${c}" line "${line}")
-    endforeach()
-    string(REPLACE "#" "[0-9]+" line "${line}")
-    set(${out} "${line}" PARENT_SCOPE)
-endfunction()
-function(like name file)
-    file(READ "${OUT}/${file}" text)
-    math(EXPR last "${ARGC} - 1")
-    foreach(i RANGE 2 ${last})
-        pattern(line "${ARGV${i}}")
-        if(NOT text MATCHES "${line}")
-            message(SEND_ERROR "${name}: ${file} does not hold\n${ARGV${i}}")
-        endif()
-    endforeach()
-endfunction()
-function(smaller name file bytes)
-    file(SIZE "${OUT}/${file}" size)
-    if(NOT size LESS ${bytes})
-        message(SEND_ERROR "${name}: ${file} is ${size} bytes, not under ${bytes}")
-    endif()
-endfunction()
 foreach(model spin solve dense gated diag raised turn)
     set(args --compile ${loops} ${model} -o ${model}.h)
     check(compile_loops)
@@ -3695,54 +3747,6 @@ if(NOT PART OR PART GREATER 4)
             endif()
         endif()
     endif()
-    # An instance's report: its first line matching the first pattern, then
-    # each line given found, and no other, its program exiting with exits. A
-    # list splits at ';', which a line's estimate holds, so it is read as ','.
-    function(seqcells instance program first)
-        execute_process(COMMAND "${EXE}" --check "${story}" ${instance} ${float} --steps ${count}
-                                -o ${program}.c
-                        WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
-                        ERROR_VARIABLE errors OUTPUT_VARIABLE errors TIMEOUT ${CASE_TIMEOUT})
-        if(NOT failed)
-            # Uncontracted, as test/CMakeLists.txt builds a check (C97).
-            execute_process(COMMAND "${CC}" -std=c11 -O2 -ffp-contract=off ${program}.c
-                                    -o ${program} -lm
-                            WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
-                            ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
-        endif()
-        if(failed)
-            message(SEND_ERROR "check_seqcells_${program}: ${program}.c not built\n${errors}")
-            return()
-        endif()
-        execute_process(COMMAND "${OUT}/${program}" WORKING_DIRECTORY "${OUT}"
-                        OUTPUT_VARIABLE report RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
-        string(REPLACE ";" "," lines "${report}")
-        string(REPLACE "\n" ";" lines "${lines}")
-        list(REMOVE_ITEM lines "")
-        list(POP_FRONT lines got)
-        list(LENGTH lines given)
-        list(LENGTH ARGN want)
-        set(bad "")
-        if(NOT code EQUAL exits OR NOT "${got}" MATCHES "^${first}$" OR NOT given EQUAL want)
-            set(bad 1)
-        endif()
-        foreach(pattern IN LISTS ARGN)
-            set(found "")
-            foreach(line IN LISTS lines)
-                if(line MATCHES "^${pattern}$")
-                    set(found 1)
-                endif()
-            endforeach()
-            if(NOT found)
-                set(bad 1)
-            endif()
-        endforeach()
-        if(bad)
-            string(REPLACE ";" "\n" patterns "${ARGN}")
-            message(SEND_ERROR "check_seqcells_${program}: exit ${code}\n${report}--- where\n"
-                               "${first}\n${patterns}")
-        endif()
-    endfunction()
     set(float "")
     set(exits 0)
     # Each instance checked for as many steps as cross its transitions, in
