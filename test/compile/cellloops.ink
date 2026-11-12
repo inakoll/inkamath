@@ -91,30 +91,36 @@ clamped(y_n[i<=1024]) = {
 rod = clamped(y_n = W(n))
 rods = clamped(y_n = Z(n))
 
-# 'ends' and 'endsx': the threshold. x, of 1000 cells, and s, a sum of
-# 1000 terms, are written out as today; t, of 1001, loops, its index
-# through the table [0, 1, ..., 999, 0]; and w, 7 sums of 143, 1001 terms
-# in all, loops as a nest, the inner sum, reading i, a loop in the outer's
-# body; v, 2 sums of 501, would loop, but its place i + j - 1 reads both,
-# so it gives way and is written out as today. At E, quarters, s_n is
-# 750, t_n 1501/4, 751/2 and 1503/4 at n = 0 to 2, w_n 1512, 1505 and
-# 1498, and v_n 1503/4, 1505/4 and 1503/4. At Ez, ninths in doubles, each within 0:
+# 'ends' and 'endsx': past the threshold, checked. t, of 1001 terms,
+# loops, its index through the table [0, 1, ..., 999, 0]; and w, 7 sums of
+# 143, 1001 terms in all, loops as a nest, the inner sum, reading i, a loop
+# in the outer's body. At E, quarters, t_n is 1501/4, 751/2 and 1503/4 at
+# n = 0 to 2, and w_n 1512, 1505 and 1498. At Ez, ninths in doubles:
 #
 #     endsx: 6 steps from 0, against exact values until 0 and inexact ones from there
-#     endsx.x: within 0
-#
-# and endsx.s, .t, .v and .w alike.
+#     endsx.t: within 0
+#     endsx.w: within 0
 E(t)[i<=1000] = mod(i + t, 4)/4
 Ez(t)[i<=1000] = ~(mod(i*(t + 2), 9)/9)
 edge(y_n[i<=1000]) = {
-    x_n[i<=1000] = y_n[max(i - 1, 1)] + y_n[min(i + 1, 1000)]
-    s_n = sum_(i=1)^1000 x_n[i]
     t_n = sum_(k=1)^1001 y_n[mod(k - 1, 1000) + 1]
     w_n = sum_(i=1)^7 sum_(j=1)^143 i*y_n[j]
-    v_n = sum_(i=1)^2 sum_(j=1)^501 y_n[i + j - 1]
 }
 ends = edge(y_n = E(n))
 endsx = edge(y_n = Ez(n))
+
+# 'edgeout': at the threshold, compiled once and held by its lines alone,
+# its values by the interpreter's at 'outs'. x, of 1000 cells, and s, a sum
+# of 1000 terms, are written out as today; v, 2 sums of 501, would loop,
+# but its place i + j - 1 reads both, so it gives way and is written out
+# as today. At E, s_n is 750 and v_n 1503/4, 1505/4 and 1503/4 at n = 0 to
+# 2.
+edgeout(y_n[i<=1000]) = {
+    x_n[i<=1000] = y_n[max(i - 1, 1)] + y_n[min(i + 1, 1000)]
+    s_n = sum_(i=1)^1000 x_n[i]
+    v_n = sum_(i=1)^2 sum_(j=1)^501 y_n[i + j - 1]
+}
+outs = edgeout(y_n = E(n))
 
 # 'gate' and 'gatex': a guard reading what moves, the same chain at every
 # cell, compiled once in the loop's body, as each cell writes it out:

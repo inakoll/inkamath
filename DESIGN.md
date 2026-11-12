@@ -15184,26 +15184,33 @@ external review of 2026-10-12), by the owner's tank:
   fractions, doubles and floats rounded as C's, none recorded: the tank at
   32x32, `forward32`, `nested32` and `flattened32`, at U, eighths, exact,
   and at V, sevenths, inexact; `clamped`, a model's own sequence by cells
-  with the clamps and a sum over its term; `edge`, the threshold, 1000
-  written out, 1001 looped flat and as a nest, and 1002 giving way; `act`,
+  with the clamps and a sum over its term; `edge`, 1001 looped flat and
+  as a nest, checked, and `edgeout`, compiled once and held by its lines
+  alone, 1000 written out and 1002 giving way; `act`,
   a guard reading what moves; `guarded` and `pull`, written out, a guard
   reading its place and a definition under grad; the owner's tank at full
   size; and a file of eight refusals. `cli.cmake`'s part `spec_cellloops`,
   run by `cli_spec_cellloops`, compiles each model, strict, and the 32x32
   tank in float; pins the nests, tables and sums' lines from the rule
   above, '#' for a temporary's number, their counts and the headers'
-  sizes; checks each instance for 6 steps to its comment's lines, these
-  and no other; and holds the refusals' words. `spec_cellloops_tank`, run
-  by `cli_spec_cellloops_tank`, compiles the full tank, strict, under its
-  bounds, checks it for 4 steps, and the 32x32 tank in float for 8. Both
-  skip while a sum of 1001 terms is refused as today, and only then.
+  sizes; and holds the refusals' words. `spec_cellloops_checks` checks
+  each instance at 32x32 for 6 steps to its comment's lines, these and no
+  other. `spec_cellloops_tank` compiles the full tank, strict, under its
+  bounds, checks it for 4 steps, and the 32x32 tank in float for 8. Each
+  skips while a sum of 1001 terms is refused as today, and only then.
   `compile_cellloops_values`, in `cli.cmake`'s part 3, holds the
-  interpreter's values to Python's, and passes now. Under the sanitizers,
-  the interpreter's passes over every instance take 0.8 s at 32x32 and
-  1.7 s at 64x64; estimated, a check's compile and build some 4 s, so
-  `spec_cellloops` about 75 s and `spec_cellloops_tank` about 50, with
-  2.4.0's threefold miss inside 240 for the second only: past it, the
-  first splits as seqcells' did. When built: the parts join `cli.cmake`'s
+  interpreter's values to Python's, and passes now. Under the sanitizers
+  at 403acc3, measured: the interpreter's passes over every instance take
+  0.8 s at 32x32 and 1.7 s at 64x64; a 32x32 forward written out compiles
+  in 19 s, 14 times its release time, and an 8x8 in 0.26 s; edgeout
+  written out whole, 14.7 s, guarded 3.9 s, pull 1.1 s; a check's C of
+  six 32x32 steps builds in 1.9 s. Estimated, a looped model at 32x32
+  compiles in 1.5 s and at 64x64 in 3 to 5, a check at 32x32 takes 3 s
+  and at 64x64 9 s: `spec_cellloops` about 40 s, its thirteen compiles,
+  edgeout's 10 written out, and their strict builds; `spec_cellloops_checks`
+  about 40, thirteen checks; `spec_cellloops_tank` about 50. Each stays
+  under 80 s with half again for a miss, and under 240 with 2.4.0's
+  threefold. When built: the parts join `cli.cmake`'s
   regular cases, their skips gone; `docs/compile.md` gains a row, "A
   definition by cells of more than 1000 cells, a sum or a product of more
   than 1000 terms | a loop nest, its body compiled once, each array a

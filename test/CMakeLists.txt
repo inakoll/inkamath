@@ -100,9 +100,10 @@ foreach(part 1 2 3 4 5 6)
     set_tests_properties(cli_${part} PROPERTIES TIMEOUT ${cli_timeout})
 endforeach()
 # Definitions by cells as loops (DESIGN.md, next in line), specified before
-# they are built: cli.cmake's parts spec_cellloops and spec_cellloops_tank,
-# skipped while a sum of more than 1000 terms is refused, as today.
-foreach(spec IN ITEMS cellloops cellloops_tank)
+# they are built: cli.cmake's parts spec_cellloops, spec_cellloops_checks
+# and spec_cellloops_tank, skipped while a sum of more than 1000 terms is
+# refused, as today.
+foreach(spec IN ITEMS cellloops cellloops_checks cellloops_tank)
     add_test(NAME cli_spec_${spec}
              COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=spec_${spec}
                      -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli_spec_${spec}

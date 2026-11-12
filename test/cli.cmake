@@ -168,10 +168,12 @@ endfunction()
 # tank in float too; its loops, index tables and sums held to the rule's
 # lines, a temporary's number written '#'; the headers' sizes; an instance
 # of each checked to the lines its comment gives; and what stays refused in
-# its words. The full tank's checks are a part of their own,
-# spec_cellloops_tank. Skipped while a sum of more than 1000 terms is
-# refused as today, and only then.
-if(PART MATCHES "^spec_cellloops(_tank)?$")
+# its words. Three parts under the sanitizers' 240 s: spec_cellloops the
+# headers' lines and the refusals, spec_cellloops_checks the 32x32
+# instances, spec_cellloops_tank the full tank and the 32x32 tank in
+# float. Skipped while a sum of more than 1000 terms is refused as today,
+# and only then.
+if(PART MATCHES "^spec_cellloops(_checks|_tank)?$")
     file(MAKE_DIRECTORY "${OUT}")
     file(WRITE "${OUT}/probe.ink" "y_n = sum_(k=1)^1001 x_n/k\n")
     execute_process(COMMAND "${EXE}" --compile probe.ink -o probe.h
@@ -255,7 +257,39 @@ if(PART MATCHES "^spec_cellloops(_tank)?$")
         return()
     endif()
 
-    foreach(model IN ITEMS forward32 nested32 flattened32 clamped edge act guarded pull)
+    # Each instance at 32x32 checked for 6 steps, apart from the headers'
+    # lines to share the parts' time.
+    if(PART STREQUAL "spec_cellloops_checks")
+        if(NOT CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
+            return()
+        endif()
+        set(count 6)
+        seqcells(exact exact "exact: 6 steps from 0, against exact values" "exact\\.objective${within0}")
+        seqcells(held held "held: 6 steps from 0, against exact values" "held\\.field${within0}")
+        seqcells(wave wave "wave: 6 ${inexact}" "wave\\.field${within0}")
+        foreach(instance IN ITEMS seen flat)
+            seqcells(${instance} ${instance} "${instance}: 6 ${inexact}"
+                     "${instance}\\.objective${within0}")
+        endforeach()
+        seqcells(rod rod "rod: 6 steps from 0, against exact values" "rod\\.x${within0}"
+                 "rod\\.s${within0}")
+        seqcells(rods rods "rods: 6 ${inexact}" "rods\\.x${within0}" "rods\\.s${within0}")
+        foreach(instance IN ITEMS ends endsx)
+            set(first "6 steps from 0, against exact values")
+            if(instance STREQUAL "endsx")
+                set(first "6 ${inexact}")
+            endif()
+            seqcells(${instance} ${instance} "${instance}: ${first}" "${instance}\\.t${within0}"
+                     "${instance}\\.w${within0}")
+        endforeach()
+        seqcells(gate gate "gate: 6 steps from 0, against exact values" "gate\\.r${within0}"
+                 "gate\\.q${within0}")
+        seqcells(gatex gatex "gatex: 6 ${inexact}" "gatex\\.r${within0}" "gatex\\.q${within0}")
+        seqcells(pulled pulled "pulled: 6 steps from 0, against exact values" "pulled\\.d${within0}")
+        return()
+    endif()
+
+    foreach(model IN ITEMS forward32 nested32 flattened32 clamped edge edgeout act guarded pull)
         set(args --compile ${story} ${model} -o ${model}.h)
         check(compile_cellloops_${model})
         strict(compile_cellloops_${model} ${model}.h)
@@ -332,13 +366,10 @@ if(PART MATCHES "^spec_cellloops(_tank)?$")
 ]=] [=[    double t#_ = -0.0;
     for (int k1_ = 0; k1_ < 1024; ++k1_) t#_ = t#_ + m_->x[0][k1_][0];
 ]=])
-    # The threshold: x and s, of 1000, written out as today; t and w, of
-    # 1001, loops; v, of 1002, written out, its place reading both i and j.
+    # The threshold: edge's t and w, of 1001, loops; edgeout's x and s, of
+    # 1000, written out as today, and its v, of 1002, its place reading both
+    # i and j.
     table(wrap edge 1001 "k % 1000" 0 999)
-    holds(compile_cellloops_edge edge.h
-          "    m_->x[0][999][0] = m_->y[0][998][0] + m_->y[0][999][0];\n"
-          "    m_->s[0] = m_->x[0][0][0] + m_->x[0][1][0] + m_->x[0][2][0] + "
-          " + m_->y[0][499][0] + m_->y[0][500][0] + (m_->y[0][1][0] + m_->y[0][2][0] + ")
     like(compile_cellloops_edge edge.h "${wrap}"
          [=[    for (int k1_ = 0; k1_ < 1001; ++k1_) t#_ = t#_ + m_->y[0][edge_table#_[k1_]][0];
 ]=] [=[    double t#_ = -0.0;
@@ -349,9 +380,17 @@ if(PART MATCHES "^spec_cellloops(_tank)?$")
     }
 ]=])
     count(nests edge.h "for (int k1_ = 0;")
-    count(cells edge.h "i1_")
-    if(NOT nests EQUAL 2 OR NOT cells EQUAL 0)
-        message(SEND_ERROR "compile_cellloops_edge: edge.h holds ${nests} sums and ${cells} reads of a cell's loop, not 2 and 0")
+    if(NOT nests EQUAL 2)
+        message(SEND_ERROR "compile_cellloops_edge: edge.h holds ${nests} sums, not 2")
+    endif()
+    holds(compile_cellloops_edgeout edgeout.h
+          "    m_->x[0][999][0] = m_->y[0][998][0] + m_->y[0][999][0];\n"
+          "    m_->s[0] = m_->x[0][0][0] + m_->x[0][1][0] + m_->x[0][2][0] + "
+          " + m_->y[0][499][0] + m_->y[0][500][0] + (m_->y[0][1][0] + m_->y[0][2][0] + ")
+    count(cells edgeout.h "i1_")
+    count(sums edgeout.h "k1_")
+    if(NOT cells EQUAL 0 OR NOT sums EQUAL 0)
+        message(SEND_ERROR "compile_cellloops_edgeout: edgeout.h holds a loop's index")
     endif()
     # A guard reading what moves, once in the body.
     like(compile_cellloops_act act.h [=[    double t#_[1024][1];
@@ -392,33 +431,6 @@ if(PART MATCHES "^spec_cellloops(_tank)?$")
     set(exit 0)
     set(stdout "")
 
-    if(NOT CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
-        return()
-    endif()
-    set(count 6)
-    seqcells(exact exact "exact: 6 steps from 0, against exact values" "exact\\.objective${within0}")
-    seqcells(held held "held: 6 steps from 0, against exact values" "held\\.field${within0}")
-    seqcells(wave wave "wave: 6 ${inexact}" "wave\\.field${within0}")
-    foreach(instance IN ITEMS seen flat)
-        seqcells(${instance} ${instance} "${instance}: 6 ${inexact}"
-                 "${instance}\\.objective${within0}")
-    endforeach()
-    seqcells(rod rod "rod: 6 steps from 0, against exact values" "rod\\.x${within0}"
-             "rod\\.s${within0}")
-    seqcells(rods rods "rods: 6 ${inexact}" "rods\\.x${within0}" "rods\\.s${within0}")
-    foreach(instance IN ITEMS ends endsx)
-        set(first "6 steps from 0, against exact values")
-        if(instance STREQUAL "endsx")
-            set(first "6 ${inexact}")
-        endif()
-        seqcells(${instance} ${instance} "${instance}: ${first}" "${instance}\\.x${within0}"
-                 "${instance}\\.s${within0}" "${instance}\\.t${within0}"
-                 "${instance}\\.v${within0}" "${instance}\\.w${within0}")
-    endforeach()
-    seqcells(gate gate "gate: 6 steps from 0, against exact values" "gate\\.r${within0}"
-             "gate\\.q${within0}")
-    seqcells(gatex gatex "gatex: 6 ${inexact}" "gatex\\.r${within0}" "gatex\\.q${within0}")
-    seqcells(pulled pulled "pulled: 6 steps from 0, against exact values" "pulled\\.d${within0}")
     return()
 endif()
 
@@ -3201,10 +3213,10 @@ use cellloops
 >> [cellloops.rod.x_0[1], cellloops.rod.x_1[1], cellloops.rod.x_2[1], cellloops.rod.x_0[1024], cellloops.rod.x_1[1024], cellloops.rod.x_2[1024]] == [5/16, 9/16, 9/16, 3/16, 3/16, 7/16]
 1
 
->> [cellloops.ends.s_0, cellloops.ends.t_0, cellloops.ends.t_1, cellloops.ends.t_2] == [750, 1501/4, 751/2, 1503/4]
+>> [cellloops.ends.t_0, cellloops.ends.t_1, cellloops.ends.t_2, cellloops.ends.w_0, cellloops.ends.w_1, cellloops.ends.w_2] == [1501/4, 751/2, 1503/4, 1512, 1505, 1498]
 1
 
->> [cellloops.ends.w_0, cellloops.ends.w_1, cellloops.ends.w_2, cellloops.ends.v_0, cellloops.ends.v_1, cellloops.ends.v_2] == [1512, 1505, 1498, 1503/4, 1505/4, 1503/4]
+>> [cellloops.outs.s_0, cellloops.outs.v_0, cellloops.outs.v_1, cellloops.outs.v_2] == [750, 1503/4, 1505/4, 1503/4]
 1
 
 >> [cellloops.gate.q_0, cellloops.gate.q_4, cellloops.pulled.d_3] == [192, 192, 3/4]
