@@ -15131,11 +15131,11 @@ external review of 2026-10-12), by the owner's tank:
     1.7, 2.2 and 96 units at most for wave's field, seen's and flat's
     objective over 8 steps.
   - **The step split** never cuts a nest, one temporary's lines; an array
-    or a table a later part reads is carried in the struct, as a looped
-    product is (increment 1). An array is a local of the step, 8 bytes a
+    a later part reads is carried in the struct, as a looped product is
+    (increment 1), and a table, outside the step, is read by any part. An array is a local of the step, 8 bytes a
     cell in double, as a looped product's: forward's 64x64 is 32 KB of
     stack, and flattened's at 256x256 512 KB, half MSVC's default 1 MB, its
-    tables being static (below); one array of about 362x362 fills it, past
+    tables being static (above); one array of about 362x362 fills it, past
     which a host raises its stack, `/STACK` or a thread's own. No scratch
     in the struct for it: speculative at the tank's 64x64.
   - **Value numbering** shares within a body by `Shared` and `Declare`, as
