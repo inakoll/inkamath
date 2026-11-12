@@ -15038,8 +15038,11 @@ external review of 2026-10-12), by the owner's tank:
     place where its cells are one array's (`Viewed`), a term's, a
     parameter's, a looped definition's, and otherwise is made an array
     (`Materialised`), its cells written once in its initializer as a
-    product's operand is. A place that reads two loops' indices, `(i -
-    1)*40 + j`, gives way: its table would be their product.
+    product's operand is. A place that reads several loops' indices is
+    evaluated at each of their combinations, no more than the terms the
+    nest would write out, and where it is affine in them is written so,
+    `(i - 1)*64 + j` as `64 * k1_ + k2_`; one of two indices or more that
+    is not, `mod(i*j, 1000) + 1`, gives way, its table their product.
   - **Per-cell folding, kept**: written out, each cell folds what reads
     only its places, exactly, rounded once. A placed operand of `+`, `-`,
     `*` or `/` beside a value that moves is written as `(double)(i1_ + c)`
@@ -15157,8 +15160,8 @@ external review of 2026-10-12), by the owner's tank:
     product's operand is; a body reading another `Code`'s cells as a body
     is its own change.
   - **Every sum in a looped body a loop**: a kernel `sum_(k=1)^3
-    w[k]*x[i + k - 1]` in a cell's body would read two loops' indices; it
-    is unrolled there, k a constant.
+    w[k]*x[i + k - 1]` in a cell's body is unrolled there by its own count,
+    k a constant and each weight folded, as written out today.
 
   Cost, in lines of `compile.hpp`, about 260: the rule, the nest's count
   through the sums in its body, not under grad and the same chain at every
@@ -15186,7 +15189,8 @@ external review of 2026-10-12), by the owner's tank:
   and at V, sevenths, inexact; `clamped`, a model's own sequence by cells
   with the clamps and a sum over its term; `edge`, 1001 looped flat and
   as a nest, checked, and `edgeout`, compiled once and held by its lines
-  alone, 1000 written out and 1002 giving way; `act`,
+  alone, 1000 written out, two nests whose places are affine in two
+  indices and one whose place is not, giving way; `act`,
   a guard reading what moves; `guarded` and `pull`, written out, a guard
   reading its place and a definition under grad; the owner's tank at full
   size; and a file of eight refusals. `cli.cmake`'s part `spec_cellloops`,

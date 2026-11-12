@@ -367,8 +367,8 @@ if(PART MATCHES "^spec_cellloops(_checks|_tank)?$")
     for (int k1_ = 0; k1_ < 1024; ++k1_) t#_ = t#_ + m_->x[0][k1_][0];
 ]=])
     # The threshold: edge's t and w, of 1001, loops; edgeout's x and s, of
-    # 1000, written out as today, and its v, of 1002, its place reading both
-    # i and j.
+    # 1000, written out as today, its v and u loops of two indices, their
+    # places affine in C, and its z written out, its place not affine.
     table(wrap edge 1001 "k % 1000" 0 999)
     like(compile_cellloops_edge edge.h "${wrap}"
          [=[    for (int k1_ = 0; k1_ < 1001; ++k1_) t#_ = t#_ + m_->y[0][edge_table#_[k1_]][0];
@@ -386,11 +386,20 @@ if(PART MATCHES "^spec_cellloops(_checks|_tank)?$")
     holds(compile_cellloops_edgeout edgeout.h
           "    m_->x[0][999][0] = m_->y[0][998][0] + m_->y[0][999][0];\n"
           "    m_->s[0] = m_->x[0][0][0] + m_->x[0][1][0] + m_->x[0][2][0] + "
-          " + m_->y[0][499][0] + m_->y[0][500][0] + (m_->y[0][1][0] + m_->y[0][2][0] + ")
+          "    m_->z[0] = m_->y[0][1][0] + m_->y[0][2][0] + m_->y[0][3][0] + "
+          " + m_->y[0][500][0] + m_->y[0][501][0] + (m_->y[0][2][0] + m_->y[0][4][0] + ")
+    like(compile_cellloops_edgeout edgeout.h [=[    double t#_ = -0.0;
+    for (int k1_ = 0; k1_ < 2; ++k1_) {
+        double t#_ = -0.0;
+        for (int k2_ = 0; k2_ < 501; ++k2_) t#_ = t#_ + m_->y[0][k1_ + k2_][0];
+        t#_ = t#_ + t#_;
+    }
+]=] [=[        for (int k2_ = 0; k2_ < 91; ++k2_) t#_ = t#_ + m_->y[0][90 * k1_ + k2_][0];
+]=])
     count(cells edgeout.h "i1_")
-    count(sums edgeout.h "k1_")
-    if(NOT cells EQUAL 0 OR NOT sums EQUAL 0)
-        message(SEND_ERROR "compile_cellloops_edgeout: edgeout.h holds a loop's index")
+    count(sums edgeout.h "for (int k1_ = 0;")
+    if(NOT cells EQUAL 0 OR NOT sums EQUAL 2)
+        message(SEND_ERROR "compile_cellloops_edgeout: edgeout.h holds ${cells} reads of a cell's loop and ${sums} sums, not 0 and 2")
     endif()
     # A guard reading what moves, once in the body.
     like(compile_cellloops_act act.h [=[    double t#_[1024][1];
@@ -406,13 +415,13 @@ if(PART MATCHES "^spec_cellloops(_checks|_tank)?$")
         endif()
     endforeach()
 
-    # b's place reads both of its loops; c reads k as an exponent and d as a
+    # b's place reads both of its loops, not affinely; c reads k as an exponent and d as a
     # sequence's index; e reads past y; f's inner bound reads i; g is a
     # reduction, as today; h reads a limit.
     file(WRITE "${OUT}/cellloops_refused.ink"
          "refused(x_n, y_n[i<=1600]) = {\n"
          "    a_n = grad_(t = x_n) sum_(k=1)^1001 t/k\n"
-         "    b_n = sum_(i=1)^1001 sum_(j=1)^2 y_n[i + j]\n"
+         "    b_n = sum_(i=1)^1001 sum_(j=1)^2 y_n[mod(i*j, 1600) + 1]\n"
          "    c_n = sum_(k=1)^1001 x_n^k\n    d_n = sum_(k=1)^1001 x_(n - k)\n"
          "    e_n = sum_(k=1)^1001 y_n[k + 600]\n    f_n = sum_(i=1)^1001 sum_(j=1)^i x_n/j\n"
          "    g_n = max_(k=1)^1001 k*x_n\n    h_n = sum_(k=1)^1001 lim r(x_n/k)\n"
@@ -3219,11 +3228,14 @@ use cellloops
 >> [cellloops.outs.s_0, cellloops.outs.v_0, cellloops.outs.v_1, cellloops.outs.v_2] == [750, 1503/4, 1505/4, 1503/4]
 1
 
+>> [cellloops.outs.u_0, cellloops.outs.u_1, cellloops.outs.u_2, cellloops.outs.z_0, cellloops.outs.z_1, cellloops.outs.z_2] == [377, 1497/4, 753/2, 1755/4, 1253/4, 1751/4]
+1
+
 >> [cellloops.gate.q_0, cellloops.gate.q_4, cellloops.pulled.d_3] == [192, 192, 3/4]
 1
 ]=])
 set(args --check cellvalues.ink)
-set(stdout "cellvalues.ink: 13 answers, each as recorded\n")
+set(stdout "cellvalues.ink: 14 answers, each as recorded\n")
 check(compile_cellloops_values)
 # a and b read t elsewhere than at the walking index less a constant, which
 # compile, t walked at each iterate; c and d give it arguments that change as

@@ -109,16 +109,22 @@ edge(y_n[i<=1000]) = {
 ends = edge(y_n = E(n))
 endsx = edge(y_n = Ez(n))
 
-# 'edgeout': at the threshold, compiled once and held by its lines alone,
-# its values by the interpreter's at 'outs'. x, of 1000 cells, and s, a sum
-# of 1000 terms, are written out as today; v, 2 sums of 501, would loop,
-# but its place i + j - 1 reads both, so it gives way and is written out
-# as today. At E, s_n is 750 and v_n 1503/4, 1505/4 and 1503/4 at n = 0 to
-# 2.
+# 'edgeout': at the threshold and the places of two indices, compiled
+# once and held by its lines alone, its values by the interpreter's at
+# 'outs'. x, of 1000 cells, and s, a sum of 1000 terms, are written out as
+# today. v, 2 sums of 501, 1002 terms, loops, its place i + j - 1 affine in
+# both, written k1_ + k2_; u, 11 sums of 91, 1001 terms, its place
+# (i - 1)*90 + j written 90 * k1_ + k2_; and z, 2 sums of 501 again,
+# would loop, but its place mod(i*j, 1000) + 1 is not affine in i and j,
+# so it gives way and is written out as today. At E, s_n is 750, v_n
+# 1503/4, 1505/4 and 1503/4 at n = 0 to 2, u_n 377, 1497/4 and 753/2,
+# and z_n 1755/4, 1253/4 and 1751/4.
 edgeout(y_n[i<=1000]) = {
     x_n[i<=1000] = y_n[max(i - 1, 1)] + y_n[min(i + 1, 1000)]
     s_n = sum_(i=1)^1000 x_n[i]
     v_n = sum_(i=1)^2 sum_(j=1)^501 y_n[i + j - 1]
+    u_n = sum_(i=1)^11 sum_(j=1)^91 y_n[(i - 1)*90 + j]
+    z_n = sum_(i=1)^2 sum_(j=1)^501 y_n[mod(i*j, 1000) + 1]
 }
 outs = edgeout(y_n = E(n))
 
@@ -188,7 +194,7 @@ tankflat = flattened(u_n = V64(n), p_n = V64(n - 1))
 # a file of
 #
 #     a_n = grad_(t = x_n) sum_(k=1)^1001 t/k
-#     b_n = sum_(i=1)^1001 sum_(j=1)^2 y_n[i + j]
+#     b_n = sum_(i=1)^1001 sum_(j=1)^2 y_n[mod(i*j, 1600) + 1]
 #     c_n = sum_(k=1)^1001 x_n^k
 #     d_n = sum_(k=1)^1001 x_(n - k)
 #     e_n = sum_(k=1)^1001 y_n[k + 600]
