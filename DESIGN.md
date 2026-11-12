@@ -14985,7 +14985,9 @@ external review of 2026-10-12), by the owner's tank:
     function's, a value's or a model's own sequence's, is one loop nest
     over its named places; and so is a sum or a product whose terms, times
     those of the sums written in its body with constant bounds, number more
-    than 1000, each of those sums a loop in its body. At 1000 and below
+    than 1000, each of those sums a loop of its own, in the outer's body
+    where it reads the outer's index and before the nest where it does not
+    (`Declare`, below). At 1000 and below
     both are written out as today, and a sum in a cell's body, or in a
     function a body calls, decides by its own count. 1000 is `max_terms`,
     past which a sum was refused, so no sum that compiles today loops.
@@ -15056,8 +15058,12 @@ external review of 2026-10-12), by the owner's tank:
     definition reads it in place. A temporary whose lines read a loop's
     index, or a temporary declared in that loop, is declared in the loop's
     body; any other where it would be, before the nest, so a product or a
-    whole-matrix NaN test in a body is computed once. Body lines carry no
-    value-numbering marks, as increment 3's.
+    whole-matrix NaN test in a body is computed once. So is an inner sum
+    that reads no index of the loop around it: its accumulator and its own
+    loop are declared before that loop and computed once, as value
+    numbering shares that sum's text across the outer's terms written out
+    today; edge's w reads i in its inner sum so that it stays in the nest.
+    Body lines carry no value-numbering marks, as increment 3's.
   - **Sums**: `double t9_ = -0.0;` then `t9_ = t9_ + term;` at each k, a
     product from `1.0` by `*`. -0.0 is addition's identity in IEEE 754, as
     1.0 is multiplication's, so the first iteration gives the first term
