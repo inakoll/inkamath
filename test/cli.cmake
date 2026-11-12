@@ -1788,6 +1788,14 @@ file(WRITE "${OUT}/c444.ink" "f(p[j<=m]) = 1\nf(p[j<=m]) | p[m] == 0 = f(t(p))\n
 set(args --check c444.ink -o c444.c)
 check(check_c444)
 reports(check_c444 c444 "c444.ink: 100 steps from 0, against exact values\ny: within 0\n")
+# C446: grad's name is not the name another file's definition reads.
+set(args "${CMAKE_CURRENT_LIST_DIR}/compile/flowgrad.ink" -i)
+set(input "y_2\n")
+set(stdout "use flow\ncost(W, a) = a*flow.total(W)\ny_n = grad_(v = n) cost(v, v)\n12\n")
+check(c446)
+set(args --check "${CMAKE_CURRENT_LIST_DIR}/compile/flowgrad.ink" -o c446.c)
+check(check_c446)
+reports(check_c446 c446 "flowgrad.ink: 100 steps from 0, against exact values\ny: within 0\n")
 
 # check_not_transcript reads the models.ink part 1 writes.
 file(WRITE "${OUT}/models.ink" "gain(k = 2, x_n) = { y_n = k*x_n + z_n }\n")

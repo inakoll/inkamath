@@ -3329,7 +3329,7 @@ private:
             undefined_.insert(key);
             return Answer(Field(key, Value(Number(NAN))));
         }
-        for (const std::string& by : graded_) {  // where a local did not hide it (C313)
+        for (const auto& by : graded_) {  // where a local did not hide it (C313)
             std::set<const Reference<Value>*> seen;
             Reasoned([&] { Derivative<Value>(definitions_).Definition(*definition, by, seen); });
         }
@@ -5425,9 +5425,10 @@ private:
         if (tape) ++tapes_;
         std::string with;
         for (const std::string& name : names) with += (with.empty() ? "" : " or ") + name;
-        std::vector<std::string> around = graded_;
-        around.insert(around.end(), names.begin(), names.end());
-        const Setting<std::vector<std::string>> graded(graded_, std::move(around));
+        auto around = graded_;
+        for (const std::string& name : names)
+            around.push_back({name, Derivative<Value>::Sought(scope_, name)});
+        const Setting<decltype(graded_)> graded(graded_, std::move(around));
         const std::size_t n  = points[0].cells.size();
         const auto        at = [&](std::size_t i, std::size_t j) {
             if (i > j) std::swap(i, j);
@@ -7903,7 +7904,7 @@ private:
     const Scope<Value>*              own_ = nullptr;  // the scope after a point, for one name
     Expansion*                       expansion_ = nullptr;  // the call being compiled, if one is
     Frame                            frame_;  // the locals the code being compiled sees
-    std::vector<std::string> graded_;         // the names of the grads it is under, outermost first
+    std::vector<Derivative<Value>::Variable> graded_;  // the grads it is under, outermost first
     int                              expanded_  = 0;        // how deep calls are
     int                              calls_     = 0;        // how many were compiled
     std::vector<std::shared_ptr<const Scope<Value>>> held_;    // what expansions name

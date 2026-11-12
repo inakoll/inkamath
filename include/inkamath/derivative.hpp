@@ -54,6 +54,18 @@ public:
         return {*out[0], out[1] ? std::optional<T>(*out[1]) : std::nullopt};
     }
 
+    // A grad's name, and the global it shadows where the grad is written,
+    // the only one a definition's read of the name is refused for (C446).
+    struct Variable {
+        std::string         name;
+        const Reference<T>* shadows;
+    };
+    [[nodiscard]] static const Reference<T>* Sought(const ::Scope<T>*  scope,
+                                                    const std::string& name) {
+        while (scope && !scope->names.count(name)) scope = scope->parent;
+        return scope ? scope->names.at(name).get() : nullptr;
+    }
+
     // What grad refuses by the names its body reads, before any value: the
     // compiler asks it too (DESIGN.md, grad compiled).
     void Names(const GradExpression<T>& grad) {
@@ -1409,7 +1421,9 @@ private:
             std::optional<typename ReferenceStack<T>::Frame> frame;
             if (!stack_.Framed()) frame.emplace(stack_);
             std::list<typename ReferenceStack<T>::Trial> bound;
+            std::vector<Variable>                        graded;
             for (std::size_t v = 0; v < names.size(); ++v) {
+                graded.push_back({names[v], stack_.Global(names[v]).get()});
                 bound.emplace_back(stack_, names[v]);
                 stack_.BindValue(names[v], *points[v][0], "grad's variable");
             }
@@ -1419,7 +1433,7 @@ private:
             const auto check = [&, outer = stack_.globals](const Reference<T>& global) {
                 if (outer) outer(global);
                 for (std::size_t v = 0; v < names.size(); ++v)
-                    Definition(global, names[v], seen[v]);
+                    Definition(global, graded[v], seen[v]);
             };
             const Setting<decltype(stack_.globals)> reading(stack_.globals, check);
             // One pass's locals are not the next's, in either frame.
@@ -1573,12 +1587,12 @@ private:
                    const std::vector<std::string>& names) {
         std::set<const Reference<T>*> seen;
         std::set<std::string>         bound(names.begin(), names.end());
-        Scan(body, name, bound, nullptr, seen);
+        Scan(body, {name, stack_.Global(name).get()}, bound, nullptr, seen);
     }
 
     // In the order of evaluation, a local's name being bound from its
     // binding on, and an index or grad's name in its body alone.
-    void Scan(const PExpression<T>& e, const std::string& name, std::set<std::string>& bound,
+    void Scan(const PExpression<T>& e, const Variable& name, std::set<std::string>& bound,
               const Reference<T>* within, std::set<const Reference<T>*>& seen) {
         if (!e || dynamic_cast<const MemberExpression<T>*>(e.get())) return;
         if (const auto* series = dynamic_cast<const SeriesExpression<T>*>(e.get())) {
@@ -1612,28 +1626,24 @@ private:
         for (const PExpression<T>& child : e->Children()) Scan(child, name, bound, within, seen);
     }
 
-    void Follow(const std::string& read, const std::string& name, const Reference<T>* within,
+    void Follow(const std::string& read, const Variable& by, const Reference<T>* within,
                 std::set<const Reference<T>*>& seen) {
         if (!within) {
             if (Lookup(read) || stack_.Binds(read)) return;
-            if (const auto definition = stack_.Global(read)) Definition(*definition, name, seen);
+            if (const auto definition = stack_.Global(read)) Definition(*definition, by, seen);
             return;
         }
-        if (read == name) {
+        const Reference<T>* found = Sought(within->home, read);
+        if (read == by.name && found == by.shadows) {
             const std::string label =
                 within->home ? within->home->Qualified(within->Name()) : within->Name();
-            throw std::runtime_error(label + " reads the global " + name + ", which grad's " +
-                                     name + " does not reach");
+            throw std::runtime_error(label + " reads the global " + by.name + ", which grad's " +
+                                     by.name + " does not reach");
         }
-        for (const ::Scope<T>* scope = within->home; scope; scope = scope->parent) {
-            const auto found = scope->names.find(read);
-            if (found == scope->names.end()) continue;
-            Definition(*found->second, name, seen);
-            return;
-        }
+        if (found) Definition(*found, by, seen);
     }
 
-    void Definition(const Reference<T>& definition, const std::string& name,
+    void Definition(const Reference<T>& definition, const Variable& name,
                     std::set<const Reference<T>*>& seen) {
         if (!seen.insert(&definition).second || !definition.Value() || !definition.home) return;
         for (const Clause<T>& clause : definition.Clauses()) {
