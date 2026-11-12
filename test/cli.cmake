@@ -251,7 +251,7 @@ if(PART MATCHES "^spec_cellloops(_tank)?$")
         seqcells(seen seenf "seen: ${infloat}"
                  "seen\\.objective: within [0-9.e+-]+, [0-9](\\.[0-9])? ${units}")
         seqcells(flat flatf "flat: ${infloat}"
-                 "flat\\.objective: within [0-9.e+-]+, ([0-9](\\.[0-9])?|[1-9][0-9]|1[0-9][0-9]) ${units}")
+                 "flat\\.objective: within [0-9.e+-]+, ([0-9](\\.[0-9])?|[1-9][0-9]|1(\\.[0-9])?e\\+02) ${units}")
         return()
     endif()
 
