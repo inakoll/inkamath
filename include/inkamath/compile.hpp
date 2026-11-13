@@ -2106,7 +2106,7 @@ private:
         const std::optional<Value> value = bound_ ? Valued(code) : std::nullopt;
         return value && !code.constant ? Literal(*value) : code;
     }
-    std::optional<Code> Again(const PExpression<Value>& expression, unsigned loops) {
+    std::optional<Code> Again(const PExpression<Value>& expression, unsigned loops) try {
         loops &= (1u << loops_.size()) - 1;
         if (!loops) return std::nullopt;
         std::vector<Value>                          values;
@@ -2126,6 +2126,8 @@ private:
             values.push_back(*code.constant);
         }
         return Pin(Pinned(loops, std::move(values)));
+    } catch (const Unlooped&) {  // a place it reads stays a loop's here
+        return std::nullopt;
     }
 
     // Cells at each combination of 'loops' as C, by the loops they move with:
