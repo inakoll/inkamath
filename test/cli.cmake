@@ -4030,6 +4030,14 @@ if(NOT PART OR PART GREATER 6)
         like(compile_cellloops_act act.h [=[    double t#_[1024][1];
     for (int i1_ = 0; i1_ < 1024; ++i1_) t#_[i1_][0] = m_->y[0][i1_][0] > 0.5 ? m_->y[0][i1_][0] : 0.0;
 ]=] "for (int i1_ = 0; i1_ < 1024; ++i1_) t#_[i1_][0] = m_->y[0][i1_][0] + (double)(-i1_);\n")
+        # A value of 1100 cells that reads only its place, a constant matrix.
+        file(WRITE "${OUT}/cellloops_placed.ink" "pv[i<=1100] = mod(i, 4)/4\n"
+             "placed(y_n[i<=1100]) = {\n    x_n[i<=1100] = y_n[i]*pv[i]\n}\n")
+        set(args --compile cellloops_placed.ink placed -o placed.h)
+        check(compile_cellloops_placed)
+        like(compile_cellloops_placed placed.h
+             "\nstatic const double placed_table#_[1100] = {0.25, 0.5, 0.75, 0.0, 0.25, "
+             "t#_[i1_][0] = m_->y[0][i1_][0] * placed_table#_[i1_];\n")
         # A guard reading its place, and a definition under grad, written out.
         holds(compile_cellloops_guarded guarded.h "    m_->g[0][1023][0] = m_->y[0][1022][0];\n")
         foreach(header IN ITEMS guarded pull)
