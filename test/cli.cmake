@@ -4066,6 +4066,18 @@ if(NOT PART OR PART GREATER 6)
                       "cannot compile m: a sum or a product of more than 1000 terms whose terms are 2x1 matrices, for now\n")
         set(exit 1)
         check(compile_cellloops_refused)
+        # A loop's own reason, not one met compiling a value again at a place.
+        file(WRITE "${OUT}/cellloops_words.ink"
+             "words(x_n[i<=1100]) = {\n"
+             "    p_n[i<=1100] = sum_(k=1)^1001 x_n[k]^(mod(i, 3) + 1)\n"
+             "    q_n[i<=1100] = sum_(k=1)^1001 max(x_n[k], i)\n"
+             "    r_n = sum_(i=1)^1001 sum_(j=1)^2 x_n[i]^j\n}\n")
+        set(args --compile cellloops_words.ink words)
+        string(CONCAT stdout "cannot compile p: a sum or a product of more than 1000 terms whose term reads i in an exponent, for now\n"
+                      "cannot compile q: a sum or a product of more than 1000 terms whose term reads i in a call of max, for now\n"
+                      "cannot compile r: a sum or a product of more than 1000 terms whose term reads j in an exponent, for now\n")
+        set(exit 1)
+        check(compile_cellloops_words)
         set(exit 0)
         set(stdout "")
 
