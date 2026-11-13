@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(inkamath
-    VERSION 2.4.0
+    VERSION 2.5.0
     DESCRIPTION "A small mathematical expression interpreter"
     LANGUAGES CXX)
 

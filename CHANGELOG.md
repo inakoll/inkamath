@@ -3,6 +3,29 @@
 What changed for someone using inkamath, release by release. The reasons, and
 every defect by its number, are in [`DESIGN.md`](DESIGN.md).
 
+## 2.5.0 — 2026-11-13
+
+### Added
+
+- **Definitions by cells and long sums compiled as loops**: `--compile`
+  writes a definition by cells of more than 1000 cells, and a sum or a
+  product of more than 1000 terms, counted with the sums written in its
+  body, as a loop nest whose body is compiled once, each cell's value as
+  written out. A place affine in the loops' indices is written in C, any
+  other as a table at file scope; a constant default of more than 1000
+  cells is set by one loop. Each array is a local of the step, so one of
+  about 362x362 doubles fills MSVC's default 1 MB stack. A 64x64 wave
+  tank's step compiles in 0.05 s to 4 KB, where it took 25 s to 1 MB, and
+  its misfit in one sum of 4096 terms, refused before, in 0.3 s to 36 KB.
+  Under grad nothing loops, and a sum that cannot loop past 1000 terms is
+  refused, saying why.
+
+### Fixed
+
+1 defect, C446: grad no longer refuses a definition of another file for
+reading a name like grad's own; only a read that finds the global grad's
+name shadows is refused.
+
 ## 2.4.0 — 2026-11-11
 
 ### Added
