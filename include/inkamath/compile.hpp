@@ -2270,7 +2270,7 @@ private:
     }
     // A mark left in a body is a place read where a constant is needed.
     void Unplaced(const Code& code, const std::vector<Temporary>& body) const {
-        bool marked = LoopsRead(code);
+        bool marked = LoopsRead(code) != 0;
         for (const Temporary& t : body)
             for (const std::string& line : t.lines)
                 marked = marked || line.find('\x17') != line.npos;
