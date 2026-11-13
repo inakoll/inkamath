@@ -253,6 +253,13 @@ private:
     struct Deep : Reason {
         using Reason::Reason;
     };
+    // DESIGN.md, definitions by cells as loops: why a loop cannot be, so that
+    // the definition is written out; with the loops a value read there reads,
+    // where, compiled again at each of their values, it may yet be placed.
+    struct Unlooped : Reason {
+        Unlooped(const std::string& why, unsigned read) : Reason(why), loops(read) {}
+        unsigned loops;
+    };
     // The interpreter's own refusal, as a reason the compiler gives.
     template <typename F>
     static auto Reasoned(F f) {
@@ -592,6 +599,8 @@ private:
                              ", which keeps a history, made anew at each step");
             const auto place = places_.find(name);
             if (place == places_.end()) continue;
+            if (!place->second.Size().rows)
+                throw Unlooped("term reads " + name + " in an instance of " + model.Name(), 0);
             captured.emplace_back(name, place->second);
             values += "_" + std::to_string(numeric_interface<Value>::toInt(place->second));
         }
@@ -1724,6 +1733,8 @@ private:
         const bool outer_deferring  = std::exchange(deferring_, false);
         const Setting<Memo>  memo(memo_, {temporaries_, {}});
         const Setting<Frame> own(frame_, {});
+        const Setting<std::vector<Loop>> unlooped(loops_, {});  // nor its loops
+        const Setting<unsigned>          unbound(bound_, 0);
         auto       outer_parameters = std::exchange(read_parameters_, {});
         const bool          outer_approximated = std::exchange(approximated_, false);
         try {
@@ -1774,7 +1785,7 @@ private:
     template <typename Lines>
     std::string Declare(const std::string& value, Lines lines) {
         const Setting<std::vector<Temporary>*> hoisted(
-            temporaries_, Invariant(value) ? limit_->based : temporaries_);
+            temporaries_, Invariant(value) ? limit_->based : Routed(value));
         // Checked, as an ended list may have left its address to another.
         std::size_t& at = declared_[{temporaries_, value}];
         if (at < temporaries_->size() && (*temporaries_)[at].value == value)
@@ -1800,6 +1811,10 @@ private:
     }
 
     Code Broadcast(Code left, Code right, Cell (*combine)(const Cell&, const Cell&)) {
+        if (const Placement *l = PlacedOf(left), *r = PlacedOf(right); l && !r && !right.constant)
+            left = Operand(*l);
+        else if (r && !l && !left.constant)
+            right = Operand(*r);
         if (!right.Scalar() && (left.Scalar() || left.size.slices < right.size.slices))
             left = Shared(left);
         if (!left.Scalar() && (right.Scalar() || right.size.slices < left.size.slices))
@@ -2000,8 +2015,456 @@ private:
     Code Emit(const PExpression<Value>& expression) {
         if (const auto lifted = lifted_.find(expression.get()); lifted != lifted_.end())
             return lifted->second;
-        expression->accept(*this);
-        return code_;
+        if (loops_.empty() || bound_) {
+            expression->accept(*this);
+            return code_;
+        }
+        // In a nest's body, a value that reads a place and is not placed is
+        // compiled again at each value of the places it reads, and placed
+        // where each is a constant (DESIGN.md, definitions by cells as loops).
+        Code code;
+        try {
+            expression->accept(*this);
+            code = code_;
+        } catch (const Unlooped& why) {
+            if (auto again = Again(expression, why.loops)) return *again;
+            throw;
+        }
+        const unsigned read = PlacedOf(code) ? 0 : LoopsRead(code);
+        if (!read) return code;
+        if (auto again = Again(expression, read)) return *again;
+        const auto* call = dynamic_cast<const FuncExpression<Value>*>(expression.get());
+        if (call || dynamic_cast<const CompareExpression<Value>*>(expression.get()))
+            throw Unlooped("term reads " + Names(read) + " in " +
+                               (call ? "a call of " + call->Name() : "a comparison"),
+                           0);
+        return code;
+    }
+
+    // A placed value, its exact value at each combination of the loops it
+    // reads, the outermost slowest, and so known while compiling; written
+    // '\x17id\x18', its mark, which no C reads.
+    struct Placement {
+        unsigned           loops;
+        std::vector<Value> values;
+    };
+    std::size_t Pinned(unsigned loops, std::vector<Value> values) {
+        placements_.push_back({loops, std::move(values)});
+        return placements_.size() - 1;
+    }
+    static Code Pin(std::size_t id) { return Of(Atom("\x17" + std::to_string(id) + "\x18", true)); }
+    const Placement* PlacedOf(const Code& code) const {
+        if (code.cells.size() != 1 || code.size.slices) return nullptr;
+        const std::string& text = code.cells[0].text;
+        if (text.size() < 3 || text[0] != '\x17' || text.find('\x18') != text.size() - 1)
+            return nullptr;
+        return &placements_[std::stoul(text.substr(1))];
+    }
+    unsigned LoopsRead(const Code& code) const {
+        unsigned loops = 0;
+        for (const Cell& cell : code.cells)
+            for (std::size_t at = cell.text.find('\x17'); at != std::string::npos;
+                 at             = cell.text.find('\x17', at + 1))
+                loops |= placements_[std::strtoul(cell.text.c_str() + at + 1, nullptr, 10)].loops;
+        return loops;
+    }
+    std::string Names(unsigned loops) const {
+        std::string names;
+        for (std::size_t l = 0; l < loops_.size(); ++l)
+            if (loops >> l & 1) names += (names.empty() ? "" : " and ") + loops_[l].name;
+        return names;
+    }
+    std::size_t Count(std::size_t l) const { return static_cast<std::size_t>(loops_[l].count); }
+    std::size_t Combinations(unsigned loops) const {
+        std::size_t n = 1;
+        for (std::size_t l = 0; l < loops_.size(); ++l)
+            if (loops >> l & 1) n *= Count(l);
+        return n;
+    }
+    // Where at_ is, the combination of 'loops' reached, and at_ set to the k-th.
+    std::size_t Combination(unsigned loops) const {
+        std::size_t k = 0;
+        for (std::size_t l = 0; l < loops_.size(); ++l)
+            if (loops >> l & 1) k = k * Count(l) + at_[l];
+        return k;
+    }
+    void Seat(unsigned loops, std::size_t k) {
+        at_.resize(loops_.size());
+        for (std::size_t l = loops_.size(); l-- > 0;)
+            if (loops >> l & 1) {
+                at_[l] = k % Count(l);
+                k /= Count(l);
+            }
+    }
+    // A value compiled again where its loops are bound, placed at theirs.
+    std::optional<Value> Valued(const Code& code) const {
+        const Placement* placed = bound_ ? PlacedOf(code) : nullptr;
+        if (!placed || (placed->loops & ~bound_)) return code.constant;
+        return placed->values[Combination(placed->loops)];
+    }
+    Code Now(const Code& code) const {
+        const std::optional<Value> value = bound_ ? Valued(code) : std::nullopt;
+        return value && !code.constant ? Literal(*value) : code;
+    }
+    std::optional<Code> Again(const PExpression<Value>& expression, unsigned loops) {
+        loops &= (1u << loops_.size()) - 1;
+        if (!loops) return std::nullopt;
+        std::vector<Value>                          values;
+        const Setting<unsigned>                     bound(bound_, loops);
+        const auto                                  places = places_;
+        const Setting<std::map<std::string, Value>> kept(places_, places_);
+        for (std::size_t k = 0; k < Combinations(loops); ++k) {
+            Seat(loops, k);
+            places_ = places;
+            for (auto& [name, value] : places_)
+                if (!value.Size().rows)
+                    if (const Placement& p = placements_[value.Size().cols - 1];
+                        !(p.loops & ~loops))
+                        value = p.values[Combination(p.loops)];
+            const Code code = Emit(expression);
+            if (!code.constant || !code.Scalar() || !Still(code)) return std::nullopt;
+            values.push_back(*code.constant);
+        }
+        return Pin(Pinned(loops, std::move(values)));
+    }
+
+    // Cells at each combination of 'loops' as C, by the loops they move with:
+    // 'a * k1_ + b * k2_ + c', 'cast' around it, where each is whole and so,
+    // else a table at file scope of one loop's; none past that.
+    std::optional<std::string> Placing(unsigned loops, const std::vector<std::string>& cells,
+                                       const std::vector<std::optional<long long>>& whole,
+                                       const std::string& type, const std::string& cast) {
+        std::vector<std::size_t> ls, stride, moving;
+        for (std::size_t l = 0; l < loops_.size(); ++l)
+            if (loops >> l & 1) ls.push_back(l);
+        stride.assign(ls.size(), 1);
+        for (std::size_t p = ls.size(); p-- > 1;) stride[p - 1] = stride[p] * Count(ls[p]);
+        for (std::size_t p = 0; p < ls.size(); ++p)
+            for (std::size_t k = 0; k < cells.size(); ++k)
+                if (k / stride[p] % Count(ls[p]) && cells[k] != cells[k - stride[p]]) {
+                    moving.push_back(p);
+                    break;
+                }
+        if (moving.empty()) return cells[0];
+        bool affine = std::ranges::all_of(whole, [](const auto& w) { return w.has_value(); });
+        std::vector<long long> a;
+        for (const std::size_t p : moving) a.push_back(affine ? *whole[stride[p]] - *whole[0] : 0);
+        for (std::size_t k = 0; affine && k < cells.size(); ++k) {
+            long long v = *whole[0];
+            for (std::size_t q = 0; q < moving.size(); ++q)
+                v += a[q] * static_cast<long long>(k / stride[moving[q]] % Count(ls[moving[q]]));
+            affine = v == *whole[k];
+        }
+        if (affine) {
+            std::string text;
+            for (std::size_t q = 0; q < moving.size(); ++q) {
+                const long long m = a[q] < 0 ? -a[q] : a[q];
+                text += (text.empty() ? (a[q] < 0 ? "-" : "") : (a[q] < 0 ? " - " : " + ")) +
+                        (m == 1 ? "" : std::to_string(m) + " * ") + loops_[ls[moving[q]]].var;
+            }
+            if (const long long c = *whole[0])
+                text += (c < 0 ? " - " : " + ") + std::to_string(c < 0 ? -c : c);
+            return cast.empty() ? text : cast + "(" + text + ")";
+        }
+        if (moving.size() > 1) return std::nullopt;
+        const std::size_t p     = moving[0];
+        std::string       table = "[" + std::to_string(Count(ls[p])) + "] = {";
+        for (std::size_t x = 0; x < Count(ls[p]); ++x)
+            table += (x ? ", " : "") + cells[x * stride[p]];
+        table += "};\n\n";
+        // One for equal contents, named by the module as its helpers are.
+        const std::string line  = "static const " + type + " ";
+        auto              found = std::ranges::find_if(
+            tables_, [&](const auto& t) { return t.second == line + t.first + table; });
+        if (found == tables_.end())
+            found = tables_.insert(tables_.end(),
+                                   {module_ + "_table" + std::to_string(tables_.size()) + "_", ""});
+        found->second = line + found->first + table;
+        return found->first + "[" + loops_[ls[p]].var + "]";
+    }
+
+    // A placed operand beside a value that moves, each value as written out
+    // folds it, a subtrahend negated: 'y + (double)(-i1_)'.
+    Code Operand(const Placement& placed) {
+        std::vector<std::string>              cells;
+        std::vector<std::optional<long long>> whole;
+        bool                                  marked = false;
+        for (const Value& v : placed.values) {
+            std::string text = Literal(v).cells[0].text;
+            marked           = std::erase(text, rounded) || marked;
+            cells.push_back(text);
+            try {
+                whole.emplace_back(AsIndex<Value>(v));
+            } catch (const std::runtime_error&) {
+                whole.emplace_back();
+            }
+        }
+        if (std::ranges::all_of(cells, [&](const std::string& c) { return c == cells[0]; }))
+            return Literal(placed.values[0]);
+        const auto text = Placing(placed.loops, cells, whole, "double", "(double)");
+        if (!text)
+            throw Unlooped("term reads a value that is no sum of whole multiples of " +
+                               Names(placed.loops) + " and a constant",
+                           0);
+        return Of(Atom(*text + (marked ? std::string(1, rounded) : ""), true));
+    }
+
+    // A loop of a nest being compiled: its index in C, from 0, as the user
+    // wrote it, how many values it takes, where its body declares, where the
+    // nest is declared, and the nest's depth.
+    struct Loop {
+        std::string             var, name;
+        int                     count;
+        std::vector<Temporary>* body;
+        std::vector<Temporary>* outer;
+        int                     depth;
+    };
+    struct Popped {
+        std::vector<Loop>& loops;
+        std::size_t        size;
+        ~Popped() { loops.erase(loops.begin() + static_cast<std::ptrdiff_t>(size), loops.end()); }
+    };
+    int Depth() const { return loops_.empty() ? 1 : loops_.back().depth + 1; }
+    // Declared in a nest's body, the body of the innermost loop it reads by
+    // its index or what that body declares, else before the nest.
+    std::vector<Temporary>* Routed(const std::string& value) {
+        if (loops_.empty() || temporaries_ != loops_.back().body) return temporaries_;
+        for (auto loop = loops_.rbegin(); loop != loops_.rend(); ++loop)
+            if (Writes(value, loop->var) ||
+                std::ranges::any_of(*loop->body,
+                                    [&](const Temporary& t) { return Writes(value, t.name); }))
+                return loop->body;
+        return loops_.front().outer;
+    }
+    // What a body's statement reads, which its key holds, so that Routed sees it.
+    static std::string Bodied(const std::vector<Temporary>& body, const std::string& text) {
+        std::string key = text;
+        for (const Temporary* t : Kept(body, text)) key += '\n' + Joined(t->lines);
+        return key;
+    }
+    static std::string Unmarked(std::string text) {
+        std::erase_if(text, [](char c) { return c == '\x14' || c == '\x15'; });
+        return text;
+    }
+    // A nest's loops, the innermost's body the temporaries it reads and its
+    // statement, without the marks Numbered shares by.
+    static void Lined(std::vector<std::string>&                       lines,
+                      const std::vector<std::pair<std::string, int>>& loops,
+                      const std::vector<Temporary>& body, const std::string& statement) {
+        std::string in;
+        for (const auto& [var, n] : loops) {
+            lines.push_back(in + "for (int " + var + " = 0; " + var + " < " + std::to_string(n) +
+                            "; ++" + var + ")");
+            in += "    ";
+        }
+        const auto kept = Kept(body, statement);
+        if (kept.empty()) {
+            lines.back() += " " + statement;
+            return;
+        }
+        lines.back() += " {";
+        for (const Temporary* t : kept)
+            for (const std::string& line : t->lines) lines.push_back(in + Unmarked(line));
+        lines.push_back(in + statement);
+        lines.push_back(in.substr(4) + "}");
+    }
+    // A mark left in a body is a place read where a constant is needed.
+    void Unplaced(const Code& code, const std::vector<Temporary>& body) const {
+        bool marked = LoopsRead(code);
+        for (const Temporary& t : body)
+            for (const std::string& line : t.lines)
+                marked = marked || line.find('\x17') != line.npos;
+        if (marked)
+            throw Unlooped("term reads " + Names(LoopsRead(code)) + " where a constant is needed",
+                           0);
+    }
+
+    // Whether a definition by cells loops: past 1000 cells, not under grad nor
+    // in a walk, every cell's chain the same (DESIGN.md).
+    template <typename Fits>
+    bool Loopable(std::size_t cells, const Reference<Value>& definition, Fits fits) const {
+        return cells > static_cast<std::size_t>(max_terms) && Loopable() &&
+               std::ranges::none_of(definition.Clauses(), [&](const Clause<Value>& c) {
+                   return c.parameters.cells() && c.parameters.row_name().empty() && fits(c);
+               });
+    }
+    bool Loopable() const {
+        return !depth_ && !limit_ && temporaries_ && !bound_ && loops_.size() < 28;
+    }
+
+    // A value of more than 1000 cells as one loop nest over its places, its
+    // body the cell that 'cell' compiles with them bound to its indices.
+    template <typename Body>
+    Code CellLoop(Extent size, Body cell) {
+        auto* const                              body  = &lists_.emplace_back();
+        const std::size_t                        outer = loops_.size();
+        const int                                depth = Depth();
+        std::vector<Value>                       places(3, Value(Number(1)));
+        std::vector<std::pair<std::string, int>> loops;
+        std::vector<std::size_t>                 dims(3, std::string::npos);
+        std::string                              at;
+        const std::size_t                        counts[] = {size.slices, size.rows, size.cols};
+        Code                                     code;
+        {
+            const Popped pop{loops_, outer};
+            for (std::size_t d = 0; d < 3; ++d) {
+                std::string var = "0";
+                if (counts[d] > 1) {
+                    var = std::string(1, "bij"[d]) + std::to_string(depth) + "_";
+                    std::vector<Value> values;
+                    for (int v = 1; v <= static_cast<int>(counts[d]); ++v)
+                        values.emplace_back(Number(v));
+                    dims[d] = loops_.size();
+                    places[d] =
+                        Value(Extent{0, Pinned(1u << loops_.size(), std::move(values)) + 1});
+                    loops_.push_back({var, var.substr(0, 1), static_cast<int>(counts[d]), body,
+                                      temporaries_, depth});
+                    loops.emplace_back(var, static_cast<int>(counts[d]));
+                }
+                if (d || size.slices) at += "[" + var + "]";
+            }
+            {
+                const Setting<std::vector<Value>>      placing(placing_, places);
+                const Setting<std::vector<Temporary>*> into(temporaries_, body);
+                const Setting<Memo>                    memo(memo_, {body, {}});
+                code = cell();
+            }
+            // Placed, or a constant, it is a constant matrix, as written out.
+            const unsigned own = ((1u << loops_.size()) - 1) & ~((1u << outer) - 1);
+            if (const Placement* placed = PlacedOf(code); placed && !(placed->loops & ~own)) {
+                Value exact(size);
+                at_.resize(loops_.size());
+                for (std::size_t c = 0; c < size.count(); ++c) {
+                    const std::size_t place[] = {c / (size.rows * size.cols),
+                                                 c / size.cols % size.rows, c % size.cols};
+                    for (std::size_t d = 0; d < 3; ++d)
+                        if (dims[d] != std::string::npos) at_[dims[d]] = place[d];
+                    exact.data()[c] = placed->values[Combination(placed->loops)](1, 1);
+                }
+                return Literal(exact);
+            }
+            if (code.constant) return Literal(Value(size, (*code.constant)(1, 1)));
+            Unplaced(code, *body);
+        }
+        const std::string text = Unmarked(code.cells[0].text);
+        const std::string name =
+            Declare("cells\x1f" + size.toString() + Bodied(*body, text), [&](const std::string& t) {
+                std::vector<std::string> lines{"double " + t + Dimensions(size) + ";"};
+                Lined(lines, loops, *body, t + at + " = " + text + ";");
+                return lines;
+            });
+        if (MayNan(code.cells[0].text)) nan_temporaries_.insert(name);
+        return Array(name, size);
+    }
+
+    // A sum or a product as one loop from -0.0 or 1.0, addition's and
+    // multiplication's identities, so that its first term is its first
+    // partial sum exactly, NaN and -0.0 too, as the interpreter's begins; each
+    // sum counted in its body a loop too.
+    Code Summed(SeriesExpression<Value>& series, int first, int last,
+                const std::set<const Expression<Value>*>& counted) {
+        const std::size_t  loop  = loops_.size();
+        const int          count = last - first + 1;
+        std::vector<Value> values;
+        for (int k = first; k <= last; ++k) values.emplace_back(Number(k));
+        const std::size_t id   = Pinned(1u << loop, std::move(values));
+        auto* const       body = &lists_.emplace_back();
+        const std::string var  = "k" + std::to_string(Depth()) + "_";
+        Code              term;
+        {
+            const Popped pop{loops_, loop};
+            loops_.push_back({var, series.Index(), count, body, temporaries_, Depth()});
+            {
+                const Setting<std::set<const Expression<Value>*>> inner(looping_, counted);
+                const Setting<std::vector<Temporary>*>            into(temporaries_, body);
+                const Setting<Memo>                               memo(memo_, {body, {}});
+                places_[series.Index()] = Value(Extent{0, id + 1});
+                term                    = Emit(series.Body());
+            }
+            // Placed, or a constant, it folds exactly, at each value of the
+            // outer loops it reads, as written out.
+            const Placement* placed = PlacedOf(term);
+            if (placed || (term.constant && term.Scalar())) {
+                const std::vector<Value> each =
+                    placed ? placed->values : std::vector<Value>{*term.constant};
+                const unsigned     own = 1u << loop, read = placed ? placed->loops : 0;
+                const std::size_t  n = read & own ? static_cast<std::size_t>(count) : 1;
+                std::vector<Value> totals;
+                for (std::size_t r = 0; r * n < each.size(); ++r)
+                    totals.push_back(
+                        *Exact([&] {
+                             Value total = each[r * n];
+                             for (int k = 1; k < count; ++k) {
+                                 const Value& next =
+                                     each[r * n + (n > 1 ? static_cast<std::size_t>(k) : 0)];
+                                 total = series.Product() ? total * next : total + next;
+                             }
+                             return total;
+                         }).constant);
+                return read & ~own ? Pin(Pinned(read & ~own, std::move(totals)))
+                                   : Literal(totals[0]);
+            }
+            if (!term.Scalar())
+                throw Unlooped("terms are " + term.size.toString() +
+                                   (term.size.slices ? " tensors" : " matrices"),
+                               0);
+            Unplaced(term, *body);
+        }
+        const Cell        cell = term.cells[0];
+        const std::string name = Declare(
+            "sum\x1f" + var + std::to_string(count) + (series.Product() ? "*" : "+") +
+                Bodied(*body, cell.text),
+            [&](const std::string& t) {
+                std::vector<std::string> lines{"double " + t +
+                                               (series.Product() ? " = 1.0;" : " = -0.0;")};
+                const Cell               acc = Atom(t);
+                Lined(lines, {{var, count}}, *body,
+                      t + " = " +
+                          Unmarked(
+                              (series.Product() ? Multiplied(acc, cell) : Added(acc, cell)).text) +
+                          ";");
+                return lines;
+            });
+        if (MayNan(cell.text)) nan_temporaries_.insert(name);
+        return Of(Atom(name));
+    }
+
+    // The terms writing out the sums with constant bounds in a sum's body
+    // would make, side by side, each its own times those in its body, or 1
+    // where there is none; each kept in 'counted'.
+    long long Counted(const SeriesExpression<Value>& series, int first,
+                      std::set<const Expression<Value>*>& counted) {
+        const auto                 found = places_.find(series.Index());
+        const std::optional<Value> outer =
+            found == places_.end() ? std::nullopt : std::optional<Value>(found->second);
+        places_[series.Index()] = Value(Number(first));
+        long long  terms        = 0;
+        bool       any          = false;
+        const auto walk         = [&](const auto& self, const PExpression<Value>& e) -> void {
+            const auto* inner = dynamic_cast<const SeriesExpression<Value>*>(e.get());
+            if (!inner || !inner->Upper() || inner->Reduction()) {
+                for (const PExpression<Value>& child : e->Children())
+                    if (child) self(self, child);
+                return;
+            }
+            any = true;
+            std::optional<int> low, high;
+            try {
+                low  = Constant(inner->Lower());
+                high = Constant(inner->Upper());
+            } catch (const Reason&) {
+            }
+            if (!low || !high) return void(++terms);
+            counted.insert(inner);
+            terms += std::max(0LL, *high - *low + 1LL) * Counted(*inner, *low, counted);
+            terms = std::min(terms, 1000000LL);
+        };
+        walk(walk, series.Body());
+        if (outer)
+            places_[series.Index()] = *outer;
+        else
+            places_.erase(series.Index());
+        return any ? terms : 1;
     }
 
     // A value, and the parameters it reads.
@@ -2014,10 +2477,16 @@ private:
         return {code, reads};
     }
 
-    // A value the compiled code needs as a constant; see Fix.
-    Code Known(const PExpression<Value>& expression, const std::string& refusal) {
+    // A value the compiled code needs as a constant; see Fix. A place read
+    // there, 'in' it, gives way, a sum's bounds where 'in' is empty.
+    Code Known(const PExpression<Value>& expression, const std::string& refusal,
+               const std::string& in = "a constant") {
         auto [code, reads] = Reading(expression);
         if (code.constant && code.part.empty()) return code;
+        if (const Placement* placed = PlacedOf(code))
+            throw Unlooped(in.empty() ? "inner sum's bounds read " + Names(placed->loops)
+                                      : "term reads " + Names(placed->loops) + " in " + in,
+                           placed->loops);
         if (!reads.empty()) throw Fix{std::move(reads)};
         throw Reason(refusal);
     }
@@ -2054,9 +2523,9 @@ private:
             calls.push_back(&call->values);
         for (auto call = calls.rbegin(); call != calls.rend(); ++call)
             for (const auto& [name, code] : **call)
-                if ((code.constant || every) &&
-                    (*call != &frame_.values || !frame_.graded.count(name)))
-                    definitions_.BindValue(name, code.constant ? *code.constant : Value(Number(0)));
+                if (const auto value = Valued(code);
+                    (value || every) && (*call != &frame_.values || !frame_.graded.count(name)))
+                    definitions_.BindValue(name, value ? *value : Value(Number(0)));
         for (const auto& [name, value] : places_) definitions_.BindValue(name, value);
         if (every && !index_.empty()) definitions_.BindValue(index_, Value(Number(0)));
         return f();
@@ -2691,9 +3160,11 @@ private:
             Mentions(*expression->m_e2(), index_))
             if (const auto climbed = Climbed(base, expression->m_e2())) return Answer(*climbed);
         const Code exponent =
-            base.Scalar()
-                ? Emit(expression->m_e2())
-                : Known(expression->m_e2(), "a matrix power whose exponent is not a constant");
+            base.Scalar() ? Emit(expression->m_e2())
+                          : Known(expression->m_e2(),
+                                  "a matrix power whose exponent is not a constant", "an exponent");
+        if (const Placement* placed = PlacedOf(exponent))
+            throw Unlooped("term reads " + Names(placed->loops) + " in an exponent", placed->loops);
         // A matrix's x^0 takes no part, its derivative 0, as Derivative::Power's.
         const bool parted = !Still(base) && !base.Scalar() && Doubles(*exponent.constant)[0] != 0;
         Code value;
@@ -2978,6 +3449,8 @@ private:
         const Setting<bool> guarding(guarding_, true), moved(moved_, false);
         const Frame                                  frame = frame_;
         const Code                                   code  = Quiet(guard);
+        if (const Placement* placed = PlacedOf(code))
+            throw Unlooped("term reads " + Names(placed->loops) + " in a guard", placed->loops);
         chosen_                  = chosen_ || moved_;
         unconverged_.clear();
         asked_.clear();
@@ -3096,6 +3569,7 @@ private:
             }
             return {written, std::nullopt};
         }
+        if (!loops_.empty()) throw Unlooped("term defers the right of 'and' or 'or'", 0);
         checks_.push_back(
             {reads, logic.m_e1(), logic.Conjunction(), scope_, index_, places_, shift_});
         return {written, "\x02" + std::to_string(checks_.size() - 1) + "\x03"};
@@ -3307,14 +3781,15 @@ private:
         const std::string& name = expression->Name();
         if (!own_) {
             if (const auto place = places_.find(name); place != places_.end())
-                return Answer(Literal(place->second));
+                return Answer(place->second.Size().rows ? Literal(place->second)
+                                                        : Pin(place->second.Size().cols - 1));
             if (!index_.empty() && name == index_) return Answer(Atom(index_text_, true));
             if (const auto refused = frame_.refused.find(name); refused != frame_.refused.end())
                 throw Reason(name + refused->second);
             const auto local = frame_.values.find(name);
             if (local != frame_.values.end() && !frame_.graded.count(name))
-                return Answer(local->second);
-            if (const auto expanded = Expanded(name)) return Answer(*expanded);
+                return Answer(Now(local->second));
+            if (const auto expanded = Expanded(name)) return Answer(Now(*expanded));
         }
         const Found             found      = Lookup(name);
         const std::string&      key        = found.key;
@@ -3363,9 +3838,11 @@ private:
         const auto cells = [](const Clause<Value>& c) { return c.parameters.cells(); };
         Code       code;
         {
-            const Home                home(*this, definition);
-            const Setting<Expansion*> uncalled(expansion_, nullptr);
-            const Setting<Frame>      own(frame_, {});
+            const Home                       home(*this, definition);
+            const Setting<Expansion*>        uncalled(expansion_, nullptr);
+            const Setting<Frame>             own(frame_, {});
+            const Setting<std::vector<Loop>> unlooped(loops_, {});
+            const Setting<unsigned>          unbound(bound_, 0);
             code = std::any_of(definition->Clauses().begin(), definition->Clauses().end(), cells)
                        ? Cells(key, *definition)
                        : Emit(definition->Clauses().front().expression);
@@ -3419,11 +3896,7 @@ private:
                 Named(p, shape.size,
                       name + "_" + (p.general() ? p.subscript() : std::to_string(p.index())));
         }
-        std::vector<std::string> cells;
-        for (std::size_t c = 0; c < shape.size.count(); ++c) {
-            const int slice = static_cast<int>(c / (shape.size.rows * shape.size.cols)) + 1,
-                      row   = static_cast<int>(c / shape.size.cols % shape.size.rows) + 1,
-                      col   = static_cast<int>(c % shape.size.cols) + 1;
+        const auto each = [&](std::size_t c, int slice, int row, int col) {
             std::string                chain, pick, ran;
             std::optional<std::string> last;
             int                        picked  = 0;
@@ -3456,9 +3929,19 @@ private:
             };
             Walk(definition, slice, row, col, fits, settles);
             if (!last) last = Unless(ran, whole ? whole->At(c).text : "0.0");
-            cells.push_back(nan.empty() ? chain + *last : "(" + nan + chain + *last + ")");
             if (taken) taken->push_back(pick + std::to_string(picked));
-        }
+            return nan.empty() ? chain + *last : "(" + nan + chain + *last + ")";
+        };
+        if (!whole && !taken && !marked && Loopable(shape.size.count(), definition, fits)) try {
+                return {shape,
+                        Texts(CellLoop(shape.size, [&] { return Of(Atom(each(0, 0, 0, 0))); }))};
+            } catch (const Unlooped&) {
+            }
+        std::vector<std::string> cells;
+        for (std::size_t c = 0; c < shape.size.count(); ++c)
+            cells.push_back(each(c, static_cast<int>(c / (shape.size.rows * shape.size.cols)) + 1,
+                                 static_cast<int>(c / shape.size.cols % shape.size.rows) + 1,
+                                 static_cast<int>(c % shape.size.cols) + 1));
         return {shape, cells};
     }
 
@@ -3477,9 +3960,13 @@ private:
             for (const Clause<Value>& clause : definition.Clauses()) {
                 const ParametersDefinition<Value>& p = clause.parameters;
                 if (p.row_name().empty() || p.guarded() != guarded || !fits(clause)) continue;
-                if (p.tensor()) places_[p.slice_name()] = Value(Number(slice));
-                places_[p.row_name()] = Value(Number(row));
-                places_[p.col_name()] = Value(Number(col));
+                // At 0, the place a nest of cells binds (CellLoop).
+                const auto at = [&](int place, std::size_t d) {
+                    return place ? Value(Number(place)) : placing_[d];
+                };
+                if (p.tensor()) places_[p.slice_name()] = at(slice, 0);
+                places_[p.row_name()] = at(row, 1);
+                places_[p.col_name()] = at(col, 2);
                 const bool settled    = settles(clause);
                 places_.erase(p.slice_name());
                 places_.erase(p.row_name());
@@ -3629,6 +4116,12 @@ private:
             const ParametersDefinition<Value>& p = clause.parameters;
             if (p.cells() && p.row_name().empty() && fits(clause)) Named(p, *extent, name);
         }
+        if (!whole && Loopable(extent->count(), definition, fits)) try {
+                return CellLoop(*extent, [&] {
+                    return CellOf(name, definition, 0, 0, 0, Literal(Value(Number(0))), fits);
+                });
+            } catch (const Unlooped&) {
+            }
         Code                     code;
         Value                    exact(*extent);
         bool                     constant = true, any = false;
@@ -3749,7 +4242,8 @@ private:
     }
 
     std::size_t Size(const PExpression<Value>& expression) {
-        const int size = Whole(Known(expression, "a matrix whose size is not a constant"));
+        const int size =
+            Whole(Known(expression, "a matrix whose size is not a constant", "a size"));
         // The interpreter's refusal wherever taken: NaN in a guarded clause (C444).
         if (size < 1) throw Undefined("a size must be at least 1, not " + std::to_string(size));
         return static_cast<std::size_t>(size);
@@ -3828,6 +4322,11 @@ private:
             if (!code.part.empty() && tape_) throw Forward();
             parted   = parted || !code.part.empty();
             constant = constant && code.constant && (code.part.empty() || code.part[0].constant);
+        }
+        if (!loops_.empty() && !constant) {
+            unsigned read = 0;
+            for (const auto& [parameter, code] : given) read |= LoopsRead(code);
+            throw Unlooped(std::string("term reads ") + (index ? "a walk" : "a limit"), read);
         }
         Walked walked{name, what, names, 0, {0, 0}, &lists_.emplace_back(), &lists_.emplace_back()};
         walked.parted                                = parted;
@@ -5102,6 +5601,11 @@ private:
         if (!plus) throw Reason(only);
         const auto [left, left_reads]   = Reading(plus->m_e1());
         const auto [right, right_reads] = Reading(plus->m_e2());
+        for (const Code* side : {&left, &right})
+            if (const Placement* placed = PlacedOf(*side))
+                throw Unlooped("term reads " + Names(placed->loops) + " in an index of " +
+                                   written.substr(0, written.find('_')),
+                               placed->loops);
         if (right.constant && !left.constant) return Offset(plus->m_e1(), written) + Whole(right);
         if (left.constant && !right.constant) return Whole(left) + Offset(plus->m_e2(), written);
         // A lag is the depth of a window, so a parameter that gives one is fixed.
@@ -5163,41 +5667,56 @@ private:
     // its part. Which cells it takes, or why it takes none, is the
     // interpreter's answer for a value of its size whose cells are numbered.
     PExpression<Value> visit(CellExpression<Value>* expression) override {
-        Code             matrix = Emit(expression->Matrix());
-        std::vector<int> at;
+        Code                          matrix = Emit(expression->Matrix());
+        std::vector<int>              at;
+        std::vector<const Placement*> placed;  // in a nest's body, where a place is
+        unsigned                      loops = 0;
         for (const PExpression<Value>* place :
-             {&expression->Slice(), &expression->Row(), &expression->Col()})
-            if (*place) at.push_back(Whole(Known(*place, "a cell whose place is not a constant")));
+             {&expression->Slice(), &expression->Row(), &expression->Col()}) {
+            if (!*place) continue;
+            placed.push_back(loops_.empty() || bound_ ? nullptr : PlacedOf(Emit(*place)));
+            if (placed.back()) loops |= placed.back()->loops;
+            at.push_back(
+                placed.back() ? 1 : Whole(Known(*place, "a cell whose place is not a constant")));
+        }
         // The interpreter refuses a matrix whole where it refuses a cell. One
         // that writes NaN in a cell not taken makes the header write it.
         // A parameter's cell is its argument's, NaN where that may be (C335).
         for (const Cell& c : matrix.cells)
             aware_ = aware_ || (!matrix.constant && (MayNan(c.text) || nans_.count(c.text)));
         if (aware_ && !matrix.whole && !matrix.constant) matrix = Shared(matrix);
-        const std::string nan = matrix.whole ? "" : Nan(matrix);
-        if (!nan.empty())
-            for (Cell& c : matrix.cells) c = Cell("(" + nan + c.text + ")", primary);
+        const std::string nan  = matrix.whole ? "" : Nan(matrix);
         const auto read = [&](const Value& v) {
             return at.size() == 3   ? numeric_interface<Value>::cell(v, at[0], at[1], at[2])
                    : at.size() == 2 ? numeric_interface<Value>::cell(v, at[0], at[1])
                                     : numeric_interface<Value>::row(v, at[0]);
         };
+        std::optional<Value> numbered;
+        const auto           take = [&]() -> Value {
+            if (!numbered) {
+                numbered = Value(matrix.size);
+                for (std::size_t c = 0; c < matrix.size.count(); ++c)
+                    numbered->data()[c] = Number(static_cast<int>(c));
+            }
+            try {
+                return read(*numbered);
+            } catch (const std::runtime_error& error) {
+                const auto bound = [&](std::size_t k) { return std::to_string(at[k]); };
+                if (at.size() == 1 && at[0] > 1) Unstated(*expression->Matrix(), "j<=" + bound(0));
+                if (at.size() == 2 && at[0] > 0 && at[1] > 0)
+                    Unstated(*expression->Matrix(), "j<=" + bound(0) + ", k<=" + bound(1));
+                if (at.size() == 3 && at[0] > 0 && at[1] > 0 && at[2] > 0)
+                    Unstated(*expression->Matrix(),
+                                       "b<=" + bound(0) + ", j<=" + bound(1) + ", k<=" + bound(2));
+                throw Reason(error.what());
+            }
+        };
+        if (loops)
+            return Answer(PlacedCell(*expression->Matrix(), matrix, at, placed, loops, nan, take));
+        if (!nan.empty())
+            for (Cell& c : matrix.cells) c = Cell("(" + nan + c.text + ")", primary);
         if (matrix.constant && matrix.part.empty()) return Answer(Exactly(read, matrix));
-        Value numbered(matrix.size), taken;
-        for (std::size_t c = 0; c < matrix.size.count(); ++c)
-            numbered.data()[c] = Number(static_cast<int>(c));
-        try {
-            taken = read(numbered);
-        } catch (const std::runtime_error& error) {
-            const auto bound = [&](std::size_t k) { return std::to_string(at[k]); };
-            if (at.size() == 1 && at[0] > 1) Unstated(*expression->Matrix(), "j<=" + bound(0));
-            if (at.size() == 2 && at[0] > 0 && at[1] > 0)
-                Unstated(*expression->Matrix(), "j<=" + bound(0) + ", k<=" + bound(1));
-            if (at.size() == 3 && at[0] > 0 && at[1] > 0 && at[2] > 0)
-                Unstated(*expression->Matrix(),
-                         "b<=" + bound(0) + ", j<=" + bound(1) + ", k<=" + bound(2));
-            throw Reason(error.what());
-        }
+        const Value taken  = take();
         const auto window = [&](const Code& m) {
             const auto cells = [&](const Code& from) {
                 Code c;
@@ -5213,6 +5732,63 @@ private:
         };
         return Answer(Parted(window(matrix), Mapped(PartOf(matrix), read, window), {&matrix}));
     }
+    // DESIGN.md, definitions by cells as loops: a cell at places placed,
+    // whole and within the matrix at each of their values, checked here, and
+    // so no range tested in C; its place affine in C or a table's, and the
+    // matrix read in place where its cells are an array's.
+    template <typename Take>
+    Code PlacedCell(const Expression<Value>& read, const Code& matrix, std::vector<int>& at,
+                    const std::vector<const Placement*>& placed, unsigned loops,
+                    const std::string& nan, Take take) {
+        std::vector<std::size_t> taken;
+        for (std::size_t k = 0; k < Combinations(loops); ++k) {
+            Seat(loops, k);
+            for (std::size_t d = 0; d < at.size(); ++d)
+                if (placed[d])
+                    at[d] = Whole(Literal(placed[d]->values[Combination(placed[d]->loops)]));
+            const Value one = take();
+            if (one.Size().count() != 1) throw Unlooped("term reads a row of " + Spelled(read), 0);
+            taken.push_back(static_cast<std::size_t>(one.data()[0].Inexact().real()));
+        }
+        if (matrix.constant) {
+            std::vector<Value> values;
+            for (const std::size_t c : taken) values.emplace_back(matrix.constant->data()[c]);
+            return Pin(Pinned(loops, std::move(values)));
+        }
+        const Extent size = matrix.size;
+        std::string  places[3];
+        for (std::size_t d = 0; d < 3; ++d) {
+            std::vector<std::string>              cells;
+            std::vector<std::optional<long long>> whole;
+            for (const std::size_t c : taken) {
+                const std::size_t i = d == 0   ? c / (size.rows * size.cols)
+                                      : d == 1 ? c / size.cols % size.rows
+                                               : c % size.cols;
+                whole.emplace_back(static_cast<long long>(i));
+                cells.push_back(std::to_string(i));
+            }
+            const auto text = Placing(loops, cells, whole, "int", "");
+            if (!text)
+                throw Unlooped("term reads " + Spelled(read) +
+                                   " at a place that is no sum of whole multiples of " +
+                                   Names(loops) + " and a constant",
+                               0);
+            places[d] = "[" + *text + "]";
+        }
+        const Indexed     array = Materialised(matrix);
+        const std::string text  = array.base + (size.slices ? places[0] : "") +
+                                 (array.transposed ? places[2] + places[1] : places[1] + places[2]);
+        if (std::ranges::any_of(matrix.cells, [&](const Cell& c) { return nans_.count(c.text); }))
+            nans_.insert(text);
+        return Of(nan.empty() ? Atom(text) : Cell("(" + nan + text + ")", primary));
+    }
+    // What the user wrote of a sequence's term or a value, as a refusal names it.
+    static std::string Spelled(const Expression<Value>& e) {
+        const auto* call  = dynamic_cast<const FuncExpression<Value>*>(&e);
+        const auto& index = call ? call->m_e2() : PExpression<Value>();
+        return e.Name() + (!index ? "" : index->Name().empty() ? "_(...)" : "_" + index->Name());
+    }
+
     // A cell past an input whose model states no size, or a parameter it
     // gives no default, which compile as single values (C83), or past a
     // single value computed from one, refused with the size that would hold it,
@@ -5295,6 +5871,7 @@ private:
     PExpression<Value> visit(GradExpression<Value>* expression) override {
         if (limit_ && limit_->parted)
             throw Reason("a second derivative through " + limit_->Kind() + ", for now");
+        if (!loops_.empty() && !bound_) throw Unlooped("term reads a derivative", 0);
         if (expression->Several() && expression != grouped_.first)
             Reasoned(EvaluationVisitor<Value>::Unread);
         std::vector<Code> points, parts;
@@ -5831,21 +6408,44 @@ private:
         if (!expression->Upper()) return Sum(expression);
         if (const auto total = Running(*expression)) return Answer(*total);
         const Code lower =
-            Known(expression->Lower(), "a sum or a product whose bounds are not constants");
+            Known(expression->Lower(), "a sum or a product whose bounds are not constants", "");
         const Code upper =
-            Known(expression->Upper(), "a sum or a product whose bounds are not constants");
+            Known(expression->Upper(), "a sum or a product whose bounds are not constants", "");
         const int first = Whole(lower), last = Whole(upper);
         if (expression->Reduction() && last < first) throw Reason(expression->Empty(first, last));
         if (last < first) return Answer(Literal(Value(Number(expression->Product() ? 1 : 0))));
         const std::string many = expression->Reduction()
                                      ? std::string("the ") + expression->Noun() + " has"
                                      : "a sum or a product of";
-        if (last - first >= max_terms)
-            throw Reason(many + " more than " + std::to_string(max_terms) + " terms");
+        const std::string more = many + " more than " + std::to_string(max_terms) + " terms";
         const std::string&         name  = expression->Index();
         const auto                 found = places_.find(name);
         const std::optional<Value> outer =
             found == places_.end() ? std::nullopt : std::optional<Value>(found->second);
+        const auto unbound = [&] {
+            if (outer)
+                places_[name] = *outer;
+            else
+                places_.erase(name);
+        };
+        // DESIGN.md, definitions by cells as loops: past 1000 terms, its own
+        // or counted with those of the sums in its body, one loop.
+        if (!expression->Reduction() && Loopable()) {
+            std::set<const Expression<Value>*> counted;
+            const long long terms = (last - first + 1LL) * Counted(*expression, first, counted);
+            if (terms > max_terms || last - first >= max_terms || looping_.count(expression)) try {
+                    const Code looped = Summed(*expression, first, last, counted);
+                    unbound();
+                    return Answer(looped);
+                } catch (const Unlooped& why) {
+                    unbound();
+                    if (last - first >= max_terms)
+                        throw Reason(more + " whose " + why.what() + ", for now");
+                    if (looping_.count(expression)) throw;  // its outer sum gives way too
+                }
+        }
+        if (last - first >= max_terms)
+            throw Reason(more + (depth_ && !expression->Reduction() ? " under grad, for now" : ""));
         Code               total;
         bool               constant = true;
         std::vector<Value> terms;
@@ -5900,6 +6500,7 @@ private:
         const std::string what = std::string(series.Indexes() ? "an " : "a ") + series.Noun();
         const std::string upto = what + " up to " + index_;
         if (own != totals_.end()) throw Reason(what + " up to an enclosing sum's index, for now");
+        if (!loops_.empty()) throw Unlooped("term reads " + upto, 0);
         if (series.Reduction() || !grad_.empty())
             throw Reason(upto + (grad_.empty() ? "" : " under grad") + ", for now");
         if (Mentions(*series.Body(), index_))
@@ -7117,10 +7718,12 @@ private:
                 // 'const double t5_ = ...;', or an array, 'double t5_[3][3] = {...};'.
                 const std::string& name  = kept[t].name;
                 const std::string& line  = kept[t].lines[0];
-                const bool         array = !line.starts_with("const ");
-                const std::string  member =
+                // or a sum's accumulator, 'double t5_ = -0.0;'.
+                const bool array = !line.starts_with("const ") && line.find('[') < line.find(';');
+                const std::size_t start = line.starts_with("const ") ? 6 : 0;
+                const std::string member =
                     array ? line.substr(0, line.find_first_of(" ;", line.find(name)))
-                           : line.substr(6, line.find(" = ") - 6);
+                          : line.substr(start, line.find(" = ") - start);
                 const auto copy = [&](const std::string& to, const std::string& from) {
                     return array ? "    memcpy(" + to + ", " + from + ", sizeof " + name + ");\n"
                                  : "    " + to + " = " + from + ";\n";
@@ -7664,6 +8267,16 @@ private:
         out += api + " void " + module + "_init(" + module + "* m_) {\n";
         out += "    memset(m_, 0, sizeof *m_);\n";
         for (const auto& [name, parameter] : parameters_) {
+            // Past 1000 cells all one number, one loop nest (DESIGN.md).
+            const std::string first = Double(parameter.initial[0]);
+            if (parameter.initial.size() > static_cast<std::size_t>(max_terms) &&
+                std::ranges::all_of(parameter.initial,
+                                    [&](double x) { return Double(x) == first; })) {
+                for (const std::string& line : Loops(parameter.size)) out += "    " + line + "\n";
+                out.back() = ' ';
+                out += "m_->" + name + Places(parameter.size) + " = " + first + ";\n";
+                continue;
+            }
             for (std::size_t c = 0; c < parameter.initial.size(); ++c)
                 out += "    m_->" + name + Subscript(parameter.size, c) + " = " +
                        Double(parameter.initial[c]) + ";\n";
@@ -7837,7 +8450,7 @@ private:
         out.insert(folds, Folds(earliest));
         // A function of the header where something calls it, which a fold, a
         // floor or a comparison may not (C355); each calls only those before.
-        std::vector<std::pair<std::string, std::string>> helpers;
+        std::vector<std::pair<std::string, std::string>> helpers = tables_;
         for (const std::size_t n : inverses_)
             helpers.emplace_back(module_ + "_inverse" + std::to_string(n) + "_", InverseHelper(n));
         for (const std::string& function : prelude_) {
@@ -8041,6 +8654,18 @@ private:
     std::map<const Expression<Value>*, Code> lifted_;  // an unbounded sum's arguments, by part
     int                              temporary_count_ = 0;
     std::map<std::string, Value>     places_;             // a cell's row and column, by their names
+    // DESIGN.md, definitions by cells as loops: the nest's loops, outermost
+    // first, a place among places_ a 0-row Value whose columns are one more
+    // than its placement's id; the loops bound while a value is compiled
+    // again, and their values' places; a nest of cells' slice, row and
+    // column; the sums a looping sum counts, which loop too; the tables.
+    std::vector<Loop>                  loops_;
+    std::deque<Placement>              placements_;
+    unsigned                           bound_ = 0;
+    std::vector<std::size_t>           at_;
+    std::vector<Value>                 placing_ = std::vector<Value>(3, Value(Number(1)));
+    std::set<const Expression<Value>*> looping_;
+    std::vector<std::pair<std::string, std::string>> tables_;
     std::map<std::string, Accumulator>       totals_;             // by key
     Code        code_;
     Tape* tape_  = nullptr;  // the grad's being compiled in reverse mode
