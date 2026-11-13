@@ -1,8 +1,8 @@
-# Definitions by cells as loops (DESIGN.md, next in line): a definition by
-# cells of more than 1000 cells, and a sum or a product whose terms, with
-# those of the sums written in its body, number more than 1000, compile to
-# a loop nest whose body is compiled once, its places bound to the loop's
-# indices. Every number below is worked out apart from the interpreter and
+# Definitions by cells as loops (DESIGN.md, done after the phases): a
+# definition by cells of more than 1000 cells, and a sum or a product whose
+# terms, with those of the sums written in its body, number more than 1000,
+# compile to a loop nest whose body is compiled once, its places bound to
+# the loop's indices. Every number below is worked out apart from the interpreter and
 # the compiler, with Python's fractions, doubles and floats rounded as C's,
 # and none is recorded.
 
