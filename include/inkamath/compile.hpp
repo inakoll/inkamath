@@ -2294,11 +2294,9 @@ private:
     template <typename Body>
     Code CellLoop(Extent size, Body cell) {
         auto* const                              body  = &lists_.emplace_back();
-        const std::size_t                        outer = loops_.size();
         const int                                depth = Depth();
         std::vector<Value>                       places(3, Value(Number(1)));
         std::vector<std::pair<std::string, int>> loops;
-        std::vector<std::size_t>                 dims(3, std::string::npos);
         std::string                              at;
         const std::size_t                        counts[] = {size.slices, size.rows, size.cols};
         Code                                     code;
@@ -2311,7 +2309,6 @@ private:
                     std::vector<Value> values;
                     for (int v = 1; v <= static_cast<int>(counts[d]); ++v)
                         values.emplace_back(Number(v));
-                    dims[d] = loops_.size();
                     places[d] =
                         Value(Extent{0, Pinned(1u << loops_.size(), std::move(values)) + 1});
                     loops_.push_back({var, var.substr(0, 1), static_cast<int>(counts[d]), body,
@@ -2326,21 +2323,7 @@ private:
                 const Setting<Memo>                    memo(memo_, {body, {}});
                 code = cell();
             }
-            // Placed, or a constant, it is a constant matrix, as written out.
-            const unsigned own = ((1u << loops_.size()) - 1) & ~((1u << outer) - 1);
-            if (const Placement* placed = PlacedOf(code); placed && !(placed->loops & ~own)) {
-                Value exact(size);
-                at_.resize(loops_.size());
-                for (std::size_t c = 0; c < size.count(); ++c) {
-                    const std::size_t place[] = {c / (size.rows * size.cols),
-                                                 c / size.cols % size.rows, c % size.cols};
-                    for (std::size_t d = 0; d < 3; ++d)
-                        if (dims[d] != std::string::npos) at_[dims[d]] = place[d];
-                    exact.data()[c] = placed->values[Combination(placed->loops)](1, 1);
-                }
-                return Literal(exact);
-            }
-            if (code.constant) return Literal(Value(size, (*code.constant)(1, 1)));
+            if (code.constant) throw Unlooped("a constant, written out as today", 0);
             Unplaced(code, *body);
         }
         const std::string text = Unmarked(code.cells[0].text);
