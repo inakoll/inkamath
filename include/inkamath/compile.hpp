@@ -2226,6 +2226,7 @@ private:
     // its index or what that body declares, else before the nest.
     std::vector<Temporary>* Routed(const std::string& value) {
         if (loops_.empty() || temporaries_ != loops_.back().body) return temporaries_;
+        if (value.find('\x17') != value.npos) return temporaries_;  // a place, for Unplaced
         for (auto loop = loops_.rbegin(); loop != loops_.rend(); ++loop)
             if (Writes(value, loop->var) ||
                 std::ranges::any_of(*loop->body,
@@ -2267,13 +2268,9 @@ private:
     }
     // A mark left in a body is a place read where a constant is needed.
     void Unplaced(const Code& code, const std::vector<Temporary>& body) const {
-        bool marked = LoopsRead(code) != 0;
-        for (const Temporary& t : body)
-            for (const std::string& line : t.lines)
-                marked = marked || line.find('\x17') != line.npos;
-        if (marked)
-            throw Unlooped("term reads " + Names(LoopsRead(code)) + " where a constant is needed",
-                           0);
+        unsigned loops = LoopsRead(code);
+        for (const Temporary& t : body) loops |= LoopsRead(Of(Atom(Joined(t.lines))));
+        if (loops) throw Unlooped("term reads " + Names(loops) + " where a constant is needed", 0);
     }
 
     // Whether a definition by cells loops: past 1000 cells, not under grad nor
