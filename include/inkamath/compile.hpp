@@ -2431,9 +2431,7 @@ private:
     // where there is none; each kept in 'counted'.
     long long Counted(const SeriesExpression<Value>& series, int first,
                       std::set<const Expression<Value>*>& counted) {
-        const auto                 found = places_.find(series.Index());
-        const std::optional<Value> outer =
-            found == places_.end() ? std::nullopt : std::optional<Value>(found->second);
+        const Setting<std::map<std::string, Value>> kept(places_, places_);
         places_[series.Index()] = Value(Number(first));
         long long  terms        = 0;
         bool       any          = false;
@@ -2457,10 +2455,6 @@ private:
             terms = std::min(terms, 1000000LL);
         };
         walk(walk, series.Body());
-        if (outer)
-            places_[series.Index()] = *outer;
-        else
-            places_.erase(series.Index());
         return any ? terms : 1;
     }
 
@@ -6419,23 +6413,15 @@ private:
         const auto                 found = places_.find(name);
         const std::optional<Value> outer =
             found == places_.end() ? std::nullopt : std::optional<Value>(found->second);
-        const auto unbound = [&] {
-            if (outer)
-                places_[name] = *outer;
-            else
-                places_.erase(name);
-        };
         // DESIGN.md, definitions by cells as loops: past 1000 terms, its own
         // or counted with those of the sums in its body, one loop.
         if (!expression->Reduction() && Loopable()) {
             std::set<const Expression<Value>*> counted;
             const long long terms = (last - first + 1LL) * Counted(*expression, first, counted);
             if (terms > max_terms || last - first >= max_terms || looping_.count(expression)) try {
-                    const Code looped = Summed(*expression, first, last, counted);
-                    unbound();
-                    return Answer(looped);
+                    const Setting<std::map<std::string, Value>> kept(places_, places_);
+                    return Answer(Summed(*expression, first, last, counted));
                 } catch (const Unlooped& why) {
-                    unbound();
                     if (last - first >= max_terms)
                         throw Reason(more + " whose " + why.what() + ", for now");
                     if (looping_.count(expression)) throw;  // its outer sum gives way too
