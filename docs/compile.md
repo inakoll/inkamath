@@ -106,6 +106,7 @@ What compiles
 | Two matrices compared whole, `R'*R == I3` | as the equalities of their cells | [`orthogonal.ink`](../test/compile/orthogonal.ink) has a rational rotation the step takes out of SO(3) at its first step, which the interpreter never does |
 | A sequence read at `x_(2*m)`, or held at `y_(floor(n/2))` | at another rate ([Rates](#rates-and-optional-inputs)) | [`rates.ink`](../test/compile/rates.ink) |
 | An optional input, `z_n?` | followed in the step by its flag ([Optional inputs](#optional-inputs)) | [`optional.ink`](../test/compile/optional.ink) |
+| A definition by cells of more than 1000 cells, a sum or a product of more than 1000 terms | a loop nest, its body compiled once, each array a local of the step, so that one of about 362x362 doubles fills MSVC's default 1 MB stack; a place that is not affine in the loops' indices is a table at file scope | [`cellloops.ink`](../test/compile/cellloops.ink) steps a 64x64 wave tank in a 4 KB header, 1 MB written out, and sums its misfit |
 
 Refused for now
 ---------------
@@ -140,6 +141,11 @@ is compiled by name. Refused:
   input's rate to sample instead.
 - For now, an argument of an inner instance's optional input that reads a
   sequence's chain back in time, or holds it.
+- For now, a sum or a product of more than 1000 terms that cannot loop,
+  saying why: under grad, its index read in an exponent, a comparison, a
+  guard or a call of what moves, a cell read at a place that is no sum of
+  whole multiples of the loops' indices and a constant, a limit in its term,
+  or terms that are matrices.
 
 Building a header
 -----------------

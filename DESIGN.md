@@ -14634,6 +14634,370 @@ clauses that fit 2, against 40 and 3; `Walking`, the base at L, the
 constant K's refusals and the closed form, 48, against 8 and the rest of
 20; the walks' names 1; Term's and `CompileTerms`' dead refusals less 5.
 
+### Definitions by cells as loops `[done]`
+
+For 2.5.0. A definition by cells compiles each cell again with its places
+bound as constants (`Cells`, `CellOf`, `TermCells`), and a sum with
+constant bounds is unrolled, refused past 1000 terms (`max_terms`). The owner's CFD tutorial,
+`inkamath-cfd-tutorial benchmarks/wave2d_64x64.ink`, steps a 64x64 wave
+equation with periodic wraps and sums its misfit, and measured before
+this:
+
+| model | `--compile` | bytes | lines |
+|---|---|---|---|
+| `forward`, the step | 30.9 s | 1,006,007 | 14,507 |
+| `nested`, misfit summed by rows | 20.9 s | 2,106,456 | 39,081 |
+| `sensitivity`, grad by the speeds | 27.6 s | 4,861,305 | 75,952 |
+| `flattened`, misfit in one sum of 4096 | refused, "a sum or a product of more than 1000 terms" | | |
+
+At 1e99065, measured, 25.0 s for forward's 1,005,197 bytes and 8,512
+lines, beside the owner's 14,507, 29.4 s for nested's 2,108,075 and
+41,353, flattened refused after 25.8 s. The time is quadratic in the
+cells: 0.08 s at 16x16, 1.4 s at 32x32; sampled by gdb, it goes to
+reading one cell of a 4096-cell argument, which scans every cell of it
+for NaN and copies its `Code` (`visit(CellExpression)`), once for each
+read of each cell. A body compiled once reads each argument once.
+
+Decided:
+- **Which loop.** A definition by cells of more than 1000 cells, a
+  function's, a value's or a model's own sequence's, is one loop nest
+  over its named places; and so is a sum or a product whose terms, times
+  those of the sums written in its body with constant bounds, number more
+  than 1000, each of those sums a loop of its own, in the outer's body
+  where it reads the outer's index and before the nest where it does not
+  (`Declare`, below). The count is the number of terms writing the sum
+  out would produce: its own terms times the sum of the counts of the
+  constant-bound sums written side by side in its body, so `sum_(i=1)^10
+  (sum_(j=1)^60 a + sum_(k=1)^50 b)` counts 10*(60 + 50), 1100, and a
+  term with no sum in it counts 1. At 1000 and below
+  both are written out as today, and a sum in a cell's body, or in a
+  function a body calls, decides by its own count. 1000 is `max_terms`,
+  past which a sum was refused, so no sum that compiles today loops.
+  Measured by a probe counting every `Cells`, `TermCells` and sum the
+  compiler meets, over every `--compile` and `--check` that ctest and
+  its build run and every model of `test/compile`, plain and in float, at
+  1e99065: past 1000, no header moves; from 1000, the seven of
+  `split.ink`, whose terms are 1000 cells; past 256, those and `c230`'s;
+  past 64, 15; past 27, 19, and 6 more under grad. The step's indices,
+  sizes and outputs are unchanged, so the owner's preference holds: every
+  header that compiles today is byte for byte the same.
+- **Not under grad**: inside a grad's body, forward or reverse mode,
+  nothing loops: cells are written out as today and a sum or a product
+  past 1000 terms is refused, "a sum or a product of more than 1000 terms
+  under grad, for now", until the sweep runs through loops (increment 5,
+  2.6.0). So `sensitivity`'s step is today's, byte for byte, its init's
+  two defaults a loop each (below). A value looped outside a grad and
+  read inside is an array of atoms, with no part.
+- **The places**: in the nest's body a place is the loop's index,
+  `i1_`, and a value that reads only places and constants is *placed*:
+  its exact value at each value of the places it reads is known while
+  compiling. A result of `Emit` that reads a place and is not placed is
+  emitted again at each value of the places it reads, those places and
+  the placed values in scope, a call's arguments, bound as constants; if
+  each is constant it is placed, with those values. So `lt(i) = mod(i -
+  2, 32) + 1`, called with i, is placed through its argument, as are
+  `max(i - 1, 1)` and `floor((k - 1)/64) + 1`: an index reads any
+  function of the places, at one cost, its places' count of evaluations.
+- **A cell read at a placed place** is whole and within the matrix at
+  every one of its values, checked while compiling, so the step tests no
+  range and writes no NaN for one: where it is not, the loop gives way,
+  below. Where its values are affine in the loop's index, a times it
+  plus c at every value, it is written in C, `i1_ - 1`, `2 * i1_ + 1`;
+  otherwise, mod, floor, max and min and any call, as a table of its
+  ints at file scope, outside the step, `static const int
+  forward32_table0_[32] = {31, 0, 1, ...};`, read
+  `m_->u[0][forward32_table0_[i1_]][j1_]`, named by the header's module
+  as its helpers are, so that no temporary of a step shadows it, and one
+  for equal contents, so lt's serves both i and j. Being no temporary, a
+  table is never declared again at each step nor carried by the split;
+  the split's objection to a `static` line in a step (*Constant operands
+  as static const arrays*, increment 1) does not reach a line outside
+  it. The matrix is read in
+  place where its cells are one array's (`Viewed`), a term's, a
+  parameter's, a looped definition's, and otherwise is made an array
+  (`Materialised`), its cells written once in its initializer as a
+  product's operand is. A place that reads several loops' indices is
+  evaluated at each of their combinations, no more than the terms the
+  nest would write out, and where it is affine in them is written so,
+  `(i - 1)*64 + j` as `64 * k1_ + k2_`; one of two indices or more that
+  is not, `mod(i*j, 1000) + 1`, gives way, its table their product.
+- **Per-cell folding, kept**: written out, each cell folds what reads
+  only its places, exactly, rounded once. A placed operand of `+`, `-`,
+  `*` or `/` beside a value that moves is written as `(double)(i1_ + c)`
+  where its values are affine in the index, else as a static table of
+  the doubles each cell written out would hold, so `x + i/10` adds 0.3 at i
+  = 3 as written out, not `3*0.1`, 0.30000000000000004. A placed
+  subtrahend is added negated, `y + (double)(-i1_)`, as written out
+  writes `y + 0.0` where it is 0 and `y - 1.0` past, so that -0.0 in y
+  gives +0.0 there as it does, where `y - (double)i1_` would keep -0.0.
+  A placed term of
+  a sum folds the sum exactly, as written out; a placed cell is a
+  constant cell. A place read anywhere else, a power's exponent, a
+  comparison, a guard, a function of what moves, a sequence's index, a
+  size, would take the compiler's other path there, a power by `pow`
+  rather than by squaring: it leaves the place's mark in the body's text,
+  and the loop gives way.
+- **The chain**: a definition loops only where every cell takes the same
+  chain of clauses: no clause for one cell, `x[1] = 0`, and no guard
+  reading a place, `| i == 1`; either is written out as today. A guard
+  reading what moves, `relu(z)[i] | z[i] > 1/2`, is compiled once in the
+  body, `t#_[i1_][0] = m_->y[0][i1_][0] > 0.5 ? m_->y[0][i1_][0] :
+  0.0;`, each cell's as written out.
+- **The nest** is a temporary's lines, declared as a product's
+  (`Declare`, `Loops`): `double t5_[32][32];`, its loops over the places
+  the definition names, `b1_`, `i1_`, `j1_` for a slice, a row and a
+  column, the digit the nest's depth, a sum's index `k1_`, so that no
+  product's `i_`, `j_` or `p_` inside a body shadows them; its body one
+  statement on the innermost `for`, or braced after the temporaries it
+  declares. Its `Code` is the array's cells, atoms, as a looped product's
+  (`Array`), so a term copies it by increment 3's loop and a later
+  definition reads it in place. A temporary whose lines read a loop's
+  index, or a temporary declared in that loop, is declared in the loop's
+  body; any other where it would be, before the nest, so a product or a
+  whole-matrix NaN test in a body is computed once. So is an inner sum
+  that reads no index of the loop around it: its accumulator and its own
+  loop are declared before that loop and computed once, as value
+  numbering shares that sum's text across the outer's terms written out
+  today; edge's w reads i in its inner sum so that it stays in the nest.
+  Body lines carry no value-numbering marks, as increment 3's.
+- **Sums**: `double t9_ = -0.0;` then `t9_ = t9_ + term;` at each k, a
+  product from `1.0` by `*`. -0.0 is addition's identity in IEEE 754, as
+  1.0 is multiplication's, so the first iteration gives the first term
+  exactly, -0.0 and NaN included: the interpreter's sum begins at its
+  first term and adds each after (`visit(SeriesExpression)` in
+  expression_visitor.hpp), and an inner sum is whole before the outer
+  adds it, the nest's order. So every looped value is the written-out
+  one's double, within 0 of the interpreter's at doubles. The order shows:
+  at the spec's V, misfit by rows and flatmisfit in one sum part by
+  1.6e-12 at 32x32 and 1.8e-11 at 64x64, by Python's doubles, as the
+  interpreter's do. A reduction, `max_`, `argmin_`, stays written out
+  and refused past 1000 as today, "the maximum has more than 1000
+  terms". So does a sum or a product whose terms are matrices: no array
+  accumulates in this increment, so it gives way, written out at 1000
+  terms and below and refused past them, "a sum or a product of more
+  than 1000 terms whose terms are 2x1 matrices, for now".
+- **A sum over a looped definition** reads its array in place:
+  `misfit(step(u, p, c), y)` sums `t5_[k1_][k2_]`; and a definition by
+  cells reading a looped one reads it in place, one written out made an
+  array.
+- **A constant default of more than 1000 cells all one number**, as
+  `speed` and `zero`, is set in init by one loop nest, `m_->c[i_][j_] =
+  0.25;`, where it was 4096 lines, nine tenths of forward's header once
+  its step loops. Others are written out as today.
+- **Giving way**: a loop that cannot be, for the reasons above, a limit
+  or a walk in its body, or an inner sum whose bounds read its index,
+  throws a reason of its own (`Unlooped`) and leaves nothing behind, its
+  temporaries dropped; the definition is then written out as today, and
+  a sum or a product past 1000 terms, which cannot be, is refused with
+  the loop's reason, naming what the user wrote, as a refusal does: "a
+  sum or a product of more than 1000 terms whose term reads k in an
+  exponent, for now", "... in a comparison", "... in a guard", "... in
+  a call of max", "... in an index of x", "... in a size"; "... whose
+  term reads y_n at a place that is no sum of whole multiples of i and j
+  and a constant, for now"; "... whose inner sum's bounds read i, for
+  now"; "... whose term reads a limit, for now", or a walk; and a read
+  outside a matrix in the interpreter's words, "row 1601 is outside a
+  1600x1 matrix", which it gives wherever that term is taken. Any other
+  reason the attempt meets
+  is the definition's own, as written out.
+- **`--float`**: arrays, accumulators and tables of values are `float`,
+  from `-0.0f`, each table cell the literal written out, and a placed
+  operand cast, `(float)(k1_ + 1)`, which -Wdouble-promotion holds clean;
+  within units of
+  a float as written out, bit for bit with it. One sum of 1024 floats
+  drifts where 32 of 32 do not: Python's floats in the step's order give
+  1.7, 2.2 and 96 units at most for wave's field, seen's and flat's
+  objective over 8 steps.
+- **The step split** never cuts a nest, one temporary's lines; an array
+  a later part reads is carried in the struct, as a looped product is
+  (increment 1), and a table, outside the step, is read by any part. An array is a local of the step, 8 bytes a
+  cell in double, as a looped product's: forward's 64x64 is 32 KB of
+  stack, and flattened's at 256x256 512 KB, half MSVC's default 1 MB, its
+  tables being static (above); one array of about 362x362 fills it, past
+  which a host raises its stack, `/STACK` or a thread's own. No scratch
+  in the struct for it: speculative at the tank's 64x64.
+- **Value numbering** shares within a body by `Shared` and `Declare`, as
+  a cell written out does; across cells there is nothing to share, the
+  body being every cell. `Invariant` is a limit's, and a limit gives way.
+
+Rejected:
+- **A lower threshold**: each moves headers, the counts above; 27, a
+  product's, moves 19.
+- **Rerolling the cells written out**, as increment 3 compares lines:
+  every cell still made, so the quadratic compile stays, and periodic
+  edges differ from the interior in text.
+- **A range test in the step, NaN out of range**: every place is known
+  while compiling, where the interpreter refuses.
+- **Remainders and quotients in C**, `(i1_ + 31) % 32`, `k1_ / 64`:
+  forms to recognise among the values beyond the affine, some 20 lines,
+  for flattened's two tables of 4096, 31 KB of its header; a table is
+  exact by construction.
+- **A table as a step's temporary**, `const int t3_[32]` before the
+  nest: written again at each step, and carried by the split.
+- **Places computed in doubles at run time**: `x + i/10` an ulp from the
+  interpreter's exact fold; and **tables wherever a place is read**: a
+  table read takes the compiler's path for what moves, `pow` for a power.
+- **A guard reading a place as a table of the clause taken**: chains
+  that differ by cell, the reads of a clause not taken checked where it
+  is; written out as today.
+- **Loops under grad where nothing moves with grad's name**: an attempt
+  leaves nodes on reverse mode's tape; increment 5's.
+- **A sum's first term peeled before the loop**: the body twice; -0.0
+  does it.
+- **A looped definition written straight into its term**: one form for
+  values, calls and terms; the copy is increment 3's loop.
+- **Cellwise arithmetic fused into a body**, `relu(y_n - 1/2)`: its
+  argument is made an array, written out in its initializer, as a
+  product's operand is; a body reading another `Code`'s cells as a body
+  is its own change.
+- **Every sum in a looped body a loop**: a kernel `sum_(k=1)^3
+  w[k]*x[i + k - 1]` in a cell's body is unrolled there by its own count,
+  k a constant and each weight folded, as written out today.
+
+Cost, in lines of `compile.hpp`, about 325: the rule, the nest's count
+through the sums in its body, not under grad and the same chain at every
+cell, 25; the places, their marks and values, the emission again at each
+value and combination of values, placed arguments bound, 55; a cell read
+at a placed place, its check, affine places in C of one index or several
+and the matrix in place or made an array, 50; tables at file scope,
+named by the module, one for equal contents, 15; placed operands of
+`+`, `-`, `*`, `/`, a subtrahend negated, cast in float, and a placed
+sum folded, 25; `Cells` and `TermCells` looped, the nest's lines and
+its `Code`, 50; `Declare` routing a temporary into a loop's body or
+before it, an inner sum hoisted, 20; sums as loops from -0.0 and nests
+of them, 35; giving way, its reasons by what the user wrote, a sum of
+matrices, and the words past 1000, 35; init's loop for a constant
+default, 10; float, 5. 21,832 lines at 1e99065, by `wc -l
+include/inkamath/*.hpp src/*`. Past 490 the implementation stops and
+reports. DESIGN's estimate was about 300, fusion included.
+
+Targets, not promises, for the tank at 64x64 after it, GCC 13 at the
+same load: `forward` under 8,000 bytes and some 120 lines, `nested`
+under 10,000, `flattened` under 45,000, two tables of 4096 being 31 KB
+of it, each compiled in under 2 s where they took 25 to 31 s or were
+refused; `sensitivity`'s step as today, byte for byte, 27.6 s.
+
+Specified in `test/compile/cellloops.ink`, its numbers by Python's
+fractions, doubles and floats rounded as C's, none recorded: the tank at
+32x32, `forward32`, `nested32` and `flattened32`, at U, eighths, exact,
+and at V, sevenths, inexact; `clamped`, a model's own sequence by cells
+with the clamps and a sum over its term; `edge`, 1001 looped flat and
+as a nest, checked, and `edgeout`, compiled once and held by its lines
+alone, 1000 written out, two nests whose places are affine in two
+indices and one whose place is not, giving way; `act`,
+a guard reading what moves; `guarded` and `pull`, written out, a guard
+reading its place and a definition under grad; the owner's tank at full
+size; and a file of nine refusals. `cli.cmake`'s part `spec_cellloops`,
+run by `cli_spec_cellloops`, compiles each model, strict, and the 32x32
+tank in float; pins the nests, tables and sums' lines from the rule
+above, '#' for a temporary's number, their counts and the headers'
+sizes; and holds the refusals' words. `spec_cellloops_checks` checks
+each instance at 32x32 for 6 steps to its comment's lines, these and no
+other. `spec_cellloops_tank` compiles the full tank, strict, under its
+bounds, checks it for 4 steps, and the 32x32 tank in float for 8. Each
+skips while a sum of 1001 terms is refused as today, and only then.
+`compile_cellloops_values`, in `cli.cmake`'s part 3, holds the
+interpreter's values to Python's, and passes now. Under the sanitizers
+at 403acc3, measured: the interpreter's passes over every instance take
+0.8 s at 32x32 and 1.7 s at 64x64; a 32x32 forward written out compiles
+in 19 s, 14 times its release time, and an 8x8 in 0.26 s; edgeout
+written out whole, 14.7 s, guarded 3.9 s, pull 1.1 s; a check's C of
+six 32x32 steps builds in 1.9 s. Estimated, a looped model at 32x32
+compiles in 1.5 s and at 64x64 in 3 to 5, a check at 32x32 takes 3 s
+and at 64x64 9 s: `spec_cellloops` about 40 s, its thirteen compiles,
+edgeout's 10 written out, and their strict builds; `spec_cellloops_checks`
+about 40, twelve checks; `spec_cellloops_tank` about 50. Each stays
+under 80 s with half again for a miss, and under 240 with 2.4.0's
+threefold. When built: the parts join `cli.cmake`'s
+regular cases, their skips gone; `docs/compile.md` gains a row, "A
+definition by cells of more than 1000 cells, a sum or a product of more
+than 1000 terms | a loop nest, its body compiled once, each array a
+local of the step, so that one of about 362x362 doubles fills MSVC's
+default 1 MB stack", and its *Refused* list a line; no golden, expected header, check program or
+`--compile` of `test/compile`'s files and models moves but
+cellloops.ink's own, which the implementation confirms by the probe
+above.
+
+Found specifying this, its own change and not this one: the quadratic
+read above, a cell's NaN scan and its argument's copy at each read,
+where five of six gdb samples of forward written out fell; kept once
+for each argument, it would speed every header written out by cells
+without moving one.
+
+Built as specified, with the rulings above: the three spec parts pass as
+written, not one line of the spec changed, and are `cli.cmake`'s parts 7,
+8 and 9, run by `cli_7` to `cli_9`, their skips and the probe gone. No
+refusal test moves: none held "more than 1000 terms" but the spec's.
+
+The tank at 64x64 after it, a Release build, GCC 13, beside 1e99065's on
+the same machine:
+
+| model | `--compile` | bytes | lines | at 1e99065 |
+|---|---|---|---|---|
+| `forward` | 0.05 s | 4,376 | 101 | 25.6 s, 1,006,007 bytes, 8,512 lines |
+| `nested` | 0.07 s | 4,686 | 112 | 28.2 s, 2,106,456 bytes, 41,352 lines |
+| `flattened` | 0.26 s | 36,389 | 113 | refused |
+| `sensitivity` | 43 s | 4,655,164 | 114,926 | 38.1 s, 4,861,305 bytes, 123,114 lines |
+
+Each under its target, 8,000, 10,000 and 45,000 bytes in under 2 s;
+sensitivity's step byte for byte 1e99065's, its init's two defaults a
+loop each, so 8,193 lines fewer.
+
+Departures and findings:
+- **A placed value is a mark and a list**: its cell reads '\x17id\x18',
+  which no C reads, and its values at each combination of the loops it
+  reads are kept beside, outermost slowest (`Placement`); a loop's index
+  is a 0-row `Value` among `places_`, whose columns name its placement,
+  so that whatever saves, hides or captures the places does so to it as
+  to a constant one. A value compiled again binds the loops at their
+  values, those places and placed values given to calls (`Again`, `Now`,
+  `Valued`).
+- **A nest of cells and a sum share one stack of loops** (`Loop`) and one
+  rule for where a temporary is declared (`Routed`); a nest of cells is one
+  body for all its loops, a temporary reading i1_ declared in the
+  innermost, not between them. Its key holds the lines of the body it
+  reads, so that a sum in a loop's body is routed by the outer index its
+  body reads.
+- **An inner sum counted by its outer gives way with it**: where it cannot
+  loop, the outer gives way too, as edgeout's z, rather than loop around
+  the inner written out; past 1000 terms its own reason is the outer's.
+- **More gives way**, each with its words past 1000 terms: a grad in a
+  loop's body, "term reads a derivative"; the right of 'and' or 'or'
+  deferred; an instance with memory reading a place; a sum up to the index;
+  a row read at a placed place; a placed operand of two loops not affine,
+  "term reads a value that is no sum of whole multiples of i and j and a
+  constant"; any mark left, "term reads k where a constant is needed".
+  Another sequence or a global compiled on the way sees no loop.
+- **The split carries a sum's accumulator**, `double t5_ = -0.0;`, as a
+  scalar, where it read every first line not `const` as an array.
+
+The overrun: 625 lines of sources, 21,843 to 22,468 by `wc -l
+include/inkamath/*.hpp src/*`, against the spec's 325 and its stop at
+490. The implementation stopped there and reported; the owner's
+orchestrator ruled to finish, each behaviour weighed on its own merit,
+the implementation review to cut lines without losing one. About, against
+the estimate:
+
+| part | lines | estimate |
+|---|---|---|
+| compiling again at each place's value, marks, combinations | 114 | 55 |
+| affine places and tables, placed operands, the subtrahend, the cast | 81 | 15, 25 and part of 50 |
+| a cell read at placed places, its check, the matrix in place | 82 | 50 |
+| the loops' stack, `Routed`, a nest's lines, a mark left | 70 | 20 and part of 50 |
+| `Loopable` and a nest of cells | 79 | 25 and part of 50 |
+| sums as loops, placed and constant terms folded | 71 | 35 |
+| a sum's count through its body | 36 | part of 25 |
+| the sum's rule and its words past 1000 | 24 | part of 35 |
+| giving way: `Unlooped`, its throws and words | 40 | part of 35 |
+| `Cells`, `TermCells` and `Walk` | 22 | part of 50 |
+| loops hidden from another sequence and a global, a place read | 10 | |
+| init's loop, the tables printed, the split | 13 | 10 and 5 |
+| members | 12 | |
+
+No golden, expected header or check program moves, nor any of the 1,076
+`--compile` runs of `test/compile`'s files and models, plain and in
+float, but cellloops.ink's own.
+
 ## Next in line
 
 After phase 14's step 2, with the exact target deferred: the small fixes
@@ -14956,295 +15320,6 @@ From the review of a compiled derivative of a limit:
 
 For 2.5.0, increment 4 of *Loops in generated code* (above, from the
 external review of 2026-10-12), by the owner's tank:
-
-- **Definitions by cells as loops.** A definition by cells compiles each
-  cell again with its places bound as constants (`Cells`, `CellOf`,
-  `TermCells`), and a sum with constant bounds is unrolled, refused past
-  1000 terms (`max_terms`). The owner's CFD tutorial,
-  `inkamath-cfd-tutorial benchmarks/wave2d_64x64.ink`, steps a 64x64 wave
-  equation with periodic wraps and sums its misfit, and measured before
-  this:
-
-  | model | `--compile` | bytes | lines |
-  |---|---|---|---|
-  | `forward`, the step | 30.9 s | 1,006,007 | 14,507 |
-  | `nested`, misfit summed by rows | 20.9 s | 2,106,456 | 39,081 |
-  | `sensitivity`, grad by the speeds | 27.6 s | 4,861,305 | 75,952 |
-  | `flattened`, misfit in one sum of 4096 | refused, "a sum or a product of more than 1000 terms" | | |
-
-  At 1e99065, measured, 25.0 s for forward's 1,005,197 bytes and 8,512
-  lines, beside the owner's 14,507, 29.4 s for nested's 2,108,075 and
-  41,353, flattened refused after 25.8 s. The time is quadratic in the
-  cells: 0.08 s at 16x16, 1.4 s at 32x32; sampled by gdb, it goes to
-  reading one cell of a 4096-cell argument, which scans every cell of it
-  for NaN and copies its `Code` (`visit(CellExpression)`), once for each
-  read of each cell. A body compiled once reads each argument once.
-
-  Decided:
-  - **Which loop.** A definition by cells of more than 1000 cells, a
-    function's, a value's or a model's own sequence's, is one loop nest
-    over its named places; and so is a sum or a product whose terms, times
-    those of the sums written in its body with constant bounds, number more
-    than 1000, each of those sums a loop of its own, in the outer's body
-    where it reads the outer's index and before the nest where it does not
-    (`Declare`, below). The count is the number of terms writing the sum
-    out would produce: its own terms times the sum of the counts of the
-    constant-bound sums written side by side in its body, so `sum_(i=1)^10
-    (sum_(j=1)^60 a + sum_(k=1)^50 b)` counts 10*(60 + 50), 1100, and a
-    term with no sum in it counts 1. At 1000 and below
-    both are written out as today, and a sum in a cell's body, or in a
-    function a body calls, decides by its own count. 1000 is `max_terms`,
-    past which a sum was refused, so no sum that compiles today loops.
-    Measured by a probe counting every `Cells`, `TermCells` and sum the
-    compiler meets, over every `--compile` and `--check` that ctest and
-    its build run and every model of `test/compile`, plain and in float, at
-    1e99065: past 1000, no header moves; from 1000, the seven of
-    `split.ink`, whose terms are 1000 cells; past 256, those and `c230`'s;
-    past 64, 15; past 27, 19, and 6 more under grad. The step's indices,
-    sizes and outputs are unchanged, so the owner's preference holds: every
-    header that compiles today is byte for byte the same.
-  - **Not under grad**: inside a grad's body, forward or reverse mode,
-    nothing loops: cells are written out as today and a sum or a product
-    past 1000 terms is refused, "a sum or a product of more than 1000 terms
-    under grad, for now", until the sweep runs through loops (increment 5,
-    2.6.0). So `sensitivity`'s step is today's, byte for byte, its init's
-    two defaults a loop each (below). A value looped outside a grad and
-    read inside is an array of atoms, with no part.
-  - **The places**: in the nest's body a place is the loop's index,
-    `i1_`, and a value that reads only places and constants is *placed*:
-    its exact value at each value of the places it reads is known while
-    compiling. A result of `Emit` that reads a place and is not placed is
-    emitted again at each value of the places it reads, those places and
-    the placed values in scope, a call's arguments, bound as constants; if
-    each is constant it is placed, with those values. So `lt(i) = mod(i -
-    2, 32) + 1`, called with i, is placed through its argument, as are
-    `max(i - 1, 1)` and `floor((k - 1)/64) + 1`: an index reads any
-    function of the places, at one cost, its places' count of evaluations.
-  - **A cell read at a placed place** is whole and within the matrix at
-    every one of its values, checked while compiling, so the step tests no
-    range and writes no NaN for one: where it is not, the loop gives way,
-    below. Where its values are affine in the loop's index, a times it
-    plus c at every value, it is written in C, `i1_ - 1`, `2 * i1_ + 1`;
-    otherwise, mod, floor, max and min and any call, as a table of its
-    ints at file scope, outside the step, `static const int
-    forward32_table0_[32] = {31, 0, 1, ...};`, read
-    `m_->u[0][forward32_table0_[i1_]][j1_]`, named by the header's module
-    as its helpers are, so that no temporary of a step shadows it, and one
-    for equal contents, so lt's serves both i and j. Being no temporary, a
-    table is never declared again at each step nor carried by the split;
-    the split's objection to a `static` line in a step (*Constant operands
-    as static const arrays*, increment 1) does not reach a line outside
-    it. The matrix is read in
-    place where its cells are one array's (`Viewed`), a term's, a
-    parameter's, a looped definition's, and otherwise is made an array
-    (`Materialised`), its cells written once in its initializer as a
-    product's operand is. A place that reads several loops' indices is
-    evaluated at each of their combinations, no more than the terms the
-    nest would write out, and where it is affine in them is written so,
-    `(i - 1)*64 + j` as `64 * k1_ + k2_`; one of two indices or more that
-    is not, `mod(i*j, 1000) + 1`, gives way, its table their product.
-  - **Per-cell folding, kept**: written out, each cell folds what reads
-    only its places, exactly, rounded once. A placed operand of `+`, `-`,
-    `*` or `/` beside a value that moves is written as `(double)(i1_ + c)`
-    where its values are affine in the index, else as a static table of
-    the doubles each cell written out would hold, so `x + i/10` adds 0.3 at i
-    = 3 as written out, not `3*0.1`, 0.30000000000000004. A placed
-    subtrahend is added negated, `y + (double)(-i1_)`, as written out
-    writes `y + 0.0` where it is 0 and `y - 1.0` past, so that -0.0 in y
-    gives +0.0 there as it does, where `y - (double)i1_` would keep -0.0.
-    A placed term of
-    a sum folds the sum exactly, as written out; a placed cell is a
-    constant cell. A place read anywhere else, a power's exponent, a
-    comparison, a guard, a function of what moves, a sequence's index, a
-    size, would take the compiler's other path there, a power by `pow`
-    rather than by squaring: it leaves the place's mark in the body's text,
-    and the loop gives way.
-  - **The chain**: a definition loops only where every cell takes the same
-    chain of clauses: no clause for one cell, `x[1] = 0`, and no guard
-    reading a place, `| i == 1`; either is written out as today. A guard
-    reading what moves, `relu(z)[i] | z[i] > 1/2`, is compiled once in the
-    body, `t#_[i1_][0] = m_->y[0][i1_][0] > 0.5 ? m_->y[0][i1_][0] :
-    0.0;`, each cell's as written out.
-  - **The nest** is a temporary's lines, declared as a product's
-    (`Declare`, `Loops`): `double t5_[32][32];`, its loops over the places
-    the definition names, `b1_`, `i1_`, `j1_` for a slice, a row and a
-    column, the digit the nest's depth, a sum's index `k1_`, so that no
-    product's `i_`, `j_` or `p_` inside a body shadows them; its body one
-    statement on the innermost `for`, or braced after the temporaries it
-    declares. Its `Code` is the array's cells, atoms, as a looped product's
-    (`Array`), so a term copies it by increment 3's loop and a later
-    definition reads it in place. A temporary whose lines read a loop's
-    index, or a temporary declared in that loop, is declared in the loop's
-    body; any other where it would be, before the nest, so a product or a
-    whole-matrix NaN test in a body is computed once. So is an inner sum
-    that reads no index of the loop around it: its accumulator and its own
-    loop are declared before that loop and computed once, as value
-    numbering shares that sum's text across the outer's terms written out
-    today; edge's w reads i in its inner sum so that it stays in the nest.
-    Body lines carry no value-numbering marks, as increment 3's.
-  - **Sums**: `double t9_ = -0.0;` then `t9_ = t9_ + term;` at each k, a
-    product from `1.0` by `*`. -0.0 is addition's identity in IEEE 754, as
-    1.0 is multiplication's, so the first iteration gives the first term
-    exactly, -0.0 and NaN included: the interpreter's sum begins at its
-    first term and adds each after (`visit(SeriesExpression)` in
-    expression_visitor.hpp), and an inner sum is whole before the outer
-    adds it, the nest's order. So every looped value is the written-out
-    one's double, within 0 of the interpreter's at doubles. The order shows:
-    at the spec's V, misfit by rows and flatmisfit in one sum part by
-    1.6e-12 at 32x32 and 1.8e-11 at 64x64, by Python's doubles, as the
-    interpreter's do. A reduction, `max_`, `argmin_`, stays written out
-    and refused past 1000 as today, "the maximum has more than 1000
-    terms". So does a sum or a product whose terms are matrices: no array
-    accumulates in this increment, so it gives way, written out at 1000
-    terms and below and refused past them, "a sum or a product of more
-    than 1000 terms whose terms are 2x1 matrices, for now".
-  - **A sum over a looped definition** reads its array in place:
-    `misfit(step(u, p, c), y)` sums `t5_[k1_][k2_]`; and a definition by
-    cells reading a looped one reads it in place, one written out made an
-    array.
-  - **A constant default of more than 1000 cells all one number**, as
-    `speed` and `zero`, is set in init by one loop nest, `m_->c[i_][j_] =
-    0.25;`, where it was 4096 lines, nine tenths of forward's header once
-    its step loops. Others are written out as today.
-  - **Giving way**: a loop that cannot be, for the reasons above, a limit
-    or a walk in its body, or an inner sum whose bounds read its index,
-    throws a reason of its own (`Unlooped`) and leaves nothing behind, its
-    temporaries dropped; the definition is then written out as today, and
-    a sum or a product past 1000 terms, which cannot be, is refused with
-    the loop's reason, naming what the user wrote, as a refusal does: "a
-    sum or a product of more than 1000 terms whose term reads k in an
-    exponent, for now", "... in a comparison", "... in a guard", "... in
-    a call of max", "... in an index of x", "... in a size"; "... whose
-    term reads y_n at a place that is no sum of whole multiples of i and j
-    and a constant, for now"; "... whose inner sum's bounds read i, for
-    now"; "... whose term reads a limit, for now", or a walk; and a read
-    outside a matrix in the interpreter's words, "row 1601 is outside a
-    1600x1 matrix", which it gives wherever that term is taken. Any other
-    reason the attempt meets
-    is the definition's own, as written out.
-  - **`--float`**: arrays, accumulators and tables of values are `float`,
-    from `-0.0f`, each table cell the literal written out, and a placed
-    operand cast, `(float)(k1_ + 1)`, which -Wdouble-promotion holds clean;
-    within units of
-    a float as written out, bit for bit with it. One sum of 1024 floats
-    drifts where 32 of 32 do not: Python's floats in the step's order give
-    1.7, 2.2 and 96 units at most for wave's field, seen's and flat's
-    objective over 8 steps.
-  - **The step split** never cuts a nest, one temporary's lines; an array
-    a later part reads is carried in the struct, as a looped product is
-    (increment 1), and a table, outside the step, is read by any part. An array is a local of the step, 8 bytes a
-    cell in double, as a looped product's: forward's 64x64 is 32 KB of
-    stack, and flattened's at 256x256 512 KB, half MSVC's default 1 MB, its
-    tables being static (above); one array of about 362x362 fills it, past
-    which a host raises its stack, `/STACK` or a thread's own. No scratch
-    in the struct for it: speculative at the tank's 64x64.
-  - **Value numbering** shares within a body by `Shared` and `Declare`, as
-    a cell written out does; across cells there is nothing to share, the
-    body being every cell. `Invariant` is a limit's, and a limit gives way.
-
-  Rejected:
-  - **A lower threshold**: each moves headers, the counts above; 27, a
-    product's, moves 19.
-  - **Rerolling the cells written out**, as increment 3 compares lines:
-    every cell still made, so the quadratic compile stays, and periodic
-    edges differ from the interior in text.
-  - **A range test in the step, NaN out of range**: every place is known
-    while compiling, where the interpreter refuses.
-  - **Remainders and quotients in C**, `(i1_ + 31) % 32`, `k1_ / 64`:
-    forms to recognise among the values beyond the affine, some 20 lines,
-    for flattened's two tables of 4096, 31 KB of its header; a table is
-    exact by construction.
-  - **A table as a step's temporary**, `const int t3_[32]` before the
-    nest: written again at each step, and carried by the split.
-  - **Places computed in doubles at run time**: `x + i/10` an ulp from the
-    interpreter's exact fold; and **tables wherever a place is read**: a
-    table read takes the compiler's path for what moves, `pow` for a power.
-  - **A guard reading a place as a table of the clause taken**: chains
-    that differ by cell, the reads of a clause not taken checked where it
-    is; written out as today.
-  - **Loops under grad where nothing moves with grad's name**: an attempt
-    leaves nodes on reverse mode's tape; increment 5's.
-  - **A sum's first term peeled before the loop**: the body twice; -0.0
-    does it.
-  - **A looped definition written straight into its term**: one form for
-    values, calls and terms; the copy is increment 3's loop.
-  - **Cellwise arithmetic fused into a body**, `relu(y_n - 1/2)`: its
-    argument is made an array, written out in its initializer, as a
-    product's operand is; a body reading another `Code`'s cells as a body
-    is its own change.
-  - **Every sum in a looped body a loop**: a kernel `sum_(k=1)^3
-    w[k]*x[i + k - 1]` in a cell's body is unrolled there by its own count,
-    k a constant and each weight folded, as written out today.
-
-  Cost, in lines of `compile.hpp`, about 325: the rule, the nest's count
-  through the sums in its body, not under grad and the same chain at every
-  cell, 25; the places, their marks and values, the emission again at each
-  value and combination of values, placed arguments bound, 55; a cell read
-  at a placed place, its check, affine places in C of one index or several
-  and the matrix in place or made an array, 50; tables at file scope,
-  named by the module, one for equal contents, 15; placed operands of
-  `+`, `-`, `*`, `/`, a subtrahend negated, cast in float, and a placed
-  sum folded, 25; `Cells` and `TermCells` looped, the nest's lines and
-  its `Code`, 50; `Declare` routing a temporary into a loop's body or
-  before it, an inner sum hoisted, 20; sums as loops from -0.0 and nests
-  of them, 35; giving way, its reasons by what the user wrote, a sum of
-  matrices, and the words past 1000, 35; init's loop for a constant
-  default, 10; float, 5. 21,832 lines at 1e99065, by `wc -l
-  include/inkamath/*.hpp src/*`. Past 490 the implementation stops and
-  reports. DESIGN's estimate was about 300, fusion included.
-
-  Targets, not promises, for the tank at 64x64 after it, GCC 13 at the
-  same load: `forward` under 8,000 bytes and some 120 lines, `nested`
-  under 10,000, `flattened` under 45,000, two tables of 4096 being 31 KB
-  of it, each compiled in under 2 s where they took 25 to 31 s or were
-  refused; `sensitivity`'s step as today, byte for byte, 27.6 s.
-
-  Specified in `test/compile/cellloops.ink`, its numbers by Python's
-  fractions, doubles and floats rounded as C's, none recorded: the tank at
-  32x32, `forward32`, `nested32` and `flattened32`, at U, eighths, exact,
-  and at V, sevenths, inexact; `clamped`, a model's own sequence by cells
-  with the clamps and a sum over its term; `edge`, 1001 looped flat and
-  as a nest, checked, and `edgeout`, compiled once and held by its lines
-  alone, 1000 written out, two nests whose places are affine in two
-  indices and one whose place is not, giving way; `act`,
-  a guard reading what moves; `guarded` and `pull`, written out, a guard
-  reading its place and a definition under grad; the owner's tank at full
-  size; and a file of nine refusals. `cli.cmake`'s part `spec_cellloops`,
-  run by `cli_spec_cellloops`, compiles each model, strict, and the 32x32
-  tank in float; pins the nests, tables and sums' lines from the rule
-  above, '#' for a temporary's number, their counts and the headers'
-  sizes; and holds the refusals' words. `spec_cellloops_checks` checks
-  each instance at 32x32 for 6 steps to its comment's lines, these and no
-  other. `spec_cellloops_tank` compiles the full tank, strict, under its
-  bounds, checks it for 4 steps, and the 32x32 tank in float for 8. Each
-  skips while a sum of 1001 terms is refused as today, and only then.
-  `compile_cellloops_values`, in `cli.cmake`'s part 3, holds the
-  interpreter's values to Python's, and passes now. Under the sanitizers
-  at 403acc3, measured: the interpreter's passes over every instance take
-  0.8 s at 32x32 and 1.7 s at 64x64; a 32x32 forward written out compiles
-  in 19 s, 14 times its release time, and an 8x8 in 0.26 s; edgeout
-  written out whole, 14.7 s, guarded 3.9 s, pull 1.1 s; a check's C of
-  six 32x32 steps builds in 1.9 s. Estimated, a looped model at 32x32
-  compiles in 1.5 s and at 64x64 in 3 to 5, a check at 32x32 takes 3 s
-  and at 64x64 9 s: `spec_cellloops` about 40 s, its thirteen compiles,
-  edgeout's 10 written out, and their strict builds; `spec_cellloops_checks`
-  about 40, twelve checks; `spec_cellloops_tank` about 50. Each stays
-  under 80 s with half again for a miss, and under 240 with 2.4.0's
-  threefold. When built: the parts join `cli.cmake`'s
-  regular cases, their skips gone; `docs/compile.md` gains a row, "A
-  definition by cells of more than 1000 cells, a sum or a product of more
-  than 1000 terms | a loop nest, its body compiled once, each array a
-  local of the step, so that one of about 362x362 doubles fills MSVC's
-  default 1 MB stack", and its *Refused* list a line; no golden, expected header, check program or
-  `--compile` of `test/compile`'s files and models moves but
-  cellloops.ink's own, which the implementation confirms by the probe
-  above.
-
-  Found specifying this, its own change and not this one: the quadratic
-  read above, a cell's NaN scan and its argument's copy at each read,
-  where five of six gdb samples of forward written out fell; kept once
-  for each argument, it would speed every header written out by cells
-  without moving one.
 
 - **A guard reading a place, in a loop**: a Dirichlet boundary,
   `u[i<=N] | i == 1 = 0`, gives way and is written out (*Definitions by
