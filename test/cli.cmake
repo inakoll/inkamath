@@ -4086,6 +4086,20 @@ if(NOT PART OR PART GREATER 6)
                       "cannot compile r: a sum or a product of more than 1000 terms whose term reads j in an exponent, for now\n")
         set(exit 1)
         check(compile_cellloops_words)
+        # A matrix holding a place, read at a place: written out, as a value
+        # holding a place in a constant's stead is, or refused in its words.
+        file(WRITE "${OUT}/cellloops_holding.ink"
+             "holding(x_n[i<=1100]) = {\n    c_n[i<=1100] = [x_n[1]; i; 3][mod(i, 3) + 1]\n}\n"
+             "summing(x_n[i<=1100]) = {\n    s_n = sum_(k=1)^1001 [x_n[1]; k; 3][mod(k, 3) + 1]\n}\n")
+        set(args --compile cellloops_holding.ink holding -o holding.h)
+        set(exit 0)
+        check(compile_cellloops_holding)
+        holds(compile_cellloops_holding holding.h
+              "    m_->c[0][1097][0] = m_->x[0][0][0];\n    m_->c[0][1098][0] = 1099.0;\n")
+        set(args --compile cellloops_holding.ink summing)
+        set(stdout "cannot compile s: a sum or a product of more than 1000 terms whose term reads k where a constant is needed, for now\n")
+        set(exit 1)
+        check(compile_cellloops_holding)
         set(exit 0)
         set(stdout "")
 
