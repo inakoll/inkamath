@@ -2221,11 +2221,6 @@ private:
         std::vector<Temporary>* outer;
         int                     depth;
     };
-    struct Popped {
-        std::vector<Loop>& loops;
-        std::size_t        size;
-        ~Popped() { loops.erase(loops.begin() + static_cast<std::ptrdiff_t>(size), loops.end()); }
-    };
     int Depth() const { return loops_.empty() ? 1 : loops_.back().depth + 1; }
     // Declared in a nest's body, the body of the innermost loop it reads by
     // its index or what that body declares, else before the nest.
@@ -2308,7 +2303,7 @@ private:
         const std::size_t                        counts[] = {size.slices, size.rows, size.cols};
         Code                                     code;
         {
-            const Popped pop{loops_, outer};
+            const Setting<std::vector<Loop>> pop(loops_, loops_);
             for (std::size_t d = 0; d < 3; ++d) {
                 std::string var = "0";
                 if (counts[d] > 1) {
@@ -2374,7 +2369,7 @@ private:
         const std::string var  = "k" + std::to_string(Depth()) + "_";
         Code              term;
         {
-            const Popped pop{loops_, loop};
+            const Setting<std::vector<Loop>> pop(loops_, loops_);
             loops_.push_back({var, series.Index(), count, body, temporaries_, Depth()});
             {
                 const Setting<std::set<const Expression<Value>*>> inner(looping_, counted);
