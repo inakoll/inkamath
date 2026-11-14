@@ -14998,6 +14998,31 @@ No golden, expected header or check program moves, nor any of the 1,076
 `--compile` runs of `test/compile`'s files and models, plain and in
 float, but cellloops.ink's own.
 
+Amended by its implementation review, each a failing test first:
+- **A value compiled again at a place that read another loop** threw that
+  loop's words out of `Again`, "term reads k in a constant", where the
+  loop's own are "term reads i in an exponent" or "in a call of max":
+  compiled again, a value that meets a loop not bound is not placed.
+  `compile_cellloops_words` holds three. 2 lines.
+- **A matrix holding a place, read at a place**, `[x_n[1]; i; 3][mod(i,
+  3) + 1]`, was made an array before the nest, its mark in a line no
+  check read, and refused, "a control character in the header", where
+  1e99065 writes it out; and a mark found only in a body's line was named
+  "term reads  where". A temporary holding a mark is declared in the body,
+  where the loop gives way. `compile_cellloops_holding`. 3 lines fewer.
+- **Seqcells' quad ran in every part past 4**, its default where no part
+  named it, so 7 to 9 each replayed it, some 120 s under the sanitizers.
+  Measured alone at the review's head, Debug with address and undefined,
+  GCC 13: parts 6 to 9 in 163, 90, 55 and 91 s, where 7 to 9 took 193, 178
+  and 213. No part 10.
+- **Cut, no header moving**: the loops restored by `Setting`, not a struct
+  of their own; a sum's places likewise where it counts and where it loops;
+  and a definition by cells whose cell is constant or placed written out as
+  today, where the nest computed its matrix itself, pinned by
+  `compile_cellloops_placed`. 36 lines.
+
+625 lines became 588, 22,431 by `wc -l include/inkamath/*.hpp src/*`.
+
 ## Next in line
 
 After phase 14's step 2, with the exact target deferred: the small fixes
